@@ -1,0 +1,21 @@
+cabal-version:            >=2.0
+version:                  0.1.0
+license:                  MIT
+author:                   Sam A. Horvath-Hunt
+maintainer:               hello@samhh.com
+name:                     tshm
+build-type:               Simple
+
+executable tshm
+  hs-source-dirs:         src/
+  main-is:                Main.hs
+  build-depends:
+      base                ^>=4.14
+    , megaparsec          ^>=9.0
+
+  default-extensions:
+    LambdaCase
+    TupleSections
+
+  ghc-options:            -Wall -fwrite-ide-info -hiedir=.hie
+  default-language:       Haskell2010
