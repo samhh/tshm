@@ -1,5 +1,6 @@
 module Main (main) where
 
+import           Data.List            (intercalate)
 import           Data.Void            (Void)
 import           Text.Megaparsec
 import           Text.Megaparsec.Char
@@ -7,7 +8,8 @@ import           Text.Megaparsec.Char
 type Parser = Parsec Void String
 
 data Value
-  = ValuePrimitive String
+  = ValueVoid
+  | ValuePrimitive String
   | ValueFunction Function
   deriving (Eq, Show)
 
@@ -54,12 +56,35 @@ pFunction = Function <$> optional pTypeArgs <*> pParams <*> pReturn
 
 pValue :: Parser Value
 pValue = choice
-  [ ValueFunction <$> pFunction
-  , ValuePrimitive <$> some (choice [alphaNumChar, char '<', char '>', char '[', char ']', char ',', char ' '])
+  [ ValueVoid <$ string "void"
+  , ValueFunction <$> pFunction
+  , ValuePrimitive <$> some (choice [alphaNumChar, char '<', char '>', char '[', char ']', char ' '])
   ]
 
 pDeclaration :: Parser Declaration
 pDeclaration = Declaration <$> pName <*> pValue <* eof
+
+fTypeArgs :: [TypeArg] -> String
+fTypeArgs = const ""
+
+fParams :: [Value] -> String
+fParams []  = "()"
+fParams [x] = fValue x
+fParams xs  = "(" <> intercalate ", " (fmap fValue xs) <> ")"
+
+fFunction :: Function -> String
+fFunction x = maybe "" fTypeArgs (functionTypeArgs x) <> fParams (functionParams x) <> " -> " <> fValue (functionReturn x)
+
+fValue :: Value -> String
+fValue ValueVoid          = "()"
+fValue (ValuePrimitive x) = x
+fValue (ValueFunction x)  = fFunction x
+
+fDeclaration :: Declaration -> String
+fDeclaration x = declarationName x <> " :: " <> fValue (declarationValue x)
+
+test :: String -> IO ()
+test = either print (putStrLn . fDeclaration) . parse pDeclaration "stdin"
 
 main :: IO ()
 main = putStrLn "WIP: REPL only for now."
