@@ -26,17 +26,17 @@ spec = describe "TSHM.Parser" $ do
       parse' pType "void" `shouldParse` TsTypeVoid
 
     it "parses primitive" $ do
-      parse' pType "A" `shouldParse` TsTypePrimitive "A"
-      parse' pType "string" `shouldParse` TsTypePrimitive "string"
-      parse' pType "A & B" `shouldParse` TsTypePrimitive "A & B"
-      parse' pType "A | B" `shouldParse` TsTypePrimitive "A | B"
+      parse' pType "A" `shouldParse` TsTypeMisc "A"
+      parse' pType "string" `shouldParse` TsTypeMisc "string"
+      parse' pType "A & B" `shouldParse` TsTypeMisc "A & B"
+      parse' pType "A | B" `shouldParse` TsTypeMisc "A | B"
 
     it "parses string literal" $ do
       parse' pType "'abc'" `shouldParse` TsTypeStringLiteral "abc"
 
     it "parses function" $ do
       parse' pType "<A, B>(a: A) => B" `shouldParse`
-         TsTypeFunction (Function (Just [TsTypePrimitive "A", TsTypePrimitive "B"]) [TsTypePrimitive "A"] (TsTypePrimitive "B"))
+         TsTypeFunction (Function (Just [TsTypeMisc "A", TsTypeMisc "B"]) [TsTypeMisc "A"] (TsTypeMisc "B"))
 
   describe "pFunction" $ do
     it "parses minimal viable function" $ do
@@ -44,14 +44,14 @@ spec = describe "TSHM.Parser" $ do
 
     it "parses type arguments" $ do
       parse' pFunction "<A, Array<B>>() => void" `shouldParse`
-        Function (Just [TsTypePrimitive "A", TsTypeGeneric "Array" [TsTypePrimitive "B"]]) [] TsTypeVoid
+        Function (Just [TsTypeMisc "A", TsTypeGeneric "Array" [TsTypeMisc "B"]]) [] TsTypeVoid
 
     it "parses params" $ do
       parse' pFunction "(x: number, y: string) => void" `shouldParse`
-        Function Nothing [TsTypePrimitive "number", TsTypePrimitive "string"] TsTypeVoid
+        Function Nothing [TsTypeMisc "number", TsTypeMisc "string"] TsTypeVoid
 
     it "parses return type" $ do
-      parse' pFunction "() => number" `shouldParse` Function Nothing [] (TsTypePrimitive "number")
+      parse' pFunction "() => number" `shouldParse` Function Nothing [] (TsTypeMisc "number")
 
     it "parses curried function" $ do
       parse' pFunction "() => () => void" `shouldParse` Function Nothing [] (TsTypeFunction (Function Nothing [] TsTypeVoid))
@@ -60,19 +60,19 @@ spec = describe "TSHM.Parser" $ do
       parse' pFunction "<A, Array<Option<B>>>(x: number, y: <C>(z: C) => () => C) => () => void" `shouldParse`
         Function
           ( Just
-            [ TsTypePrimitive "A"
+            [ TsTypeMisc "A"
             , TsTypeGeneric "Array"
               [ TsTypeGeneric "Option"
-                [ TsTypePrimitive "B"
+                [ TsTypeMisc "B"
                 ]
               ]
             ]
           )
-          [ TsTypePrimitive "number"
+          [ TsTypeMisc "number"
           , TsTypeFunction (Function
-            (Just [TsTypePrimitive "C"])
-            [TsTypePrimitive "C"]
-            (TsTypeFunction (Function Nothing [] (TsTypePrimitive "C"))))
+            (Just [TsTypeMisc "C"])
+            [TsTypeMisc "C"]
+            (TsTypeFunction (Function Nothing [] (TsTypeMisc "C"))))
           ]
           ( TsTypeFunction (Function Nothing [] TsTypeVoid))
 
@@ -94,37 +94,37 @@ spec = describe "TSHM.Parser" $ do
   describe "pTypeArgs" $ do
     it "parses single flat type argument" $ do
       parse' pTypeArgs "<A>" `shouldParse`
-        [ TsTypePrimitive "A"
+        [ TsTypeMisc "A"
         ]
 
     it "parses multiple flat type arguments" $ do
       parse' pTypeArgs "<A, B, C>" `shouldParse`
-        [ TsTypePrimitive "A"
-        , TsTypePrimitive "B"
-        , TsTypePrimitive "C"
+        [ TsTypeMisc "A"
+        , TsTypeMisc "B"
+        , TsTypeMisc "C"
         ]
 
     it "parses single nested type argument" $ do
       parse' pTypeArgs "<Array<Option<A>>>" `shouldParse`
         [ TsTypeGeneric "Array"
           [ TsTypeGeneric "Option"
-            [ TsTypePrimitive "A"
+            [ TsTypeMisc "A"
             ]
           ]
         ]
 
     it "parses mixed type arguments" $ do
       parse' pTypeArgs "<A, Array<Option<B>, C>, Either<E, A>>" `shouldParse`
-        [ TsTypePrimitive "A"
+        [ TsTypeMisc "A"
         , TsTypeGeneric "Array"
           [ TsTypeGeneric "Option"
-            [ TsTypePrimitive "B"
+            [ TsTypeMisc "B"
             ]
-          , TsTypePrimitive "C"
+          , TsTypeMisc "C"
           ]
         , TsTypeGeneric "Either"
-          [ TsTypePrimitive "E"
-          , TsTypePrimitive "A"
+          [ TsTypeMisc "E"
+          , TsTypeMisc "A"
           ]
         ]
 
@@ -136,20 +136,20 @@ spec = describe "TSHM.Parser" $ do
       parse' pParams "()" `shouldParse` []
 
     it "parses single param" $ do
-      parse' pParams "(a: number)" `shouldParse` [ TsTypePrimitive "number"]
+      parse' pParams "(a: number)" `shouldParse` [ TsTypeMisc "number"]
 
     it "parses multiple params" $ do
       parse' pParams "(a: number, b: <A>(x: string) => void, c: Array<boolean>)" `shouldParse`
-        [ TsTypePrimitive "number"
-        , TsTypeFunction (Function (Just [TsTypePrimitive "A"]) [TsTypePrimitive "string"] TsTypeVoid)
-        , TsTypeGeneric "Array" [TsTypePrimitive "boolean"]
+        [ TsTypeMisc "number"
+        , TsTypeFunction (Function (Just [TsTypeMisc "A"]) [TsTypeMisc "string"] TsTypeVoid)
+        , TsTypeGeneric "Array" [TsTypeMisc "boolean"]
         ]
 
   describe "pReturn" $ do
     it "parses value after the lambda" $ do
       parse' pReturn " => void" `shouldParse` TsTypeVoid
-      parse' pReturn " => string" `shouldParse` TsTypePrimitive "string"
-      parse' pReturn " => <A>(x: A) => A" `shouldParse` TsTypeFunction (Function (Just [TsTypePrimitive "A"]) [TsTypePrimitive "A"] (TsTypePrimitive "A"))
+      parse' pReturn " => string" `shouldParse` TsTypeMisc "string"
+      parse' pReturn " => <A>(x: A) => A" `shouldParse` TsTypeFunction (Function (Just [TsTypeMisc "A"]) [TsTypeMisc "A"] (TsTypeMisc "A"))
 
     it "requires a value after the lambda" $ do
       parse' pReturn `shouldFailOn` " => "
@@ -160,15 +160,15 @@ spec = describe "TSHM.Parser" $ do
 
       -- FAILS: requires nested []
       -- parse' pDeclaration "export declare const aperture: (n: number) => <A>(xs: A[]) => A[][]" `shouldParse`
-      --   Declaration "aperture" (TsTypeFunction (Function Nothing [TsTypePrimitive "number"] (TsTypeFunction (Function (Just [TsTypePrimitive "A"]) [TsTypeGeneric "Array" [TsTypePrimitive "A"]] (TsTypeGeneric "Array" [TsTypeGeneric "Array" [TsTypePrimitive "A"]])))))
+      --   Declaration "aperture" (TsTypeFunction (Function Nothing [TsTypeMisc "number"] (TsTypeFunction (Function (Just [TsTypeMisc "A"]) [TsTypeGeneric "Array" [TsTypeMisc "A"]] (TsTypeGeneric "Array" [TsTypeGeneric "Array" [TsTypeMisc "A"]])))))
 
       parse' pDeclaration "export declare const anyPass: <A>(fs: Predicate<A>[]) => Predicate<A>" `shouldParse`
-        Declaration "anyPass" (TsTypeFunction (Function (Just [TsTypePrimitive "A"]) [TsTypeGeneric "Array" [TsTypeGeneric "Predicate" [TsTypePrimitive "A"]]] (TsTypeGeneric "Predicate" [TsTypePrimitive "A"])))
+        Declaration "anyPass" (TsTypeFunction (Function (Just [TsTypeMisc "A"]) [TsTypeGeneric "Array" [TsTypeGeneric "Predicate" [TsTypeMisc "A"]]] (TsTypeGeneric "Predicate" [TsTypeMisc "A"])))
 
       parse' pDeclaration "export declare const merge: <A>(x: A) => <B>(y: B) => A & B" `shouldParse`
-        Declaration "merge" (TsTypeFunction (Function (Just [TsTypePrimitive "A"]) [TsTypePrimitive "A"] (TsTypeFunction (Function (Just [TsTypePrimitive "B"]) [TsTypePrimitive "B"] (TsTypePrimitive "A & B")))))
+        Declaration "merge" (TsTypeFunction (Function (Just [TsTypeMisc "A"]) [TsTypeMisc "A"] (TsTypeFunction (Function (Just [TsTypeMisc "B"]) [TsTypeMisc "B"] (TsTypeMisc "A & B")))))
 
       -- FAILS
       -- parse' pDeclaration "export declare const omit: <K extends string>(ks: K[]) => <V, A extends Record<K, V>>(x: Partial<A>) => Pick<A, Exclude<keyof A, K>>" `shouldParse`
-      --   Declaration "omit" (TsTypeFunction (Function (Just [TsTypePrimitive "K extends string"]) [TsTypePrimitive "K[]"] (TsTypeFunction (Function (Just [TsTypePrimitive "V", TsTypePrimitive "A extends Record<K, V>"]) [TsTypePrimitive "Partial<A>"] (TsTypePrimitive "Pick<A, Exclude<keyof A, K>>")))))
+      --   Declaration "omit" (TsTypeFunction (Function (Just [TsTypeMisc "K extends string"]) [TsTypeMisc "K[]"] (TsTypeFunction (Function (Just [TsTypeMisc "V", TsTypeMisc "A extends Record<K, V>"]) [TsTypeMisc "Partial<A>"] (TsTypeMisc "Pick<A, Exclude<keyof A, K>>")))))
 

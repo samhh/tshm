@@ -4,7 +4,7 @@ import           Prelude
 
 data TsType
   = TsTypeVoid
-  | TsTypePrimitive String
+  | TsTypeMisc String
   | TsTypeStringLiteral String
   | TsTypeGeneric String [TsType]
   | TsTypeFunction Function

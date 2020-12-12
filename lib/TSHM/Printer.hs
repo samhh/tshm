@@ -13,7 +13,7 @@ fFunction x = fParams (functionParams x) <> " -> " <> fTsType (functionReturn x)
 
 fTsType :: TsType -> String
 fTsType TsTypeVoid              = "()"
-fTsType (TsTypePrimitive x)     = x
+fTsType (TsTypeMisc x)     = x
 fTsType (TsTypeStringLiteral x) = x
 fTsType (TsTypeGeneric x ys)    = "(" <> x <> " todo:" <> show (length ys) <> ")"
 fTsType (TsTypeFunction x)      = fFunction x

@@ -15,7 +15,7 @@ pType = try (pArraySpecial arrayables) <|> (TsTypeFunction <$> pFunction) <|> ar
           [ TsTypeVoid <$ string "void"
           , TsTypeStringLiteral <$> pStringLiteral
           , try pGeneric
-          , TsTypePrimitive <$> some (choice [alphaNumChar, char ' ', char '&', char '|'])
+          , TsTypeMisc <$> some (choice [alphaNumChar, char ' ', char '&', char '|'])
           ]
 
 pGeneric :: Parser TsType
@@ -41,7 +41,7 @@ pTypeArgs = between (char '<') (char '>') (sepBy1 pTypeArg (string ", "))
         pTypeArg = f <$> some (choice [alphaNumChar, char ' ', char '[', char ']']) <*> optional pTypeArgs
         f x = \case
           Just y  -> TsTypeGeneric x y
-          Nothing -> TsTypePrimitive x
+          Nothing -> TsTypeMisc x
 
 pParams :: Parser [TsType]
 pParams = between (char '(') (char ')') pInnerParams
