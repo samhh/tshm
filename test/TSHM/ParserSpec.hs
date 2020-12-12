@@ -40,6 +40,9 @@ spec = describe "TSHM.Parser" $ do
       parse' pType "<A, B>(a: A) => B" `shouldParse`
          TsTypeFunction (Function (Just [TsTypeMisc "A", TsTypeMisc "B"]) [TsTypeMisc "A"] (TsTypeMisc "B"))
 
+    it "parses infix operators" $ do
+      parse' pType "A & B | C" `shouldParse` TsTypeExpression TsOperatorIntersection (TsTypeMisc "A") (TsTypeExpression TsOperatorUnion (TsTypeMisc "B") (TsTypeMisc "C"))
+
   describe "pFunction" $ do
     it "parses minimal viable function" $ do
       parse' pFunction "() => void" `shouldParse` Function Nothing [] TsTypeVoid
@@ -178,9 +181,8 @@ spec = describe "TSHM.Parser" $ do
       parse' pDeclaration "export declare const anyPass: <A>(fs: Predicate<A>[]) => Predicate<A>" `shouldParse`
         Declaration "anyPass" (TsTypeFunction (Function (Just [TsTypeMisc "A"]) [TsTypeGeneric "Array" [TsTypeGeneric "Predicate" [TsTypeMisc "A"]]] (TsTypeGeneric "Predicate" [TsTypeMisc "A"])))
 
-      -- FAILS: requires intersection
-      -- parse' pDeclaration "export declare const merge: <A>(x: A) => <B>(y: B) => A & B" `shouldParse`
-      --   Declaration "merge" (TsTypeFunction (Function (Just [TsTypeMisc "A"]) [TsTypeMisc "A"] (TsTypeFunction (Function (Just [TsTypeMisc "B"]) [TsTypeMisc "B"] (TsTypeMisc "A & B")))))
+      parse' pDeclaration "export declare const merge: <A>(x: A) => <B>(y: B) => A & B" `shouldParse`
+        Declaration "merge" (TsTypeFunction (Function (Just [TsTypeMisc "A"]) [TsTypeMisc "A"] (TsTypeFunction (Function (Just [TsTypeMisc "B"]) [TsTypeMisc "B"] (TsTypeExpression TsOperatorIntersection (TsTypeMisc "A") (TsTypeMisc "B"))))))
 
       -- FAILS
       -- parse' pDeclaration "export declare const omit: <K extends string>(ks: K[]) => <V, A extends Record<K, V>>(x: Partial<A>) => Pick<A, Exclude<keyof A, K>>" `shouldParse`

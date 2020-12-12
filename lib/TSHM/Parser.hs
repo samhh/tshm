@@ -1,17 +1,33 @@
 module TSHM.Parser where
 
-import           Data.Void                  ()
+import           Control.Monad.Combinators.Expr (Operator (..), makeExprParser)
+import           Data.Void                      ()
 import           Prelude
 import           TSHM.TypeScript
-import           Text.Megaparsec            hiding (many, some)
+import           Text.Megaparsec                hiding (many, some)
 import           Text.Megaparsec.Char
-import qualified Text.Megaparsec.Char.Lexer as L
+import qualified Text.Megaparsec.Char.Lexer     as L
 
 type Parser = Parsec Void String
 
+binary :: String -> (TsType -> TsType -> TsType) -> Operator Parser TsType
+binary x f = InfixR $ f <$ string (" " <> x <> " ")
+
+operators :: [[Operator Parser TsType]]
+operators =
+  [
+    [ binary "&" (TsTypeExpression TsOperatorIntersection)
+    , binary "|" (TsTypeExpression TsOperatorUnion)
+    ]
+  ]
+
 pType :: Parser TsType
-pType = try (pArraySpecial arrayables) <|> (TsTypeFunction <$> pFunction) <|> arrayables
-  where arrayables = choice
+pType = makeExprParser expr operators
+  where expr :: Parser TsType
+        expr = try (pArraySpecial arrayables) <|> (TsTypeFunction <$> pFunction) <|> arrayables
+
+        arrayables :: Parser TsType
+        arrayables = choice
           [ TsTypeVoid <$ string "void"
           , TsTypeNull <$ string "null"
           , TsTypeUndefined <$ string "undefined"

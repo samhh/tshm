@@ -36,6 +36,7 @@ library
     TSHM.TypeScript
   build-depends:
       megaparsec          ^>=9.0
+    , parser-combinators  ^>=1.2
 
 test-suite test-tshm
   import:                 common

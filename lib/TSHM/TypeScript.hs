@@ -2,6 +2,11 @@ module TSHM.TypeScript where
 
 import           Prelude
 
+data TsOperator
+  = TsOperatorIntersection
+  | TsOperatorUnion
+  deriving (Eq, Show)
+
 data TsType
   = TsTypeVoid
   | TsTypeNull
@@ -12,6 +17,7 @@ data TsType
   | TsTypeObject [(String, TsType)]
   | TsTypeGeneric String [TsType]
   | TsTypeFunction Function
+  | TsTypeExpression TsOperator TsType TsType
   deriving (Eq, Show)
 
 data Function = Function
@@ -21,7 +27,7 @@ data Function = Function
   } deriving (Eq, Show)
 
 data Declaration = Declaration
-  { declarationName  :: String
+  { declarationName :: String
   , declarationType :: TsType
   } deriving (Eq, Show)
 
