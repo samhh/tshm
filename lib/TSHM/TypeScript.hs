@@ -6,16 +6,12 @@ data Value
   = ValueVoid
   | ValuePrimitive String
   | ValueStringLiteral String
+  | ValueGeneric String [Value]
   | ValueFunction Function
   deriving (Eq, Show)
 
-data TypeArg
-  = TypeArgPrimitive String
-  | TypeArgHigherOrder String [TypeArg]
-  deriving (Eq, Show)
-
 data Function = Function
-  { functionTypeArgs :: Maybe [TypeArg]
+  { functionTypeArgs :: Maybe [Value]
   , functionParams   :: [Value]
   , functionReturn   :: Value
   } deriving (Eq, Show)

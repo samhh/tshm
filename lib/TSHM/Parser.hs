@@ -10,12 +10,19 @@ import qualified Text.Megaparsec.Char.Lexer as L
 type Parser = Parsec Void String
 
 pValue :: Parser Value
-pValue = choice
-  [ ValueVoid <$ string "void"
-  , ValueFunction <$> pFunction
-  , ValueStringLiteral <$> pStringLiteral
-  , ValuePrimitive <$> some (choice [alphaNumChar, char '<', char '>', char '[', char ']', char ' ', char '&', char '|'])
-  ]
+pValue = try (pArraySpecial arrayables) <|> (ValueFunction <$> pFunction) <|> arrayables
+  where arrayables = choice
+          [ ValueVoid <$ string "void"
+          , ValueStringLiteral <$> pStringLiteral
+          , try pGeneric
+          , ValuePrimitive <$> some (choice [alphaNumChar, char ' ', char '&', char '|'])
+          ]
+
+pGeneric :: Parser Value
+pGeneric = ValueGeneric <$> some alphaNumChar <*> pTypeArgs
+
+pArraySpecial :: Parser Value -> Parser Value
+pArraySpecial p = ValueGeneric "Array" . pure <$> p <* string "[]"
 
 pStringLiteral :: Parser String
 pStringLiteral = stringLiteral '\'' <|> stringLiteral '"'
@@ -28,13 +35,13 @@ pFunction = Function <$> optional pTypeArgs <*> pParams <*> pReturn
 pName :: Parser String
 pName = optional (string "export ") *> string "declare const " *> some alphaNumChar <* string ": "
 
-pTypeArgs :: Parser [TypeArg]
+pTypeArgs :: Parser [Value]
 pTypeArgs = between (char '<') (char '>') (sepBy1 pTypeArg (string ", "))
-  where pTypeArg :: Parser TypeArg
+  where pTypeArg :: Parser Value
         pTypeArg = f <$> some (choice [alphaNumChar, char ' ', char '[', char ']']) <*> optional pTypeArgs
         f x = \case
-          Just y  -> TypeArgHigherOrder x y
-          Nothing -> TypeArgPrimitive x
+          Just y  -> ValueGeneric x y
+          Nothing -> ValuePrimitive x
 
 pParams :: Parser [Value]
 pParams = between (char '(') (char ')') pInnerParams

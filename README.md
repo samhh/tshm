@@ -24,6 +24,8 @@ This is not an exhaustive list!
 - Tuple types
 - Parameters and return types which are generics with two or more type arguments
 - Mixed intersection/union and string literal (and probably other) types e.g. `1 | 'two'`
+- Syntactic parentheses e.g. `(() => void)[]`
+- Nested special array syntax e.g. `string[][]`
 - Irregular spacing
 - Newlines
 - Semicolons
