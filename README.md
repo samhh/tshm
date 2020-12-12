@@ -27,6 +27,7 @@ This is not an exhaustive list!
 - Nested special array syntax e.g. `string[][]`
 - Object literal keys that aren't ordinary static strings
 - `extends` clauses
+- Negative number literals
 - Irregular spacing
 - Newlines
 - Semicolons
