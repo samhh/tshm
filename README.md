@@ -26,6 +26,7 @@ This is not an exhaustive list!
 - Syntactic parentheses e.g. `(() => void)[]`
 - Nested special array syntax e.g. `string[][]`
 - Object literal keys that aren't ordinary static strings
+- `extends` clauses
 - Irregular spacing
 - Newlines
 - Semicolons
@@ -33,7 +34,6 @@ This is not an exhaustive list!
 ### Output
 
 - HM-style higher-kinded types output e.g. `Option<string>` -> `Option string`
-- Dedicated output for `extends` clauses
 - Dedicated array syntax e.g. `string[]` or `Array<string>` -> `[string]`
 - Lowercase single-char type arguments e.g. `A -> B` -> `a -> b`
 

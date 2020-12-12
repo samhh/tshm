@@ -47,7 +47,7 @@ pName = optional (string "export ") *> string "declare const " *> some alphaNumC
 pTypeArgs :: Parser [TsType]
 pTypeArgs = between (char '<') (char '>') (sepBy1 pTypeArg (string ", "))
   where pTypeArg :: Parser TsType
-        pTypeArg = f <$> some (choice [alphaNumChar, char ' ', char '[', char ']']) <*> optional pTypeArgs
+        pTypeArg = f <$> some alphaNumChar <*> optional pTypeArgs
         f x = \case
           Just y  -> TsTypeGeneric x y
           Nothing -> TsTypeMisc x
