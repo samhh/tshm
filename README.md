@@ -22,7 +22,7 @@ This is not an exhaustive list!
 
 - Tuple types
 - Parameters and return types which are generics with two or more type arguments
-- Mixed intersection/union and string literal (and probably other) types e.g. `1 | 'two'`
+- Intersection and union operators
 - Syntactic parentheses e.g. `(() => void)[]`
 - Nested special array syntax e.g. `string[][]`
 - Object literal keys that aren't ordinary static strings
