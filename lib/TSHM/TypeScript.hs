@@ -6,6 +6,7 @@ data TsType
   = TsTypeVoid
   | TsTypeMisc String
   | TsTypeStringLiteral String
+  | TsTypeObject [(String, TsType)]
   | TsTypeGeneric String [TsType]
   | TsTypeFunction Function
   deriving (Eq, Show)

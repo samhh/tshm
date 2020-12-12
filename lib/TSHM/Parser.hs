@@ -14,8 +14,9 @@ pType = try (pArraySpecial arrayables) <|> (TsTypeFunction <$> pFunction) <|> ar
   where arrayables = choice
           [ TsTypeVoid <$ string "void"
           , TsTypeStringLiteral <$> pStringLiteral
+          , TsTypeObject <$> pObject
           , try pGeneric
-          , TsTypeMisc <$> some (choice [alphaNumChar, char ' ', char '&', char '|'])
+          , TsTypeMisc <$> some alphaNumChar
           ]
 
 pGeneric :: Parser TsType
@@ -32,6 +33,11 @@ pStringLiteral = stringLiteral '\'' <|> stringLiteral '"'
 pFunction :: Parser Function
 pFunction = Function <$> optional pTypeArgs <*> pParams <*> pReturn
 
+pObject :: Parser [(String, TsType)]
+pObject = between (string "{ ") (string " }") (sepBy1 pPair (string ", ")) <|> [] <$ string "{}"
+  where pPair :: Parser (String, TsType)
+        pPair = (,) <$> some alphaNumChar <* string ": " <*> pType
+
 pName :: Parser String
 pName = optional (string "export ") *> string "declare const " *> some alphaNumChar <* string ": "
 
@@ -44,11 +50,8 @@ pTypeArgs = between (char '<') (char '>') (sepBy1 pTypeArg (string ", "))
           Nothing -> TsTypeMisc x
 
 pParams :: Parser [TsType]
-pParams = between (char '(') (char ')') pInnerParams
-  where pInnerParams :: Parser [TsType]
-        pInnerParams = sepBy pParam (string ", ")
-
-        pParam :: Parser TsType
+pParams = between (char '(') (char ')') $ sepBy pParam (string ", ")
+  where pParam :: Parser TsType
         pParam = optional (string "...") *> some alphaNumChar *> string ": " *> optional (string "new ") *> pType
 
 pReturn :: Parser TsType
