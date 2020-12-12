@@ -92,6 +92,16 @@ spec = describe "TSHM.Parser" $ do
       parse' pObject "{ a: 1, b: { c: true }[] }" `shouldParse`
         [("a", TsTypeMisc "1"), ("b", TsTypeGeneric "Array" [TsTypeObject [("c", TsTypeBoolean True)]])]
 
+  describe "pTuple" $ do
+    it "parses empty tuple" $ do
+      parse' pTuple "[]" `shouldParse` []
+
+    it "parses non-empty flat tuple" $ do
+      parse' pTuple "[a, 'b']" `shouldParse` [TsTypeMisc "a", TsTypeStringLiteral "b"]
+
+    it "parses non-empty nested tuple" $ do
+      parse' pTuple "[a, ['b', 3]]" `shouldParse` [TsTypeMisc "a", TsTypeTuple [TsTypeStringLiteral "b", TsTypeMisc "3"]]
+
   describe "pName" $ do
     let ident = Gen.list (Range.linear 1 99) Gen.alpha
 

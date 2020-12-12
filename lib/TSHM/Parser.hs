@@ -33,6 +33,7 @@ pType = makeExprParser expr operators
           , TsTypeUndefined <$ string "undefined"
           , TsTypeBoolean <$> ((True <$ string "true") <|> (False <$ string "false"))
           , TsTypeStringLiteral <$> pStringLiteral
+          , TsTypeTuple <$> pTuple
           , TsTypeObject <$> pObject
           , try pGeneric
           , TsTypeMisc <$> some alphaNumChar
@@ -51,6 +52,9 @@ pStringLiteral = stringLiteral '\'' <|> stringLiteral '"'
 
 pFunction :: Parser Function
 pFunction = Function <$> optional pTypeArgs <*> pParams <*> pReturn
+
+pTuple :: Parser [TsType]
+pTuple = between (char '[') (char ']') $ sepBy pType (string ", ")
 
 pObject :: Parser [(String, TsType)]
 pObject = between (string "{ ") (string " }") (sepBy1 pPair (string ", ")) <|> [] <$ string "{}"

@@ -20,7 +20,6 @@ This is not an exhaustive list!
 
 ### Input
 
-- Tuple types
 - Parameters and return types which are generics with two or more type arguments
 - Syntactic parentheses e.g. `(() => void)[]`
 - Nested special array syntax e.g. `string[][]`

@@ -14,6 +14,7 @@ data TsType
   | TsTypeBoolean Bool
   | TsTypeMisc String
   | TsTypeStringLiteral String
+  | TsTypeTuple [TsType]
   | TsTypeObject [(String, TsType)]
   | TsTypeGeneric String [TsType]
   | TsTypeFunction Function
