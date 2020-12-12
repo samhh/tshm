@@ -21,60 +21,60 @@ a =*= b = a === Right b
 
 spec :: Spec
 spec = describe "TSHM.Parser" $ do
-  describe "pValue" $ do
+  describe "pType" $ do
     it "parses void" $ do
-      parse' pValue "void" `shouldParse` ValueVoid
+      parse' pType "void" `shouldParse` TsTypeVoid
 
     it "parses primitive" $ do
-      parse' pValue "A" `shouldParse` ValuePrimitive "A"
-      parse' pValue "string" `shouldParse` ValuePrimitive "string"
-      parse' pValue "A & B" `shouldParse` ValuePrimitive "A & B"
-      parse' pValue "A | B" `shouldParse` ValuePrimitive "A | B"
+      parse' pType "A" `shouldParse` TsTypePrimitive "A"
+      parse' pType "string" `shouldParse` TsTypePrimitive "string"
+      parse' pType "A & B" `shouldParse` TsTypePrimitive "A & B"
+      parse' pType "A | B" `shouldParse` TsTypePrimitive "A | B"
 
     it "parses string literal" $ do
-      parse' pValue "'abc'" `shouldParse` ValueStringLiteral "abc"
+      parse' pType "'abc'" `shouldParse` TsTypeStringLiteral "abc"
 
     it "parses function" $ do
-      parse' pValue "<A, B>(a: A) => B" `shouldParse`
-         ValueFunction (Function (Just [ValuePrimitive "A", ValuePrimitive "B"]) [ValuePrimitive "A"] (ValuePrimitive "B"))
+      parse' pType "<A, B>(a: A) => B" `shouldParse`
+         TsTypeFunction (Function (Just [TsTypePrimitive "A", TsTypePrimitive "B"]) [TsTypePrimitive "A"] (TsTypePrimitive "B"))
 
   describe "pFunction" $ do
     it "parses minimal viable function" $ do
-      parse' pFunction "() => void" `shouldParse` Function Nothing [] ValueVoid
+      parse' pFunction "() => void" `shouldParse` Function Nothing [] TsTypeVoid
 
     it "parses type arguments" $ do
       parse' pFunction "<A, Array<B>>() => void" `shouldParse`
-        Function (Just [ValuePrimitive "A", ValueGeneric "Array" [ValuePrimitive "B"]]) [] ValueVoid
+        Function (Just [TsTypePrimitive "A", TsTypeGeneric "Array" [TsTypePrimitive "B"]]) [] TsTypeVoid
 
     it "parses params" $ do
       parse' pFunction "(x: number, y: string) => void" `shouldParse`
-        Function Nothing [ValuePrimitive "number", ValuePrimitive "string"] ValueVoid
+        Function Nothing [TsTypePrimitive "number", TsTypePrimitive "string"] TsTypeVoid
 
     it "parses return type" $ do
-      parse' pFunction "() => number" `shouldParse` Function Nothing [] (ValuePrimitive "number")
+      parse' pFunction "() => number" `shouldParse` Function Nothing [] (TsTypePrimitive "number")
 
     it "parses curried function" $ do
-      parse' pFunction "() => () => void" `shouldParse` Function Nothing [] (ValueFunction (Function Nothing [] ValueVoid))
+      parse' pFunction "() => () => void" `shouldParse` Function Nothing [] (TsTypeFunction (Function Nothing [] TsTypeVoid))
 
     it "parses complex function" $ do
       parse' pFunction "<A, Array<Option<B>>>(x: number, y: <C>(z: C) => () => C) => () => void" `shouldParse`
         Function
           ( Just
-            [ ValuePrimitive "A"
-            , ValueGeneric "Array"
-              [ ValueGeneric "Option"
-                [ ValuePrimitive "B"
+            [ TsTypePrimitive "A"
+            , TsTypeGeneric "Array"
+              [ TsTypeGeneric "Option"
+                [ TsTypePrimitive "B"
                 ]
               ]
             ]
           )
-          [ ValuePrimitive "number"
-          , ValueFunction (Function
-            (Just [ValuePrimitive "C"])
-            [ValuePrimitive "C"]
-            (ValueFunction (Function Nothing [] (ValuePrimitive "C"))))
+          [ TsTypePrimitive "number"
+          , TsTypeFunction (Function
+            (Just [TsTypePrimitive "C"])
+            [TsTypePrimitive "C"]
+            (TsTypeFunction (Function Nothing [] (TsTypePrimitive "C"))))
           ]
-          ( ValueFunction (Function Nothing [] ValueVoid))
+          ( TsTypeFunction (Function Nothing [] TsTypeVoid))
 
   describe "pName" $ do
     let ident = Gen.list (Range.linear 1 99) Gen.alpha
@@ -94,37 +94,37 @@ spec = describe "TSHM.Parser" $ do
   describe "pTypeArgs" $ do
     it "parses single flat type argument" $ do
       parse' pTypeArgs "<A>" `shouldParse`
-        [ ValuePrimitive "A"
+        [ TsTypePrimitive "A"
         ]
 
     it "parses multiple flat type arguments" $ do
       parse' pTypeArgs "<A, B, C>" `shouldParse`
-        [ ValuePrimitive "A"
-        , ValuePrimitive "B"
-        , ValuePrimitive "C"
+        [ TsTypePrimitive "A"
+        , TsTypePrimitive "B"
+        , TsTypePrimitive "C"
         ]
 
     it "parses single nested type argument" $ do
       parse' pTypeArgs "<Array<Option<A>>>" `shouldParse`
-        [ ValueGeneric "Array"
-          [ ValueGeneric "Option"
-            [ ValuePrimitive "A"
+        [ TsTypeGeneric "Array"
+          [ TsTypeGeneric "Option"
+            [ TsTypePrimitive "A"
             ]
           ]
         ]
 
     it "parses mixed type arguments" $ do
       parse' pTypeArgs "<A, Array<Option<B>, C>, Either<E, A>>" `shouldParse`
-        [ ValuePrimitive "A"
-        , ValueGeneric "Array"
-          [ ValueGeneric "Option"
-            [ ValuePrimitive "B"
+        [ TsTypePrimitive "A"
+        , TsTypeGeneric "Array"
+          [ TsTypeGeneric "Option"
+            [ TsTypePrimitive "B"
             ]
-          , ValuePrimitive "C"
+          , TsTypePrimitive "C"
           ]
-        , ValueGeneric "Either"
-          [ ValuePrimitive "E"
-          , ValuePrimitive "A"
+        , TsTypeGeneric "Either"
+          [ TsTypePrimitive "E"
+          , TsTypePrimitive "A"
           ]
         ]
 
@@ -136,39 +136,39 @@ spec = describe "TSHM.Parser" $ do
       parse' pParams "()" `shouldParse` []
 
     it "parses single param" $ do
-      parse' pParams "(a: number)" `shouldParse` [ ValuePrimitive "number"]
+      parse' pParams "(a: number)" `shouldParse` [ TsTypePrimitive "number"]
 
     it "parses multiple params" $ do
       parse' pParams "(a: number, b: <A>(x: string) => void, c: Array<boolean>)" `shouldParse`
-        [ ValuePrimitive "number"
-        , ValueFunction (Function (Just [ValuePrimitive "A"]) [ValuePrimitive "string"] ValueVoid)
-        , ValueGeneric "Array" [ValuePrimitive "boolean"]
+        [ TsTypePrimitive "number"
+        , TsTypeFunction (Function (Just [TsTypePrimitive "A"]) [TsTypePrimitive "string"] TsTypeVoid)
+        , TsTypeGeneric "Array" [TsTypePrimitive "boolean"]
         ]
 
   describe "pReturn" $ do
     it "parses value after the lambda" $ do
-      parse' pReturn " => void" `shouldParse` ValueVoid
-      parse' pReturn " => string" `shouldParse` ValuePrimitive "string"
-      parse' pReturn " => <A>(x: A) => A" `shouldParse` ValueFunction (Function (Just [ValuePrimitive "A"]) [ValuePrimitive "A"] (ValuePrimitive "A"))
+      parse' pReturn " => void" `shouldParse` TsTypeVoid
+      parse' pReturn " => string" `shouldParse` TsTypePrimitive "string"
+      parse' pReturn " => <A>(x: A) => A" `shouldParse` TsTypeFunction (Function (Just [TsTypePrimitive "A"]) [TsTypePrimitive "A"] (TsTypePrimitive "A"))
 
     it "requires a value after the lambda" $ do
       parse' pReturn `shouldFailOn` " => "
 
   describe "pDeclaration" $ do
     it "parses an entire declaration" $ do
-      parse' pDeclaration "export declare const empty: ''" `shouldParse` Declaration "empty" (ValueStringLiteral "")
+      parse' pDeclaration "export declare const empty: ''" `shouldParse` Declaration "empty" (TsTypeStringLiteral "")
 
       -- FAILS: requires nested []
       -- parse' pDeclaration "export declare const aperture: (n: number) => <A>(xs: A[]) => A[][]" `shouldParse`
-      --   Declaration "aperture" (ValueFunction (Function Nothing [ValuePrimitive "number"] (ValueFunction (Function (Just [ValuePrimitive "A"]) [ValueGeneric "Array" [ValuePrimitive "A"]] (ValueGeneric "Array" [ValueGeneric "Array" [ValuePrimitive "A"]])))))
+      --   Declaration "aperture" (TsTypeFunction (Function Nothing [TsTypePrimitive "number"] (TsTypeFunction (Function (Just [TsTypePrimitive "A"]) [TsTypeGeneric "Array" [TsTypePrimitive "A"]] (TsTypeGeneric "Array" [TsTypeGeneric "Array" [TsTypePrimitive "A"]])))))
 
       parse' pDeclaration "export declare const anyPass: <A>(fs: Predicate<A>[]) => Predicate<A>" `shouldParse`
-        Declaration "anyPass" (ValueFunction (Function (Just [ValuePrimitive "A"]) [ValueGeneric "Array" [ValueGeneric "Predicate" [ValuePrimitive "A"]]] (ValueGeneric "Predicate" [ValuePrimitive "A"])))
+        Declaration "anyPass" (TsTypeFunction (Function (Just [TsTypePrimitive "A"]) [TsTypeGeneric "Array" [TsTypeGeneric "Predicate" [TsTypePrimitive "A"]]] (TsTypeGeneric "Predicate" [TsTypePrimitive "A"])))
 
       parse' pDeclaration "export declare const merge: <A>(x: A) => <B>(y: B) => A & B" `shouldParse`
-        Declaration "merge" (ValueFunction (Function (Just [ValuePrimitive "A"]) [ValuePrimitive "A"] (ValueFunction (Function (Just [ValuePrimitive "B"]) [ValuePrimitive "B"] (ValuePrimitive "A & B")))))
+        Declaration "merge" (TsTypeFunction (Function (Just [TsTypePrimitive "A"]) [TsTypePrimitive "A"] (TsTypeFunction (Function (Just [TsTypePrimitive "B"]) [TsTypePrimitive "B"] (TsTypePrimitive "A & B")))))
 
       -- FAILS
       -- parse' pDeclaration "export declare const omit: <K extends string>(ks: K[]) => <V, A extends Record<K, V>>(x: Partial<A>) => Pick<A, Exclude<keyof A, K>>" `shouldParse`
-      --   Declaration "omit" (ValueFunction (Function (Just [ValuePrimitive "K extends string"]) [ValuePrimitive "K[]"] (ValueFunction (Function (Just [ValuePrimitive "V", ValuePrimitive "A extends Record<K, V>"]) [ValuePrimitive "Partial<A>"] (ValuePrimitive "Pick<A, Exclude<keyof A, K>>")))))
+      --   Declaration "omit" (TsTypeFunction (Function (Just [TsTypePrimitive "K extends string"]) [TsTypePrimitive "K[]"] (TsTypeFunction (Function (Just [TsTypePrimitive "V", TsTypePrimitive "A extends Record<K, V>"]) [TsTypePrimitive "Partial<A>"] (TsTypePrimitive "Pick<A, Exclude<keyof A, K>>")))))
 

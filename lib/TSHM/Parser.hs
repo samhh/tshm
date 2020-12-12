@@ -9,20 +9,20 @@ import qualified Text.Megaparsec.Char.Lexer as L
 
 type Parser = Parsec Void String
 
-pValue :: Parser Value
-pValue = try (pArraySpecial arrayables) <|> (ValueFunction <$> pFunction) <|> arrayables
+pType :: Parser TsType
+pType = try (pArraySpecial arrayables) <|> (TsTypeFunction <$> pFunction) <|> arrayables
   where arrayables = choice
-          [ ValueVoid <$ string "void"
-          , ValueStringLiteral <$> pStringLiteral
+          [ TsTypeVoid <$ string "void"
+          , TsTypeStringLiteral <$> pStringLiteral
           , try pGeneric
-          , ValuePrimitive <$> some (choice [alphaNumChar, char ' ', char '&', char '|'])
+          , TsTypePrimitive <$> some (choice [alphaNumChar, char ' ', char '&', char '|'])
           ]
 
-pGeneric :: Parser Value
-pGeneric = ValueGeneric <$> some alphaNumChar <*> pTypeArgs
+pGeneric :: Parser TsType
+pGeneric = TsTypeGeneric <$> some alphaNumChar <*> pTypeArgs
 
-pArraySpecial :: Parser Value -> Parser Value
-pArraySpecial p = ValueGeneric "Array" . pure <$> p <* string "[]"
+pArraySpecial :: Parser TsType -> Parser TsType
+pArraySpecial p = TsTypeGeneric "Array" . pure <$> p <* string "[]"
 
 pStringLiteral :: Parser String
 pStringLiteral = stringLiteral '\'' <|> stringLiteral '"'
@@ -35,25 +35,25 @@ pFunction = Function <$> optional pTypeArgs <*> pParams <*> pReturn
 pName :: Parser String
 pName = optional (string "export ") *> string "declare const " *> some alphaNumChar <* string ": "
 
-pTypeArgs :: Parser [Value]
+pTypeArgs :: Parser [TsType]
 pTypeArgs = between (char '<') (char '>') (sepBy1 pTypeArg (string ", "))
-  where pTypeArg :: Parser Value
+  where pTypeArg :: Parser TsType
         pTypeArg = f <$> some (choice [alphaNumChar, char ' ', char '[', char ']']) <*> optional pTypeArgs
         f x = \case
-          Just y  -> ValueGeneric x y
-          Nothing -> ValuePrimitive x
+          Just y  -> TsTypeGeneric x y
+          Nothing -> TsTypePrimitive x
 
-pParams :: Parser [Value]
+pParams :: Parser [TsType]
 pParams = between (char '(') (char ')') pInnerParams
-  where pInnerParams :: Parser [Value]
+  where pInnerParams :: Parser [TsType]
         pInnerParams = sepBy pParam (string ", ")
 
-        pParam :: Parser Value
-        pParam = optional (string "...") *> some alphaNumChar *> string ": " *> optional (string "new ") *> pValue
+        pParam :: Parser TsType
+        pParam = optional (string "...") *> some alphaNumChar *> string ": " *> optional (string "new ") *> pType
 
-pReturn :: Parser Value
-pReturn = string " => " *> pValue
+pReturn :: Parser TsType
+pReturn = string " => " *> pType
 
 pDeclaration :: Parser Declaration
-pDeclaration = Declaration <$> pName <*> pValue <* eof
+pDeclaration = Declaration <$> pName <*> pType <* eof
 
