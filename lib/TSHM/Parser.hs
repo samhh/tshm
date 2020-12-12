@@ -1,10 +1,11 @@
 module TSHM.Parser where
 
-import           Data.Void            ()
+import           Data.Void                  ()
 import           Prelude
 import           TSHM.TypeScript
-import           Text.Megaparsec      hiding (some)
+import           Text.Megaparsec            hiding (many, some)
 import           Text.Megaparsec.Char
+import qualified Text.Megaparsec.Char.Lexer as L
 
 type Parser = Parsec Void String
 
@@ -12,8 +13,14 @@ pValue :: Parser Value
 pValue = choice
   [ ValueVoid <$ string "void"
   , ValueFunction <$> pFunction
+  , ValueStringLiteral <$> pStringLiteral
   , ValuePrimitive <$> some (choice [alphaNumChar, char '<', char '>', char '[', char ']', char ' '])
   ]
+
+pStringLiteral :: Parser String
+pStringLiteral = stringLiteral '\'' <|> stringLiteral '"'
+  where stringLiteral :: Char -> Parser String
+        stringLiteral c = char c *> manyTill L.charLiteral (char c)
 
 pFunction :: Parser Function
 pFunction = Function <$> optional pTypeArgs <*> pParams <*> pReturn

@@ -29,6 +29,9 @@ spec = describe "TSHM.Parser" $ do
       parse' pValue "A" `shouldParse` ValuePrimitive "A"
       parse' pValue "string" `shouldParse` ValuePrimitive "string"
 
+    it "parses string literal" $ do
+      parse' pValue "'abc'" `shouldParse` ValueStringLiteral "abc"
+
     it "parses function" $ do
       parse' pValue "<A, B>(a: A) => B" `shouldParse`
         ValueFunction (Function (Just [TypeArgPrimitive "A", TypeArgPrimitive "B"]) [ValuePrimitive "A"] (ValuePrimitive "B"))
@@ -151,6 +154,8 @@ spec = describe "TSHM.Parser" $ do
 
   describe "pDeclaration" $ do
     it "parses an entire declaration" $ do
+      parse' pDeclaration "export declare const empty: ''" `shouldParse` Declaration "empty" (ValueStringLiteral "")
+
       parse' pDeclaration "export declare const aperture: (n: number) => <A>(xs: A[]) => A[][]" `shouldParse`
         Declaration "aperture" (ValueFunction (Function Nothing [ValuePrimitive "number"] (ValueFunction (Function (Just [TypeArgPrimitive "A"]) [ValuePrimitive "A[]"] (ValuePrimitive "A[][]")))))
 

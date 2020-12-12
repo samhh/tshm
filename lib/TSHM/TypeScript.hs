@@ -5,6 +5,7 @@ import           Prelude
 data Value
   = ValueVoid
   | ValuePrimitive String
+  | ValueStringLiteral String
   | ValueFunction Function
   deriving (Eq, Show)
 
