@@ -28,6 +28,8 @@ spec = describe "TSHM.Parser" $ do
     it "parses primitive" $ do
       parse' pValue "A" `shouldParse` ValuePrimitive "A"
       parse' pValue "string" `shouldParse` ValuePrimitive "string"
+      parse' pValue "A & B" `shouldParse` ValuePrimitive "A & B"
+      parse' pValue "A | B" `shouldParse` ValuePrimitive "A | B"
 
     it "parses string literal" $ do
       parse' pValue "'abc'" `shouldParse` ValueStringLiteral "abc"
@@ -161,4 +163,7 @@ spec = describe "TSHM.Parser" $ do
 
       parse' pDeclaration "export declare const anyPass: <A>(fs: Predicate<A>[]) => Predicate<A>" `shouldParse`
         Declaration "anyPass" (ValueFunction (Function (Just [TypeArgPrimitive "A"]) [ValuePrimitive "Predicate<A>[]"] (ValuePrimitive "Predicate<A>")))
+
+      parse' pDeclaration "export declare const merge: <A>(x: A) => <B>(y: B) => A & B" `shouldParse`
+        Declaration "merge" (ValueFunction (Function (Just [TypeArgPrimitive "A"]) [ValuePrimitive "A"] (ValueFunction (Function (Just [TypeArgPrimitive "B"]) [ValuePrimitive "B"] (ValuePrimitive "A & B")))))
 

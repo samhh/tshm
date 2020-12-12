@@ -14,7 +14,7 @@ pValue = choice
   [ ValueVoid <$ string "void"
   , ValueFunction <$> pFunction
   , ValueStringLiteral <$> pStringLiteral
-  , ValuePrimitive <$> some (choice [alphaNumChar, char '<', char '>', char '[', char ']', char ' '])
+  , ValuePrimitive <$> some (choice [alphaNumChar, char '<', char '>', char '[', char ']', char ' ', char '&', char '|'])
   ]
 
 pStringLiteral :: Parser String
