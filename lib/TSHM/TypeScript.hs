@@ -4,6 +4,9 @@ import           Prelude
 
 data TsType
   = TsTypeVoid
+  | TsTypeNull
+  | TsTypeUndefined
+  | TsTypeBoolean Bool
   | TsTypeMisc String
   | TsTypeStringLiteral String
   | TsTypeObject [(String, TsType)]

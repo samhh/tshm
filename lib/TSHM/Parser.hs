@@ -13,6 +13,9 @@ pType :: Parser TsType
 pType = try (pArraySpecial arrayables) <|> (TsTypeFunction <$> pFunction) <|> arrayables
   where arrayables = choice
           [ TsTypeVoid <$ string "void"
+          , TsTypeNull <$ string "null"
+          , TsTypeUndefined <$ string "undefined"
+          , TsTypeBoolean <$> ((True <$ string "true") <|> (False <$ string "false"))
           , TsTypeStringLiteral <$> pStringLiteral
           , TsTypeObject <$> pObject
           , try pGeneric

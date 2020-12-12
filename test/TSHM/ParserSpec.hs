@@ -1,14 +1,14 @@
 module TSHM.ParserSpec (spec) where
 
-import qualified Hedgehog.Gen        as Gen
-import qualified Hedgehog.Range      as Range
+import qualified Hedgehog.Gen          as Gen
+import qualified Hedgehog.Range        as Range
 import           Prelude
 import           TSHM.Parser
 import           TSHM.TypeScript
 import           Test.Hspec
-import           Test.Hspec.Hedgehog (PropertyT, forAll, hedgehog, (===))
+import           Test.Hspec.Hedgehog   (PropertyT, forAll, hedgehog, (===))
 import           Test.Hspec.Megaparsec
-import           Text.Megaparsec     (ParseErrorBundle, Parsec, parse)
+import           Text.Megaparsec       (ParseErrorBundle, Parsec, parse)
 
 parse' :: Parsec e s a -> s -> Either (ParseErrorBundle s e) a
 parse' = flip parse ""
@@ -24,6 +24,10 @@ spec = describe "TSHM.Parser" $ do
   describe "pType" $ do
     it "parses void" $ do
       parse' pType "void" `shouldParse` TsTypeVoid
+
+    it "parses boolean" $ do
+      parse' pType "true" `shouldParse` TsTypeBoolean True
+      parse' pType "false" `shouldParse` TsTypeBoolean False
 
     it "parses primitive" $ do
       parse' pType "A" `shouldParse` TsTypeMisc "A"
@@ -83,7 +87,7 @@ spec = describe "TSHM.Parser" $ do
 
     it "parses non-empty nested object" $ do
       parse' pObject "{ a: 1, b: { c: true }[] }" `shouldParse`
-        [("a", TsTypeMisc "1"), ("b", TsTypeGeneric "Array" [TsTypeObject [("c", TsTypeMisc "true")]])]
+        [("a", TsTypeMisc "1"), ("b", TsTypeGeneric "Array" [TsTypeObject [("c", TsTypeBoolean True)]])]
 
   describe "pName" $ do
     let ident = Gen.list (Range.linear 1 99) Gen.alpha
