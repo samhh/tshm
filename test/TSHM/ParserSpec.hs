@@ -40,6 +40,9 @@ spec = describe "TSHM.Parser" $ do
       parse' pType "<A, B>(a: A) => B" `shouldParse`
          TsTypeFunction (Function (Just [TsTypeMisc "A", TsTypeMisc "B"]) [TsTypeMisc "A"] (TsTypeMisc "B"))
 
+      parse' pType "(x: F<A, B>) => G<C, D>" `shouldParse`
+         TsTypeFunction (Function Nothing [TsTypeGeneric "F" [TsTypeMisc "A", TsTypeMisc "B"]] (TsTypeGeneric "G" [TsTypeMisc "C", TsTypeMisc "D"]))
+
     it "parses infix operators" $ do
       parse' pType "A & B | C" `shouldParse` TsTypeExpression TsOperatorIntersection (TsTypeMisc "A") (TsTypeExpression TsOperatorUnion (TsTypeMisc "B") (TsTypeMisc "C"))
 
