@@ -2,17 +2,16 @@
 
 A WIP parser for TypeScript declarations that seeks to output HM-style type signatures.
 
-The CLI interface isn't implemented yet, but the parser and formatter can be tested via the REPL.
+Example usage:
 
-Example input and output:
-
-```typescript
-export declare const f: <A>(a: A) => (b: string) => A
 ```
-
-```haskell
+$ tshm "export declare const f: <A>(a: A) => (b: string) => A"
 f :: A -> string -> A
 ```
+
+Should an invalid input be provided the program will fail with the appropriate exit code, enabling the use of tshm in shell pipelines.
+
+Messages are always printed upon failure. Should the failure be due to a parser error, the raw error is printed to the console to assist in debugging.
 
 ## What's not yet supported?
 

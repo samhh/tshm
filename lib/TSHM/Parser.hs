@@ -93,3 +93,8 @@ pReturn = string " => " *> pType
 pDeclaration :: Parser Declaration
 pDeclaration = Declaration <$> pName <*> pType <* eof
 
+parseDeclaration :: String -> ParseOutput
+parseDeclaration = parse pDeclaration "input"
+
+type ParseOutput = Either (ParseErrorBundle String Void) Declaration
+

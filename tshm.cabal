@@ -26,6 +26,8 @@ executable tshm
   import:                 common
   hs-source-dirs:         src/
   main-is:                Main.hs
+  build-depends:
+      tshm
 
 library
   import:                 common
