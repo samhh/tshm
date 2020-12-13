@@ -1,4 +1,4 @@
-module TSHM.Printer (fDeclaration) where
+module TSHM.Printer (fSignature) where
 
 import           Data.Char       (toLower)
 import           Prelude
@@ -60,4 +60,13 @@ fTsType' = (`fTsType` Other)
 
 fDeclaration :: Declaration -> String
 fDeclaration x = declarationName x <> " :: " <> fTsType' (declarationType x)
+
+fAlias :: Alias -> String
+fAlias x = "type " <> aliasName x <> fTypeArgs (aliasTypeArgs x) <> " = " <> fTsType' (aliasType x)
+  where fTypeArgs :: Maybe (NonEmpty TsType) -> String
+        fTypeArgs = maybe "" $ (" " <>) . intercalate " " . fmap fTsType' . toList
+
+fSignature :: Signature -> String
+fSignature (SignatureAlias x) = fAlias x
+fSignature (SignatureDeclaration x) = fDeclaration x
 

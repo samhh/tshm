@@ -181,20 +181,20 @@ spec = describe "TSHM.Parser" $ do
       parse' p `shouldFailOn` ".1.2"
       parse' p `shouldFailOn` "1.2.3"
 
-  describe "pName" $ do
+  describe "pDeclarationName" $ do
     let ident = Gen.list (Range.linear 1 99) Gen.alpha
 
     it "parses const declaration" $ hedgehog $ do
       x <- forAll ident
-      parse' pName ("declare const " <> x <> ": ") =*= x
+      parse' pDeclarationName ("declare const " <> x <> ": ") =*= x
 
     it "parses exported const declaration" $ hedgehog $ do
       x <- forAll ident
-      parse' pName ("export declare const " <> x <> ": ") =*= x
+      parse' pDeclarationName ("export declare const " <> x <> ": ") =*= x
 
     it "requires declaration" $ hedgehog $ do
       x <- forAll ident
-      parse' pName /=* ("const " <> x <> ": ")
+      parse' pDeclarationName /=* ("const " <> x <> ": ")
 
   describe "pTypeArgs" $ do
     it "parses single flat type argument" $ do
@@ -272,6 +272,20 @@ spec = describe "TSHM.Parser" $ do
 
     it "requires a value after the lambda" $ do
       parse' pReturn `shouldFailOn` " => "
+
+  describe "pAlias" $ do
+    let p = parse' $ pAlias <* eof
+
+    it "optionally supports semicolons" $ do
+      p "type X = Y" `shouldParse` Alias "X" Nothing (TsTypeMisc "Y")
+      p "type X = Y;" `shouldParse` Alias "X" Nothing (TsTypeMisc "Y")
+
+    it "parses type arguments" $ do
+      p "type X<A, B extends string> = A | B" `shouldParse`
+        Alias
+          "X"
+          (Just $ fromList [TsTypeMisc "A", TsTypeSubtype "B" (TsTypeMisc "string")])
+          (TsTypeExpression TsOperatorUnion (TsTypeMisc "A") (TsTypeMisc "B"))
 
   describe "pDeclaration" $ do
     let p = parse' $ pDeclaration <* eof

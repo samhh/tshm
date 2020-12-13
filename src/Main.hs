@@ -2,11 +2,11 @@ module Main (main) where
 
 import           Prelude
 import           System.Environment (getArgs)
-import           TSHM.Parser        (ParseOutput, parseDeclaration)
-import           TSHM.Printer       (fDeclaration)
+import           TSHM.Parser        (ParseOutput, parseSignature)
+import           TSHM.Printer       (fSignature)
 
 main :: IO ()
-main = render . parseDeclaration =<< argGuard =<< getArgs
+main = render . parseSignature =<< argGuard =<< getArgs
   where argGuard :: [String] -> IO String
         argGuard []  = putStrLn "No input provided." *> exitFailure
         argGuard [x] = pure x
@@ -14,5 +14,5 @@ main = render . parseDeclaration =<< argGuard =<< getArgs
 
         render :: ParseOutput -> IO ()
         render (Left e)  = print e *> exitFailure
-        render (Right x) = putStrLn . fDeclaration $ x
+        render (Right x) = putStrLn . fSignature $ x
 

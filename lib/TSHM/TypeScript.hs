@@ -51,3 +51,13 @@ data Declaration = Declaration
   , declarationType :: TsType
   } deriving (Eq, Show)
 
+data Alias = Alias
+  { aliasName     :: String
+  , aliasTypeArgs :: Maybe (NonEmpty TsType)
+  , aliasType     :: TsType
+  } deriving (Eq, Show)
+
+data Signature
+  = SignatureAlias Alias
+  | SignatureDeclaration Declaration
+

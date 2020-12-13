@@ -90,8 +90,8 @@ pObject = between (string "{ ") (string " }") (sepBy1 pPair (string ", " <|> str
         method :: String -> Bool -> Maybe (NonEmpty TsType) -> [Partial Param] -> TsType -> Partial (String, TsType)
         method n o g p r = (if o then Optional else Required) (n, TsTypeFunction $ Function g p r)
 
-pName :: Parser String
-pName = optional (string "export ") *> string "declare const " *> some alphaNumChar <* string ": "
+pDeclarationName :: Parser String
+pDeclarationName = optional (string "export ") *> string "declare const " *> some alphaNumChar <* string ": "
 
 pTypeArgs :: Parser (NonEmpty TsType)
 pTypeArgs = between (char '<') (char '>') (NE.sepBy1 pTypeArg (string ", "))
@@ -122,10 +122,16 @@ pReturn :: Parser TsType
 pReturn = string " => " *> pType
 
 pDeclaration :: Parser Declaration
-pDeclaration = Declaration <$> pName <*> pType <* optional (char ';') <* eof
+pDeclaration = Declaration <$> pDeclarationName <*> pType <* optional (char ';') <* eof
 
-parseDeclaration :: String -> ParseOutput
-parseDeclaration = parse pDeclaration "input"
+pAlias :: Parser Alias
+pAlias = Alias <$> (optional (string "export ") *> string "type " *> some alphaNumChar) <*> (optional pTypeArgs <* string " = ") <*> pType <* optional (char ';') <* eof
 
-type ParseOutput = Either (ParseErrorBundle String Void) Declaration
+pSignature :: Parser Signature
+pSignature = SignatureAlias <$> pAlias <|> SignatureDeclaration <$> pDeclaration
+
+parseSignature :: String -> ParseOutput
+parseSignature = parse pSignature "input"
+
+type ParseOutput = Either (ParseErrorBundle String Void) Signature
 
