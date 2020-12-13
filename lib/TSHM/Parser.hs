@@ -36,6 +36,7 @@ pType = makeExprParser expr operators
           , TsTypeNumberLiteral <$> pNumberLiteral
           , TsTypeTuple <$> pTuple
           , TsTypeObject <$> pObject
+          , uncurry TsTypeObjectReference <$> try pObjectReference
           , try pGeneric
           , TsTypeMisc <$> pTypeMisc
           ]
@@ -73,6 +74,9 @@ pObject :: Parser [(String, TsType)]
 pObject = between (string "{ ") (string " }") (sepBy1 pPair (string ", ")) <|> [] <$ string "{}"
   where pPair :: Parser (String, TsType)
         pPair = (,) <$> some alphaNumChar <* string ": " <*> pType
+
+pObjectReference :: Parser (String, String)
+pObjectReference = (,) <$> pTypeMisc <*> between (char '[') (char ']') pStringLiteral
 
 pName :: Parser String
 pName = optional (string "export ") *> string "declare const " *> some alphaNumChar <* string ": "

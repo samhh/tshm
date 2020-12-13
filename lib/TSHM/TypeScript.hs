@@ -20,6 +20,7 @@ data TsType
   | TsTypeNumberLiteral String
   | TsTypeTuple [TsType]
   | TsTypeObject [(String, TsType)]
+  | TsTypeObjectReference String String
   | TsTypeGeneric String [TsType]
   | TsTypeSubtype String TsType
   | TsTypeFunction Function

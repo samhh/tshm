@@ -39,6 +39,10 @@ spec = describe "TSHM.Parser" $ do
     it "parses number literal" $ do
       parse' pType "-.123" `shouldParse` TsTypeNumberLiteral "-.123"
 
+    it "parses object reference" $ do
+      parse' pType "A['key']" `shouldParse` TsTypeObjectReference "A" "key"
+      parse' pType "A[\"key\"]" `shouldParse` TsTypeObjectReference "A" "key"
+
     it "parses function" $ do
       parse' pType "<A, B>(a: A) => B" `shouldParse`
          TsTypeFunction (Function (Just [TsTypeMisc "A", TsTypeMisc "B"]) [TsTypeMisc "A"] (TsTypeMisc "B"))
