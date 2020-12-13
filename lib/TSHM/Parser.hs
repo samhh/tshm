@@ -71,7 +71,7 @@ pTuple :: Parser [TsType]
 pTuple = between (char '[') (char ']') $ sepBy pType (string ", ")
 
 pObject :: Parser [(String, TsType)]
-pObject = between (string "{ ") (string " }") (sepBy1 pPair (string ", ")) <|> [] <$ string "{}"
+pObject = between (string "{ ") (string " }") (sepBy1 pPair (string ", " <|> string "; ")) <|> [] <$ string "{}"
   where pPair :: Parser (String, TsType)
         pPair = (,) <$> some alphaNumChar <* string ": " <*> pType
 

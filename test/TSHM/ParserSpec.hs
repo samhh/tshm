@@ -117,6 +117,10 @@ spec = describe "TSHM.Parser" $ do
       parse' pObject "{ a: 1, b: { c: true }[] }" `shouldParse`
         [("a", TsTypeNumberLiteral "1"), ("b", TsTypeGeneric "Array" [TsTypeObject [("c", TsTypeBoolean True)]])]
 
+    it "supports mixed comma and semi-colon delimiters" $ do
+      parse' pObject "{ a: number, b: string; c: boolean }" `shouldParse`
+        [("a", TsTypeMisc "number"), ("b", TsTypeMisc "string"), ("c", TsTypeMisc "boolean")]
+
   describe "pTuple" $ do
     it "parses empty tuple" $ do
       parse' pTuple "[]" `shouldParse` []
