@@ -32,6 +32,15 @@ operators =
           binary :: String -> (TsType -> TsType -> TsType) -> Operator Parser TsType
           binary x f = InfixR $ f <$ string (" " <> x <> " ")
 
+-- https://developer.mozilla.org/en-US/docs/Glossary/identifier
+pIdentifier :: Parser String
+pIdentifier = f <$> uniChar <*> optional (some (uniChar <|> numberChar))
+  where uniChar :: Parser Char
+        uniChar = letterChar <|> char '$' <|> char '_'
+
+        f :: Char -> Maybe String -> String
+        f x ys = x : fromMaybe "" ys
+
 pType :: Parser TsType
 pType = (`makeExprParser` operators) $ optional (string "readonly ") *> choice
   [ try $ TsTypeGrouped <$> between (char '(') (char ')') pType
@@ -79,8 +88,8 @@ pObject :: Parser ObjectLiteral
 pObject = between (string "{ ") (string " }") (sepBy1 pPair (string ", " <|> string "; ")) <|> [] <$ string "{}"
   where pPair :: Parser (Partial (String, TsType))
         pPair = optional (string "readonly ") *> choice
-          [ try $ flip fn <$> some alphaNumChar <*> (True <$ string ": " <|> False <$ string "?: ") <*> pType
-          , method <$> some alphaNumChar <*> (isJust <$> optional (char '?')) <*> optional pTypeArgs <*> pParams <*> (string ": " *> pType)
+          [ try $ flip fn <$> pIdentifier <*> (True <$ string ": " <|> False <$ string "?: ") <*> pType
+          , method <$> pIdentifier <*> (isJust <$> optional (char '?')) <*> optional pTypeArgs <*> pParams <*> (string ": " *> pType)
           ]
 
         fn :: Bool -> String -> TsType -> Partial (String, TsType)
@@ -91,7 +100,7 @@ pObject = between (string "{ ") (string " }") (sepBy1 pPair (string ", " <|> str
         method n o g p r = (if o then Optional else Required) (n, TsTypeFunction $ Function g p r)
 
 pDeclarationName :: Parser String
-pDeclarationName = optional (string "export ") *> string "declare const " *> some alphaNumChar <* string ": "
+pDeclarationName = optional (string "export ") *> string "declare const " *> pIdentifier <* string ": "
 
 pTypeArgs :: Parser (NonEmpty TsType)
 pTypeArgs = between (char '<') (char '>') (NE.sepBy1 pTypeArg (string ", "))
