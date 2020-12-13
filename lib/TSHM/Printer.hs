@@ -20,9 +20,9 @@ fOperator TsOperatorIntersection = "&"
 fOperator TsOperatorUnion        = "|"
 
 fTsType :: TsType -> String
-fTsType TsTypeVoid               = "()"
-fTsType TsTypeUndefined          = "()"
-fTsType TsTypeNull               = "()"
+fTsType TsTypeVoid               = "void"
+fTsType TsTypeUndefined          = "undefined"
+fTsType TsTypeNull               = "null"
 fTsType (TsTypeBoolean x)        = if x then "true" else "false"
 fTsType (TsTypeMisc [x])         = pure . toLower $ x
 fTsType (TsTypeMisc x)           = x

@@ -33,6 +33,6 @@ Whilst the parser is currently very strict about whitespace/similar (see below),
 
 There is an open question as to how "Haskell-ified" the output should be.
 
-- HM-style higher-kinded types output e.g. `Option<string>` -> `Option string`
-- Dedicated array syntax e.g. `string[]` or `Array<string>` -> `[string]`
+- No parantheses around top-level higher-kinded types e.g. `(Either e (Option a))` -> `Either e (Option a)`
+- Dedicated array syntax e.g. `string[]` -> `Array string`
 
