@@ -89,10 +89,14 @@ pTypeArgs = between (char '<') (char '>') (sepBy1 pTypeArg (string ", "))
           , pType
           ]
 
-pParams :: Parser [TsType]
+pParams :: Parser [Param]
 pParams = between (char '(') (char ')') $ sepBy pParam (string ", ")
-  where pParam :: Parser TsType
-        pParam = optional (string "...") *> some alphaNumChar *> string ": " *> optional (string "new ") *> pType
+  where pParam :: Parser Param
+        pParam = f <$> (isJust <$> optional (string "...")) <*> (some alphaNumChar *> string ": " *> optional (string "new ") *> pType)
+
+        f :: Bool -> TsType -> Param
+        f True = Rest
+        f False = Normal
 
 pReturn :: Parser TsType
 pReturn = string " => " *> pType

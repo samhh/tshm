@@ -4,10 +4,14 @@ import           Data.Char       (toLower)
 import           Prelude
 import           TSHM.TypeScript
 
-fParams :: [TsType] -> String
+fParam :: Param -> String
+fParam (Normal x) = fTsType' x
+fParam (Rest x) = "..." <> fTsType' x
+
+fParams :: [Param] -> String
 fParams []  = "()"
-fParams [x] = fTsType' x
-fParams xs  = "(" <> intercalate ", " (fmap fTsType' xs) <> ")"
+fParams [x] = fParam x
+fParams xs  = "(" <> intercalate ", " (fmap fParam xs) <> ")"
 
 fFunction :: Function -> String
 fFunction x = fParams (functionParams x) <> " -> " <> fTsType' (functionReturn x)

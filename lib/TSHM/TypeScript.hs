@@ -30,9 +30,14 @@ data TsType
   | TsTypeGrouped TsType
   deriving (Eq, Show)
 
+data Param
+  = Normal TsType
+  | Rest TsType
+  deriving (Eq, Show)
+
 data Function = Function
   { functionTypeArgs :: Maybe [TsType]
-  , functionParams   :: [TsType]
+  , functionParams   :: [Param]
   , functionReturn   :: TsType
   } deriving (Eq, Show)
 
