@@ -7,6 +7,9 @@ Example usage:
 ```
 $ tshm "export declare const f: <A>(a: A) => <E>(b: Either<string, Option<A>>) => A"
 f :: a -> Either string (Option a) -> a
+
+$ tshm "export type Option a = None | Some a"
+type Option a = None | Some a
 ```
 
 Should an invalid input be provided the program will fail with the appropriate exit code, enabling the use of tshm in shell pipelines.
@@ -31,6 +34,7 @@ Whilst the parser is currently very strict about whitespace/similar (see below),
 ### Output
 
 - Generics aren't given clarifying parentheses in the presence of object reference types e.g. `F<A>['k']`
+- Output never utilises newlines
 
 There is an open question as to how "Haskell-ified" the output should be.
 
