@@ -1,5 +1,6 @@
 module TSHM.Printer (fDeclaration) where
 
+import           Data.Char       (toLower)
 import           Prelude
 import           TSHM.TypeScript
 
@@ -23,6 +24,7 @@ fTsType TsTypeVoid               = "()"
 fTsType TsTypeUndefined          = "()"
 fTsType TsTypeNull               = "()"
 fTsType (TsTypeBoolean x)        = if x then "true" else "false"
+fTsType (TsTypeMisc [x])         = pure . toLower $ x
 fTsType (TsTypeMisc x)           = x
 fTsType (TsTypeStringLiteral x)  = x
 fTsType (TsTypeNumberLiteral x)  = x

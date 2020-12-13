@@ -6,7 +6,7 @@ Example usage:
 
 ```
 $ tshm "export declare const f: <A>(a: A) => (b: string) => A"
-f :: A -> string -> A
+f :: a -> string -> a
 ```
 
 Should an invalid input be provided the program will fail with the appropriate exit code, enabling the use of tshm in shell pipelines.
@@ -35,5 +35,4 @@ There is an open question as to how "Haskell-ified" the output should be.
 
 - HM-style higher-kinded types output e.g. `Option<string>` -> `Option string`
 - Dedicated array syntax e.g. `string[]` or `Array<string>` -> `[string]`
-- Lowercase single-char type arguments e.g. `A -> B` -> `a -> b`
 
