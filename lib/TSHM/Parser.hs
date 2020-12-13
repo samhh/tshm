@@ -33,7 +33,7 @@ operators =
           binary x f = InfixR $ f <$ string (" " <> x <> " ")
 
 pType :: Parser TsType
-pType = (`makeExprParser` operators) $ choice
+pType = (`makeExprParser` operators) $ optional (string "readonly ") *> choice
   [ try $ TsTypeGrouped <$> between (char '(') (char ')') pType
   , TsTypeVoid <$ string "void"
   , TsTypeNull <$ string "null"
@@ -78,7 +78,7 @@ pTuple = between (char '[') (char ']') $ sepBy pType (string ", ")
 pObject :: Parser ObjectLiteral
 pObject = between (string "{ ") (string " }") (sepBy1 pPair (string ", " <|> string "; ")) <|> [] <$ string "{}"
   where pPair :: Parser (Partial (String, TsType))
-        pPair = choice
+        pPair = optional (string "readonly ") *> choice
           [ try $ flip fn <$> some alphaNumChar <*> (True <$ string ": " <|> False <$ string "?: ") <*> pType
           , method <$> some alphaNumChar <*> (isJust <$> optional (char '?')) <*> optional pTypeArgs <*> pParams <*> (string ": " *> pType)
           ]

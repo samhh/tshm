@@ -40,12 +40,18 @@ spec = describe "TSHM.Parser" $ do
       parse' pType "-.123" `shouldParse` TsTypeNumberLiteral "-.123"
 
     it "parses special array syntax" $ do
-      parse' pType "a[][]" `shouldParse` TsTypeGeneric "Array" (fromList [TsTypeGeneric "Array" $ fromList [TsTypeMisc "a"]])
+      parse' pType "a[][]" `shouldParse`
+        TsTypeGeneric "Array" (fromList [TsTypeGeneric "Array" $ fromList [TsTypeMisc "a"]])
+
+    it "parses and discards readonly" $ do
+      parse' pType "readonly [readonly A, { readonly x: readonly B }]" `shouldParse`
+        TsTypeTuple [TsTypeMisc "A", TsTypeObject [Required ("x", TsTypeMisc "B")]]
 
     it "parses object reference" $ do
       parse' pType "A['key']" `shouldParse` TsTypeObjectReference (TsTypeMisc "A") "key"
       parse' pType "A[\"key\"]" `shouldParse` TsTypeObjectReference (TsTypeMisc "A") "key"
-      parse' pType "true['k1']['k2']" `shouldParse` TsTypeObjectReference (TsTypeObjectReference (TsTypeBoolean True) "k1") "k2"
+      parse' pType "true['k1']['k2']" `shouldParse`
+        TsTypeObjectReference (TsTypeObjectReference (TsTypeBoolean True) "k1") "k2"
 
     it "postfix operators play nicely together" $ do
       parse' pType "a['k1']['k2'][][]['k3'][]" `shouldParse`

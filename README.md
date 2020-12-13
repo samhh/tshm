@@ -26,7 +26,6 @@ Whilst the parser is currently very strict about whitespace/similar (see below),
 
 - Object keys that aren't ordinary static strings e.g. index signatures
 - `unique symbol`
-- `readonly` modifier in objects and tuples
 - Dedicated parsing for newtype-ts
 - Irregular spacing
 - Newlines
@@ -35,6 +34,7 @@ Whilst the parser is currently very strict about whitespace/similar (see below),
 
 - Generics aren't given clarifying parentheses in the presence of object reference types e.g. `F<A>['k']`
 - Output never utilises newlines
+- `readonly` modifier isn't output
 
 There is an open question as to how "Haskell-ified" the output should be.
 
