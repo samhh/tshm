@@ -13,8 +13,11 @@ type Parser = Parsec Void String
 
 operators :: [[Operator Parser TsType]]
 operators =
-  [ [ Postfix (multi (TsTypeGeneric "Array" . pure <$ string "[]"))
-    ]
+  [ [ Postfix (multi
+      (   (TsTypeGeneric "Array" . pure <$ string "[]")
+      <|> (flip TsTypeObjectReference <$> between (char '[') (char ']') pStringLiteral)
+      )
+    )]
   , [ Prefix (TsTypeKeysOf <$ string "keyof ")
     ]
   , [ binary "&" (TsTypeExpression TsOperatorIntersection)
@@ -22,7 +25,7 @@ operators =
     ]
   ]
     where multi :: Alternative f => f (a -> a) -> f (a -> a)
-          multi f = foldr1 (.) <$> some f
+          multi f = foldr1 (flip (.)) <$> some f
 
           binary :: String -> (TsType -> TsType -> TsType) -> Operator Parser TsType
           binary x f = InfixR $ f <$ string (" " <> x <> " ")
@@ -39,7 +42,6 @@ pType = (`makeExprParser` operators) $ choice
   , TsTypeTuple <$> pTuple
   , TsTypeObject <$> pObject
   , TsTypeFunction <$> pFunction
-  , uncurry TsTypeObjectReference <$> try pObjectReference
   , try pGeneric
   , TsTypeReflection <$> (string "typeof " *> some alphaNumChar)
   , TsTypeMisc <$> pTypeMisc
@@ -75,9 +77,6 @@ pObject :: Parser [(String, TsType)]
 pObject = between (string "{ ") (string " }") (sepBy1 pPair (string ", " <|> string "; ")) <|> [] <$ string "{}"
   where pPair :: Parser (String, TsType)
         pPair = (,) <$> some alphaNumChar <* string ": " <*> pType
-
-pObjectReference :: Parser (String, String)
-pObjectReference = (,) <$> pTypeMisc <*> between (char '[') (char ']') pStringLiteral
 
 pName :: Parser String
 pName = optional (string "export ") *> string "declare const " *> some alphaNumChar <* string ": "

@@ -20,7 +20,7 @@ data TsType
   | TsTypeNumberLiteral String
   | TsTypeTuple [TsType]
   | TsTypeObject [(String, TsType)]
-  | TsTypeObjectReference String String
+  | TsTypeObjectReference TsType String
   | TsTypeGeneric String [TsType]
   | TsTypeSubtype String TsType
   | TsTypeReflection String

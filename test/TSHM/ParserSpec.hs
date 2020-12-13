@@ -43,8 +43,13 @@ spec = describe "TSHM.Parser" $ do
       parse' pType "a[][]" `shouldParse` TsTypeGeneric "Array" [TsTypeGeneric "Array" [TsTypeMisc "a"]]
 
     it "parses object reference" $ do
-      parse' pType "A['key']" `shouldParse` TsTypeObjectReference "A" "key"
-      parse' pType "A[\"key\"]" `shouldParse` TsTypeObjectReference "A" "key"
+      parse' pType "A['key']" `shouldParse` TsTypeObjectReference (TsTypeMisc "A") "key"
+      parse' pType "A[\"key\"]" `shouldParse` TsTypeObjectReference (TsTypeMisc "A") "key"
+      parse' pType "true['k1']['k2']" `shouldParse` TsTypeObjectReference (TsTypeObjectReference (TsTypeBoolean True) "k1") "k2"
+
+    it "postfix operators play nicely together" $ do
+      parse' pType "a['k1']['k2'][][]['k3'][]" `shouldParse`
+        TsTypeGeneric "Array" [TsTypeObjectReference (TsTypeGeneric "Array" [TsTypeGeneric "Array" [TsTypeObjectReference (TsTypeObjectReference (TsTypeMisc "a") "k1") "k2"]]) "k3"]
 
     it "parses function" $ do
       parse' pType "<A, B>(a: A) => B" `shouldParse`
