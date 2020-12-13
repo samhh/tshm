@@ -15,40 +15,34 @@ binary x f = InfixR $ f <$ string (" " <> x <> " ")
 
 operators :: [[Operator Parser TsType]]
 operators =
-  [
-    [ binary "&" (TsTypeExpression TsOperatorIntersection)
+  [ [ Postfix (TsTypeGeneric "Array" . pure <$ string "[]")
+    ]
+  , [ binary "&" (TsTypeExpression TsOperatorIntersection)
     , binary "|" (TsTypeExpression TsOperatorUnion)
     ]
   ]
 
 pType :: Parser TsType
-pType = makeExprParser expr operators
-  where expr :: Parser TsType
-        expr = try (pArraySpecial arrayables) <|> (TsTypeFunction <$> pFunction) <|> arrayables
-
-        arrayables :: Parser TsType
-        arrayables = choice
-          [ TsTypeVoid <$ string "void"
-          , TsTypeNull <$ string "null"
-          , TsTypeUndefined <$ string "undefined"
-          , TsTypeBoolean <$> ((True <$ string "true") <|> (False <$ string "false"))
-          , TsTypeStringLiteral <$> pStringLiteral
-          , TsTypeNumberLiteral <$> pNumberLiteral
-          , TsTypeTuple <$> pTuple
-          , TsTypeObject <$> pObject
-          , uncurry TsTypeObjectReference <$> try pObjectReference
-          , try pGeneric
-          , TsTypeMisc <$> pTypeMisc
-          ]
+pType = (`makeExprParser` operators) $ choice
+  [ TsTypeVoid <$ string "void"
+  , TsTypeNull <$ string "null"
+  , TsTypeUndefined <$ string "undefined"
+  , TsTypeBoolean <$> ((True <$ string "true") <|> (False <$ string "false"))
+  , TsTypeStringLiteral <$> pStringLiteral
+  , TsTypeNumberLiteral <$> pNumberLiteral
+  , TsTypeTuple <$> pTuple
+  , TsTypeObject <$> pObject
+  , TsTypeFunction <$> pFunction
+  , uncurry TsTypeObjectReference <$> try pObjectReference
+  , try pGeneric
+  , TsTypeMisc <$> pTypeMisc
+  ]
 
 pTypeMisc :: Parser String
 pTypeMisc = some alphaNumChar
 
 pGeneric :: Parser TsType
 pGeneric = TsTypeGeneric <$> pTypeMisc <*> pTypeArgs
-
-pArraySpecial :: Parser TsType -> Parser TsType
-pArraySpecial p = TsTypeGeneric "Array" . pure <$> p <* string "[]"
 
 pStringLiteral :: Parser String
 pStringLiteral = stringLiteral '\'' <|> stringLiteral '"'
