@@ -54,8 +54,8 @@ spec = describe "TSHM.Parser" $ do
       parse' pFunction "() => void" `shouldParse` Function Nothing [] TsTypeVoid
 
     it "parses type arguments" $ do
-      parse' pFunction "<A, Array<B>>() => void" `shouldParse`
-        Function (Just [TsTypeMisc "A", TsTypeGeneric "Array" [TsTypeMisc "B"]]) [] TsTypeVoid
+      parse' pFunction "<A, Either<void, B>>() => void" `shouldParse`
+        Function (Just [TsTypeMisc "A", TsTypeGeneric "Either" [TsTypeVoid, TsTypeMisc "B"]]) [] TsTypeVoid
 
     it "parses params" $ do
       parse' pFunction "(x: number, y: string) => void" `shouldParse`

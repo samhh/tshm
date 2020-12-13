@@ -37,11 +37,14 @@ pType = makeExprParser expr operators
           , TsTypeTuple <$> pTuple
           , TsTypeObject <$> pObject
           , try pGeneric
-          , TsTypeMisc <$> some alphaNumChar
+          , TsTypeMisc <$> pTypeMisc
           ]
 
+pTypeMisc :: Parser String
+pTypeMisc = some alphaNumChar
+
 pGeneric :: Parser TsType
-pGeneric = TsTypeGeneric <$> some alphaNumChar <*> pTypeArgs
+pGeneric = TsTypeGeneric <$> pTypeMisc <*> pTypeArgs
 
 pArraySpecial :: Parser TsType -> Parser TsType
 pArraySpecial p = TsTypeGeneric "Array" . pure <$> p <* string "[]"
@@ -78,12 +81,9 @@ pTypeArgs :: Parser [TsType]
 pTypeArgs = between (char '<') (char '>') (sepBy1 pTypeArg (string ", "))
   where pTypeArg :: Parser TsType
         pTypeArg = choice
-          [ try $ TsTypeSubtype <$> some alphaNumChar <* string " extends " <*> pType
-          , f <$> some alphaNumChar <*> optional pTypeArgs
+          [ try $ TsTypeSubtype <$> pTypeMisc <* string " extends " <*> pType
+          , pType
           ]
-        f x = \case
-          Just y  -> TsTypeGeneric x y
-          Nothing -> TsTypeMisc x
 
 pParams :: Parser [TsType]
 pParams = between (char '(') (char ')') $ sepBy pParam (string ", ")
