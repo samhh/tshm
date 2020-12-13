@@ -98,7 +98,7 @@ pReturn :: Parser TsType
 pReturn = string " => " *> pType
 
 pDeclaration :: Parser Declaration
-pDeclaration = Declaration <$> pName <*> pType <* eof
+pDeclaration = Declaration <$> pName <*> pType <* optional (char ';') <* eof
 
 parseDeclaration :: String -> ParseOutput
 parseDeclaration = parse pDeclaration "input"

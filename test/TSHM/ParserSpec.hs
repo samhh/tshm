@@ -231,20 +231,26 @@ spec = describe "TSHM.Parser" $ do
       parse' pReturn `shouldFailOn` " => "
 
   describe "pDeclaration" $ do
-    it "parses an entire declaration" $ do
-      parse' pDeclaration "export declare const empty: ''" `shouldParse` Declaration "empty" (TsTypeStringLiteral "")
+    let p = parse' $ pDeclaration <* eof
+
+    it "optionally supports semicolons" $ do
+      p "declare const x: string" `shouldParse` Declaration "x" (TsTypeMisc "string")
+      p "declare const x: string;" `shouldParse` Declaration "x" (TsTypeMisc "string")
+
+    it "parses real declarations" $ do
+      p "export declare const empty: ''" `shouldParse` Declaration "empty" (TsTypeStringLiteral "")
 
       -- FAILS: requires nested []
-      -- parse' pDeclaration "export declare const aperture: (n: number) => <A>(xs: A[]) => A[][]" `shouldParse`
+      -- p "export declare const aperture: (n: number) => <A>(xs: A[]) => A[][]" `shouldParse`
       --   Declaration "aperture" (TsTypeFunction (Function Nothing [TsTypeMisc "number"] (TsTypeFunction (Function (Just [TsTypeMisc "A"]) [TsTypeGeneric "Array" [TsTypeMisc "A"]] (TsTypeGeneric "Array" [TsTypeGeneric "Array" [TsTypeMisc "A"]])))))
 
-      parse' pDeclaration "export declare const anyPass: <A>(fs: Predicate<A>[]) => Predicate<A>" `shouldParse`
+      p "export declare const anyPass: <A>(fs: Predicate<A>[]) => Predicate<A>" `shouldParse`
         Declaration "anyPass" (TsTypeFunction (Function (Just [TsTypeMisc "A"]) [TsTypeGeneric "Array" [TsTypeGeneric "Predicate" [TsTypeMisc "A"]]] (TsTypeGeneric "Predicate" [TsTypeMisc "A"])))
 
-      parse' pDeclaration "export declare const merge: <A>(x: A) => <B>(y: B) => A & B" `shouldParse`
+      p "export declare const merge: <A>(x: A) => <B>(y: B) => A & B" `shouldParse`
         Declaration "merge" (TsTypeFunction (Function (Just [TsTypeMisc "A"]) [TsTypeMisc "A"] (TsTypeFunction (Function (Just [TsTypeMisc "B"]) [TsTypeMisc "B"] (TsTypeExpression TsOperatorIntersection (TsTypeMisc "A") (TsTypeMisc "B"))))))
 
       -- FAILS
-      -- parse' pDeclaration "export declare const omit: <K extends string>(ks: K[]) => <V, A extends Record<K, V>>(x: Partial<A>) => Pick<A, Exclude<keyof A, K>>" `shouldParse`
+      -- p "export declare const omit: <K extends string>(ks: K[]) => <V, A extends Record<K, V>>(x: Partial<A>) => Pick<A, Exclude<keyof A, K>>" `shouldParse`
       --   Declaration "omit" (TsTypeFunction (Function (Just [TsTypeMisc "K extends string"]) [TsTypeMisc "K[]"] (TsTypeFunction (Function (Just [TsTypeMisc "V", TsTypeMisc "A extends Record<K, V>"]) [TsTypeMisc "Partial<A>"] (TsTypeMisc "Pick<A, Exclude<keyof A, K>>")))))
 

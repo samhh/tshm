@@ -27,7 +27,6 @@ Whilst the parser is currently very strict about whitespace/similar (see below),
 - Object literal keys that aren't ordinary static strings
 - Irregular spacing
 - Newlines
-- Semicolons
 
 ### Output
 
