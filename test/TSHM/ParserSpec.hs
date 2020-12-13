@@ -8,7 +8,7 @@ import           TSHM.TypeScript
 import           Test.Hspec
 import           Test.Hspec.Hedgehog   (PropertyT, forAll, hedgehog, (===))
 import           Test.Hspec.Megaparsec
-import           Text.Megaparsec       (ParseErrorBundle, Parsec, parse)
+import           Text.Megaparsec       (ParseErrorBundle, Parsec, parse, eof)
 
 parse' :: Parsec e s a -> s -> Either (ParseErrorBundle s e) a
 parse' = flip parse ""
@@ -35,6 +35,9 @@ spec = describe "TSHM.Parser" $ do
 
     it "parses string literal" $ do
       parse' pType "'abc'" `shouldParse` TsTypeStringLiteral "abc"
+
+    it "parses number literal" $ do
+      parse' pType "-.123" `shouldParse` TsTypeNumberLiteral "-.123"
 
     it "parses function" $ do
       parse' pType "<A, B>(a: A) => B" `shouldParse`
@@ -89,11 +92,11 @@ spec = describe "TSHM.Parser" $ do
       parse' pObject "{}" `shouldParse` []
 
     it "parses non-empty flat object" $ do
-      parse' pObject "{ a: 1, b: 'two' }" `shouldParse` [("a", TsTypeMisc "1"), ("b", TsTypeStringLiteral "two")]
+      parse' pObject "{ a: 1, b: 'two' }" `shouldParse` [("a", TsTypeNumberLiteral "1"), ("b", TsTypeStringLiteral "two")]
 
     it "parses non-empty nested object" $ do
       parse' pObject "{ a: 1, b: { c: true }[] }" `shouldParse`
-        [("a", TsTypeMisc "1"), ("b", TsTypeGeneric "Array" [TsTypeObject [("c", TsTypeBoolean True)]])]
+        [("a", TsTypeNumberLiteral "1"), ("b", TsTypeGeneric "Array" [TsTypeObject [("c", TsTypeBoolean True)]])]
 
   describe "pTuple" $ do
     it "parses empty tuple" $ do
@@ -103,7 +106,32 @@ spec = describe "TSHM.Parser" $ do
       parse' pTuple "[a, 'b']" `shouldParse` [TsTypeMisc "a", TsTypeStringLiteral "b"]
 
     it "parses non-empty nested tuple" $ do
-      parse' pTuple "[a, ['b', 3]]" `shouldParse` [TsTypeMisc "a", TsTypeTuple [TsTypeStringLiteral "b", TsTypeMisc "3"]]
+      parse' pTuple "[a, ['b', 3]]" `shouldParse` [TsTypeMisc "a", TsTypeTuple [TsTypeStringLiteral "b", TsTypeNumberLiteral "3"]]
+
+  describe "pNumberLiteral" $ do
+    let p = pNumberLiteral <* eof
+
+    it "parses int" $ do
+      parse' p "123" `shouldParse` "123"
+
+    it "parses negative int" $ do
+      parse' p "-123" `shouldParse` "-123"
+
+    it "parses float" $ do
+      parse' p ".123" `shouldParse` ".123"
+      parse' p "123.456" `shouldParse` "123.456"
+
+    it "parses negative float" $ do
+      parse' p "-.123" `shouldParse` "-.123"
+      parse' p "-123.456" `shouldParse` "-123.456"
+
+    it "does not permit hyphen anywhere except start" $ do
+      parse' p `shouldFailOn` "1-"
+      parse' p `shouldFailOn` "1.2-"
+
+    it "does not permit more than one period" $ do
+      parse' p `shouldFailOn` ".1.2"
+      parse' p `shouldFailOn` "1.2.3"
 
   describe "pName" $ do
     let ident = Gen.list (Range.linear 1 99) Gen.alpha

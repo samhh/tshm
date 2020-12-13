@@ -25,7 +25,6 @@ This is not an exhaustive list!
 - Object literal keys that aren't ordinary static strings
 - Object type references e.g. `MyType['myProp']`
 - `extends` clauses
-- Negative number literals
 - Irregular spacing
 - Newlines
 - Semicolons

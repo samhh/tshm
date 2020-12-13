@@ -14,6 +14,10 @@ data TsType
   | TsTypeBoolean Bool
   | TsTypeMisc String
   | TsTypeStringLiteral String
+  -- This is represented as a string because numbers are hard and tend to
+  -- differ a fair amount between languages. We don't actually need to do any
+  -- arithmetic, so this keeps things simple!
+  | TsTypeNumberLiteral String
   | TsTypeTuple [TsType]
   | TsTypeObject [(String, TsType)]
   | TsTypeGeneric String [TsType]

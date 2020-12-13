@@ -25,6 +25,7 @@ fTsType TsTypeNull               = "()"
 fTsType (TsTypeBoolean x)        = if x then "true" else "false"
 fTsType (TsTypeMisc x)           = x
 fTsType (TsTypeStringLiteral x)  = x
+fTsType (TsTypeNumberLiteral x)  = x
 fTsType (TsTypeTuple xs)         = "[" <> (intercalate ", " . fmap fTsType $ xs) <> "]"
 fTsType (TsTypeGeneric x ys)     = "(" <> x <> " todo:" <> show (length ys) <> ")"
 fTsType (TsTypeObject [])        = "{}"

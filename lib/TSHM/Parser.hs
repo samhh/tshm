@@ -33,6 +33,7 @@ pType = makeExprParser expr operators
           , TsTypeUndefined <$ string "undefined"
           , TsTypeBoolean <$> ((True <$ string "true") <|> (False <$ string "false"))
           , TsTypeStringLiteral <$> pStringLiteral
+          , TsTypeNumberLiteral <$> pNumberLiteral
           , TsTypeTuple <$> pTuple
           , TsTypeObject <$> pObject
           , try pGeneric
@@ -48,7 +49,16 @@ pArraySpecial p = TsTypeGeneric "Array" . pure <$> p <* string "[]"
 pStringLiteral :: Parser String
 pStringLiteral = stringLiteral '\'' <|> stringLiteral '"'
   where stringLiteral :: Char -> Parser String
-        stringLiteral c = char c *> manyTill L.charLiteral (char c)
+        stringLiteral c =
+          let p = char c
+           in p *> manyTill L.charLiteral p
+
+pNumberLiteral :: Parser String
+pNumberLiteral = (<>) . maybe "" pure <$> optional (char '-') <*> choice
+  [ try $ (\x y z -> x <> pure y <> z) <$> some numberChar <*> char '.' <*> some numberChar
+  , (:) <$> char '.' <*> some numberChar
+  , some numberChar
+  ]
 
 pFunction :: Parser Function
 pFunction = Function <$> optional pTypeArgs <*> pParams <*> pReturn
