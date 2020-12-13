@@ -1,6 +1,6 @@
 # tshm
 
-A WIP parser for TypeScript declarations that seeks to output HM-style type signatures.
+A parser and formatter for TypeScript declarations that outputs HM-style type signatures.
 
 Example usage:
 
