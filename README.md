@@ -8,7 +8,7 @@ Example usage:
 $ tshm "export declare const f: <A>(a: A) => <E>(b: Either<string, Option<A>>) => A"
 f :: a -> Either string (Option a) -> a
 
-$ tshm "export type Option a = None | Some a"
+$ tshm "export type Option<A> = None | Some<A>"
 type Option a = None | Some a
 ```
 
@@ -24,11 +24,12 @@ This is not an exhaustive list!
 
 Whilst the parser is currently very strict about whitespace/similar (see below), it's a little loose in some other areas. It is not intended to be a perfect parser of TypeScript syntax, rather merely able to support most normal use cases.
 
-- Object keys that aren't ordinary static strings e.g. index signatures
+- Object keys that aren't ordinary identifiers e.g. index signatures
+- Object property accessors that aren't string literals
 - `unique symbol`
 - Dedicated parsing for newtype-ts
 - Irregular spacing
-- Newlines
+- Newlines (and by extension newline-delimited object types)
 
 ### Output
 
