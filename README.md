@@ -21,7 +21,11 @@ This is not an exhaustive list!
 
 Whilst the parser is currently very strict about whitespace/similar (see below), it's a little loose in some other areas. It is not intended to be a perfect parser of TypeScript syntax, rather merely able to support most normal use cases.
 
-- Object literal keys that aren't ordinary static strings
+- Optional function parameters
+- Optional object properties
+- Object keys that aren't ordinary static strings e.g. index signatures
+- Object method syntax e.g. `f(): void` (note `f: () => void` is supported)
+- `readonly` modifier in objects and tuples
 - Irregular spacing
 - Newlines
 
