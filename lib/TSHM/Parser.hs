@@ -122,16 +122,16 @@ pReturn :: Parser TsType
 pReturn = string " => " *> pType
 
 pDeclaration :: Parser Declaration
-pDeclaration = Declaration <$> pDeclarationName <*> pType <* optional (char ';') <* eof
+pDeclaration = Declaration <$> pDeclarationName <*> pType <* optional (char ';')
 
 pAlias :: Parser Alias
-pAlias = Alias <$> (optional (string "export ") *> string "type " *> some alphaNumChar) <*> (optional pTypeArgs <* string " = ") <*> pType <* optional (char ';') <* eof
+pAlias = Alias <$> (optional (string "export ") *> string "type " *> some alphaNumChar) <*> (optional pTypeArgs <* string " = ") <*> pType <* optional (char ';')
 
 pInterface :: Parser Interface
-pInterface = Interface <$> (optional (string "export ") *> string "interface " *> some alphaNumChar) <*> (optional pTypeArgs <* string " ") <*> pObject <*> optional (string " extends " *> pType) <* eof
+pInterface = Interface <$> (optional (string "export ") *> string "interface " *> some alphaNumChar) <*> (optional pTypeArgs <* string " ") <*> pObject <*> optional (string " extends " *> pType)
 
 pSignature :: Parser Signature
-pSignature = try (SignatureAlias <$> pAlias) <|> try (SignatureInterface <$> pInterface) <|> SignatureDeclaration <$> pDeclaration
+pSignature = try (SignatureAlias <$> pAlias) <|> try (SignatureInterface <$> pInterface) <|> SignatureDeclaration <$> pDeclaration <* eof
 
 parseSignature :: String -> ParseOutput
 parseSignature = parse pSignature "input"
