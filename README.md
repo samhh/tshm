@@ -19,6 +19,8 @@ This is not an exhaustive list!
 
 ### Input
 
+Whilst the parser is currently very strict about whitespace/similar (see below), it's a little loose in some other areas. It is not intended to be a perfect parser of TypeScript syntax, rather merely able to support most normal use cases.
+
 - Syntactic parentheses e.g. `(() => void)[]`
 - Nested special array syntax e.g. `string[][]`
 - Object literal keys that aren't ordinary static strings
@@ -28,6 +30,8 @@ This is not an exhaustive list!
 - Semicolons
 
 ### Output
+
+There is an open question as to how "Haskell-ified" the output should be.
 
 - HM-style higher-kinded types output e.g. `Option<string>` -> `Option string`
 - Dedicated array syntax e.g. `string[]` or `Array<string>` -> `[string]`
