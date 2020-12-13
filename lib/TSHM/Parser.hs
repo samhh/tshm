@@ -26,7 +26,8 @@ operators =
 
 pType :: Parser TsType
 pType = (`makeExprParser` operators) $ choice
-  [ TsTypeVoid <$ string "void"
+  [ try $ TsTypeGrouped <$> between (char '(') (char ')') pType
+  , TsTypeVoid <$ string "void"
   , TsTypeNull <$ string "null"
   , TsTypeUndefined <$ string "undefined"
   , TsTypeBoolean <$> ((True <$ string "true") <|> (False <$ string "false"))

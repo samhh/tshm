@@ -21,7 +21,6 @@ This is not an exhaustive list!
 
 Whilst the parser is currently very strict about whitespace/similar (see below), it's a little loose in some other areas. It is not intended to be a perfect parser of TypeScript syntax, rather merely able to support most normal use cases.
 
-- Syntactic parentheses e.g. `(() => void)[]`
 - Nested special array syntax e.g. `string[][]`
 - Nested object type references e.g. `MyType['prop1']['prop2']`
 - Object literal keys that aren't ordinary static strings

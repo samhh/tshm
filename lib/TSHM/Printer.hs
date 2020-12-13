@@ -46,6 +46,7 @@ fTsType (TsTypeObject xs)           = const $ "{ " <> (intercalate ", " . fmap f
 fTsType (TsTypeObjectReference x k) = const $ x <> "[\"" <> k <> "\"]"
 fTsType (TsTypeFunction x)          = const $ fFunction x
 fTsType (TsTypeExpression x y z)    = const $ fTsType' y <> " " <> fOperator x <> " " <> fTsType' z
+fTsType (TsTypeGrouped x)           = const $ "(" <> fTsType' x <> ")"
 
 fTsType' :: TsType -> String
 fTsType' = (`fTsType` Other)

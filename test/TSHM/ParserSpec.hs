@@ -59,6 +59,9 @@ spec = describe "TSHM.Parser" $ do
     it "parses typeof" $ do
       parse' pType "typeof x & y" `shouldParse` TsTypeExpression TsOperatorIntersection (TsTypeReflection "x") (TsTypeMisc "y")
 
+    it "parses parentheses and changes precedence accordingly" $ do
+      parse' pType "(A & B) | C" `shouldParse` TsTypeExpression TsOperatorUnion (TsTypeGrouped $ TsTypeExpression TsOperatorIntersection (TsTypeMisc "A") (TsTypeMisc "B")) (TsTypeMisc "C")
+
   describe "pFunction" $ do
     it "parses minimal viable function" $ do
       parse' pFunction "() => void" `shouldParse` Function Nothing [] TsTypeVoid

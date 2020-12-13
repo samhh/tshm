@@ -27,6 +27,7 @@ data TsType
   | TsTypeKeysOf TsType
   | TsTypeFunction Function
   | TsTypeExpression TsOperator TsType TsType
+  | TsTypeGrouped TsType
   deriving (Eq, Show)
 
 data Function = Function
