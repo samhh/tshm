@@ -254,7 +254,7 @@ spec = describe "TSHM.Parser" $ do
       p "export declare const merge: <A>(x: A) => <B>(y: B) => A & B" `shouldParse`
         Declaration "merge" (TsTypeFunction (Function (Just [TsTypeMisc "A"]) [TsTypeMisc "A"] (TsTypeFunction (Function (Just [TsTypeMisc "B"]) [TsTypeMisc "B"] (TsTypeExpression TsOperatorIntersection (TsTypeMisc "A") (TsTypeMisc "B"))))))
 
-      -- FAILS
+      -- FAILS: requires keyof
       -- p "export declare const omit: <K extends string>(ks: K[]) => <V, A extends Record<K, V>>(x: Partial<A>) => Pick<A, Exclude<keyof A, K>>" `shouldParse`
-      --   Declaration "omit" (TsTypeFunction (Function (Just [TsTypeMisc "K extends string"]) [TsTypeMisc "K[]"] (TsTypeFunction (Function (Just [TsTypeMisc "V", TsTypeMisc "A extends Record<K, V>"]) [TsTypeMisc "Partial<A>"] (TsTypeMisc "Pick<A, Exclude<keyof A, K>>")))))
+      --   Declaration "omit" (TsTypeFunction (Function (Just [TsTypeSubtype "K" (TsTypeMisc "string")]) [TsTypeMisc "K[]"] (TsTypeFunction (Function (Just [TsTypeMisc "V", TsTypeMisc "A extends Record<K, V>"]) [TsTypeMisc "Partial<A>"] (TsTypeMisc "Pick<A, Exclude<keyof A, K>>")))))
 

@@ -24,6 +24,7 @@ Whilst the parser is currently very strict about whitespace/similar (see below),
 - Syntactic parentheses e.g. `(() => void)[]`
 - Nested special array syntax e.g. `string[][]`
 - Nested object type references e.g. `MyType['prop1']['prop2']`
+- `keyof` and `typeof` operators
 - Object literal keys that aren't ordinary static strings
 - Irregular spacing
 - Newlines
