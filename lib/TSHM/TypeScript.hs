@@ -12,6 +12,8 @@ data Partial a
   | Optional a
   deriving (Eq, Show)
 
+type ObjectLiteral = [Partial (String, TsType)]
+
 data TsType
   = TsTypeVoid
   | TsTypeNull
@@ -24,7 +26,7 @@ data TsType
   -- arithmetic, so this keeps things simple!
   | TsTypeNumberLiteral String
   | TsTypeTuple [TsType]
-  | TsTypeObject [Partial (String, TsType)]
+  | TsTypeObject ObjectLiteral
   | TsTypeObjectReference TsType String
   | TsTypeGeneric String (NonEmpty TsType)
   | TsTypeSubtype String TsType
@@ -57,7 +59,15 @@ data Alias = Alias
   , aliasType     :: TsType
   } deriving (Eq, Show)
 
+data Interface = Interface
+  { interfaceName     :: String
+  , interfaceTypeArgs :: Maybe (NonEmpty TsType)
+  , interfaceType     :: ObjectLiteral
+  , interfaceExtends  :: Maybe TsType
+  } deriving (Eq, Show)
+
 data Signature
   = SignatureAlias Alias
+  | SignatureInterface Interface
   | SignatureDeclaration Declaration
 

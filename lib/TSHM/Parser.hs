@@ -75,7 +75,7 @@ pFunction = Function <$> optional pTypeArgs <*> pParams <*> pReturn
 pTuple :: Parser [TsType]
 pTuple = between (char '[') (char ']') $ sepBy pType (string ", ")
 
-pObject :: Parser [Partial (String, TsType)]
+pObject :: Parser ObjectLiteral
 pObject = between (string "{ ") (string " }") (sepBy1 pPair (string ", " <|> string "; ")) <|> [] <$ string "{}"
   where pPair :: Parser (Partial (String, TsType))
         pPair = choice
@@ -127,8 +127,11 @@ pDeclaration = Declaration <$> pDeclarationName <*> pType <* optional (char ';')
 pAlias :: Parser Alias
 pAlias = Alias <$> (optional (string "export ") *> string "type " *> some alphaNumChar) <*> (optional pTypeArgs <* string " = ") <*> pType <* optional (char ';') <* eof
 
+pInterface :: Parser Interface
+pInterface = Interface <$> (optional (string "export ") *> string "interface " *> some alphaNumChar) <*> (optional pTypeArgs <* string " ") <*> pObject <*> optional (string " extends " *> pType) <* eof
+
 pSignature :: Parser Signature
-pSignature = SignatureAlias <$> pAlias <|> SignatureDeclaration <$> pDeclaration
+pSignature = SignatureAlias <$> pAlias <|> SignatureInterface <$> pInterface <|> SignatureDeclaration <$> pDeclaration
 
 parseSignature :: String -> ParseOutput
 parseSignature = parse pSignature "input"

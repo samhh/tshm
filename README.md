@@ -21,7 +21,6 @@ This is not an exhaustive list!
 
 Whilst the parser is currently very strict about whitespace/similar (see below), it's a little loose in some other areas. It is not intended to be a perfect parser of TypeScript syntax, rather merely able to support most normal use cases.
 
-- Interface definitions
 - Object keys that aren't ordinary static strings e.g. index signatures
 - `unique symbol`
 - `readonly` modifier in objects and tuples

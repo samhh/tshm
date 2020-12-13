@@ -287,6 +287,40 @@ spec = describe "TSHM.Parser" $ do
           (Just $ fromList [TsTypeMisc "A", TsTypeSubtype "B" (TsTypeMisc "string")])
           (TsTypeExpression TsOperatorUnion (TsTypeMisc "A") (TsTypeMisc "B"))
 
+  describe "pInterface" $ do
+    let p = parse' $ pInterface <* eof
+
+    it "parses without extends" $ do
+      p "interface X { a: A }" `shouldParse`
+        Interface
+          "X"
+          Nothing
+          [Required ("a", TsTypeMisc "A")]
+          Nothing
+
+      p "interface X<A, B extends Array<A>> { a: A }" `shouldParse`
+        Interface
+          "X"
+          (Just $ fromList [TsTypeMisc "A", TsTypeSubtype "B" (TsTypeGeneric "Array" $ fromList [TsTypeMisc "A"])])
+          [Required ("a", TsTypeMisc "A")]
+          Nothing
+
+
+    it "parses with extends" $ do
+      p "interface X { a: A } extends B" `shouldParse`
+        Interface
+          "X"
+          Nothing
+          [Required ("a", TsTypeMisc "A")]
+          (Just $ TsTypeMisc "B")
+
+      p "interface X<A, B extends Array<A>> { a: A } extends C" `shouldParse`
+        Interface
+          "X"
+          (Just $ fromList [TsTypeMisc "A", TsTypeSubtype "B" (TsTypeGeneric "Array" $ fromList [TsTypeMisc "A"])])
+          [Required ("a", TsTypeMisc "A")]
+          (Just $ TsTypeMisc "C")
+
   describe "pDeclaration" $ do
     let p = parse' $ pDeclaration <* eof
 

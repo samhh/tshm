@@ -6,9 +6,9 @@ import           TSHM.TypeScript
 
 fParam :: Partial Param -> String
 fParam (Required (Normal x)) = fTsType' x
-fParam (Required (Rest x)) = "..." <> fTsType' x
+fParam (Required (Rest x))   = "..." <> fTsType' x
 fParam (Optional (Normal x)) = fTsType' x <> "?"
-fParam (Optional (Rest x)) = "..." <> fTsType' x <> "?"
+fParam (Optional (Rest x))   = "..." <> fTsType' x <> "?"
 
 fParams :: [Partial Param] -> String
 fParams []  = "()"
@@ -34,6 +34,10 @@ data Location
   = NestedGeneric
   | Other
 
+fObject :: ObjectLiteral -> String
+fObject [] = "{}"
+fObject xs = "{ " <> (intercalate ", " . fmap fObjectPair $ xs) <> " }"
+
 fTsType :: TsType -> Location -> String
 fTsType TsTypeVoid                  = const "void"
 fTsType TsTypeUndefined             = const "undefined"
@@ -48,8 +52,7 @@ fTsType (TsTypeGeneric x ys)        = fGeneric (x, ys)
 fTsType (TsTypeSubtype x y)         = const $ x <> " extends " <> fTsType' y
 fTsType (TsTypeKeysOf x)            = const $ "keyof " <> fTsType' x
 fTsType (TsTypeReflection x)        = const $ "typeof " <> x
-fTsType (TsTypeObject [])           = const "{}"
-fTsType (TsTypeObject xs)           = const $ "{ " <> (intercalate ", " . fmap fObjectPair $ xs) <> " }"
+fTsType (TsTypeObject xs)           = const $ fObject xs
 fTsType (TsTypeObjectReference x k) = const $ fTsType' x <> "[\"" <> k <> "\"]"
 fTsType (TsTypeFunction x)          = const $ fFunction x
 fTsType (TsTypeExpression x y z)    = const $ fTsType' y <> " " <> fOperator x <> " " <> fTsType' z
@@ -61,12 +64,17 @@ fTsType' = (`fTsType` Other)
 fDeclaration :: Declaration -> String
 fDeclaration x = declarationName x <> " :: " <> fTsType' (declarationType x)
 
+fTypeArgs :: Maybe (NonEmpty TsType) -> String
+fTypeArgs = maybe "" $ (" " <>) . intercalate " " . fmap fTsType' . toList
+
 fAlias :: Alias -> String
 fAlias x = "type " <> aliasName x <> fTypeArgs (aliasTypeArgs x) <> " = " <> fTsType' (aliasType x)
-  where fTypeArgs :: Maybe (NonEmpty TsType) -> String
-        fTypeArgs = maybe "" $ (" " <>) . intercalate " " . fmap fTsType' . toList
+
+fInterface :: Interface -> String
+fInterface x = "interface " <> interfaceName x <> fTypeArgs (interfaceTypeArgs x) <> " " <> fObject (interfaceType x)
 
 fSignature :: Signature -> String
-fSignature (SignatureAlias x) = fAlias x
+fSignature (SignatureAlias x)       = fAlias x
+fSignature (SignatureInterface x)   = fInterface x
 fSignature (SignatureDeclaration x) = fDeclaration x
 
