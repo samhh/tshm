@@ -16,9 +16,9 @@ fParams xs  = "(" <> intercalate ", " (fmap fParam xs) <> ")"
 fFunction :: Function -> String
 fFunction x = fParams (functionParams x) <> " -> " <> fTsType' (functionReturn x)
 
-fGeneric :: (String, [TsType]) -> Location -> String
+fGeneric :: (String, NonEmpty TsType) -> Location -> String
 fGeneric (x, ys) NestedGeneric = "(" <> fGeneric (x, ys) Other <> ")"
-fGeneric (x, ys) Other = x <> " " <> (intercalate " " . fmap (`fTsType` NestedGeneric) $ ys)
+fGeneric (x, ys) Other = x <> " " <> (intercalate " " . fmap (`fTsType` NestedGeneric) $ toList ys)
 
 fObjectPair :: Partial (String, TsType) -> String
 fObjectPair (Required (k, v)) = k <> ": " <> fTsType' v

@@ -26,7 +26,7 @@ data TsType
   | TsTypeTuple [TsType]
   | TsTypeObject [Partial (String, TsType)]
   | TsTypeObjectReference TsType String
-  | TsTypeGeneric String [TsType]
+  | TsTypeGeneric String (NonEmpty TsType)
   | TsTypeSubtype String TsType
   | TsTypeReflection String
   | TsTypeKeysOf TsType
@@ -41,7 +41,7 @@ data Param
   deriving (Eq, Show)
 
 data Function = Function
-  { functionTypeArgs :: Maybe [TsType]
+  { functionTypeArgs :: Maybe (NonEmpty TsType)
   , functionParams   :: [Param]
   , functionReturn   :: TsType
   } deriving (Eq, Show)

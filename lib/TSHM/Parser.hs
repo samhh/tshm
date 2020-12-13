@@ -1,13 +1,15 @@
 module TSHM.Parser where
 
-import           Control.Monad.Combinators.Expr (Operator (..), makeExprParser)
-import           Data.List                      (foldr1)
-import           Data.Void                      ()
+import           Control.Monad.Combinators.Expr     (Operator (..),
+                                                     makeExprParser)
+import qualified Control.Monad.Combinators.NonEmpty as NE
+import           Data.List                          (foldr1)
+import           Data.Void                          ()
 import           Prelude
 import           TSHM.TypeScript
-import           Text.Megaparsec                hiding (many, some)
+import           Text.Megaparsec                    hiding (many, some)
 import           Text.Megaparsec.Char
-import qualified Text.Megaparsec.Char.Lexer     as L
+import qualified Text.Megaparsec.Char.Lexer         as L
 
 type Parser = Parsec Void String
 
@@ -79,14 +81,14 @@ pObject = between (string "{ ") (string " }") (sepBy1 pPair (string ", " <|> str
         pPair = flip f <$> some alphaNumChar <*> (True <$ string ": " <|> False <$ string "?: ") <*> pType
 
         f :: Bool -> String -> TsType -> Partial (String, TsType)
-        f True = (Required .) . (,)
+        f True  = (Required .) . (,)
         f False = (Optional .) . (,)
 
 pName :: Parser String
 pName = optional (string "export ") *> string "declare const " *> some alphaNumChar <* string ": "
 
-pTypeArgs :: Parser [TsType]
-pTypeArgs = between (char '<') (char '>') (sepBy1 pTypeArg (string ", "))
+pTypeArgs :: Parser (NonEmpty TsType)
+pTypeArgs = between (char '<') (char '>') (NE.sepBy1 pTypeArg (string ", "))
   where pTypeArg :: Parser TsType
         pTypeArg = choice
           [ try $ TsTypeSubtype <$> pTypeMisc <* string " extends " <*> pType
@@ -99,7 +101,7 @@ pParams = between (char '(') (char ')') $ sepBy pParam (string ", ")
         pParam = f <$> (isJust <$> optional (string "...")) <*> (some alphaNumChar *> string ": " *> optional (string "new ") *> pType)
 
         f :: Bool -> TsType -> Param
-        f True = Rest
+        f True  = Rest
         f False = Normal
 
 pReturn :: Parser TsType
