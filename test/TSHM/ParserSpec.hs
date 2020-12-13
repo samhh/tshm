@@ -128,15 +128,19 @@ spec = describe "TSHM.Parser" $ do
       parse' pObject "{}" `shouldParse` []
 
     it "parses non-empty flat object" $ do
-      parse' pObject "{ a: 1, b: 'two' }" `shouldParse` [("a", TsTypeNumberLiteral "1"), ("b", TsTypeStringLiteral "two")]
+      parse' pObject "{ a: 1, b: 'two' }" `shouldParse` [Required ("a", TsTypeNumberLiteral "1"), Required ("b", TsTypeStringLiteral "two")]
 
     it "parses non-empty nested object" $ do
       parse' pObject "{ a: 1, b: { c: true }[] }" `shouldParse`
-        [("a", TsTypeNumberLiteral "1"), ("b", TsTypeGeneric "Array" [TsTypeObject [("c", TsTypeBoolean True)]])]
+        [Required ("a", TsTypeNumberLiteral "1"), Required ("b", TsTypeGeneric "Array" [TsTypeObject [Required ("c", TsTypeBoolean True)]])]
 
     it "supports mixed comma and semi-colon delimiters" $ do
       parse' pObject "{ a: number, b: string; c: boolean }" `shouldParse`
-        [("a", TsTypeMisc "number"), ("b", TsTypeMisc "string"), ("c", TsTypeMisc "boolean")]
+        [Required ("a", TsTypeMisc "number"), Required ("b", TsTypeMisc "string"), Required ("c", TsTypeMisc "boolean")]
+
+    it "parses optional and required properties" $ do
+      parse' pObject "{ a: A, b?: B, c: C }" `shouldParse`
+        [Required ("a", TsTypeMisc "A"), Optional ("b", TsTypeMisc "B"), Required ("c", TsTypeMisc "C")]
 
   describe "pTuple" $ do
     it "parses empty tuple" $ do

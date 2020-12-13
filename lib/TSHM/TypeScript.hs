@@ -7,6 +7,11 @@ data TsOperator
   | TsOperatorUnion
   deriving (Eq, Show)
 
+data Partial a
+  = Required a
+  | Optional a
+  deriving (Eq, Show)
+
 data TsType
   = TsTypeVoid
   | TsTypeNull
@@ -19,7 +24,7 @@ data TsType
   -- arithmetic, so this keeps things simple!
   | TsTypeNumberLiteral String
   | TsTypeTuple [TsType]
-  | TsTypeObject [(String, TsType)]
+  | TsTypeObject [Partial (String, TsType)]
   | TsTypeObjectReference TsType String
   | TsTypeGeneric String [TsType]
   | TsTypeSubtype String TsType

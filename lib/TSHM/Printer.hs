@@ -20,8 +20,9 @@ fGeneric :: (String, [TsType]) -> Location -> String
 fGeneric (x, ys) NestedGeneric = "(" <> fGeneric (x, ys) Other <> ")"
 fGeneric (x, ys) Other = x <> " " <> (intercalate " " . fmap (`fTsType` NestedGeneric) $ ys)
 
-fObjectPair :: (String, TsType) -> String
-fObjectPair (k, v) = k <> ": " <> fTsType' v
+fObjectPair :: Partial (String, TsType) -> String
+fObjectPair (Required (k, v)) = k <> ": " <> fTsType' v
+fObjectPair (Optional (k, v)) = k <> "?: " <> fTsType' v
 
 fOperator :: TsOperator -> String
 fOperator TsOperatorIntersection = "&"

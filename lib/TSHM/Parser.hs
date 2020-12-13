@@ -73,10 +73,14 @@ pFunction = Function <$> optional pTypeArgs <*> pParams <*> pReturn
 pTuple :: Parser [TsType]
 pTuple = between (char '[') (char ']') $ sepBy pType (string ", ")
 
-pObject :: Parser [(String, TsType)]
+pObject :: Parser [Partial (String, TsType)]
 pObject = between (string "{ ") (string " }") (sepBy1 pPair (string ", " <|> string "; ")) <|> [] <$ string "{}"
-  where pPair :: Parser (String, TsType)
-        pPair = (,) <$> some alphaNumChar <* string ": " <*> pType
+  where pPair :: Parser (Partial (String, TsType))
+        pPair = flip f <$> some alphaNumChar <*> (True <$ string ": " <|> False <$ string "?: ") <*> pType
+
+        f :: Bool -> String -> TsType -> Partial (String, TsType)
+        f True = (Required .) . (,)
+        f False = (Optional .) . (,)
 
 pName :: Parser String
 pName = optional (string "export ") *> string "declare const " *> some alphaNumChar <* string ": "
