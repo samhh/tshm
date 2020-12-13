@@ -78,11 +78,17 @@ pTuple = between (char '[') (char ']') $ sepBy pType (string ", ")
 pObject :: Parser [Partial (String, TsType)]
 pObject = between (string "{ ") (string " }") (sepBy1 pPair (string ", " <|> string "; ")) <|> [] <$ string "{}"
   where pPair :: Parser (Partial (String, TsType))
-        pPair = flip f <$> some alphaNumChar <*> (True <$ string ": " <|> False <$ string "?: ") <*> pType
+        pPair = choice
+          [ try $ flip fn <$> some alphaNumChar <*> (True <$ string ": " <|> False <$ string "?: ") <*> pType
+          , method <$> some alphaNumChar <*> (isJust <$> optional (char '?')) <*> optional pTypeArgs <*> pParams <*> (string ": " *> pType)
+          ]
 
-        f :: Bool -> String -> TsType -> Partial (String, TsType)
-        f True  = (Required .) . (,)
-        f False = (Optional .) . (,)
+        fn :: Bool -> String -> TsType -> Partial (String, TsType)
+        fn True  = (Required .) . (,)
+        fn False = (Optional .) . (,)
+
+        method :: String -> Bool -> Maybe (NonEmpty TsType) -> [Partial Param] -> TsType -> Partial (String, TsType)
+        method n o g p r = (if o then Optional else Required) (n, TsTypeFunction $ Function g p r)
 
 pName :: Parser String
 pName = optional (string "export ") *> string "declare const " *> some alphaNumChar <* string ": "

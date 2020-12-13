@@ -142,6 +142,10 @@ spec = describe "TSHM.Parser" $ do
       parse' pObject "{ a: A, b?: B, c: C }" `shouldParse`
         [Required ("a", TsTypeMisc "A"), Optional ("b", TsTypeMisc "B"), Required ("c", TsTypeMisc "C")]
 
+    it "parses alternative method syntax" $ do
+      parse' pObject "{ f?<A>(): void }" `shouldParse`
+        [Optional ("f", TsTypeFunction $ Function (Just $ fromList [TsTypeMisc "A"]) [] TsTypeVoid)]
+
   describe "pTuple" $ do
     it "parses empty tuple" $ do
       parse' pTuple "[]" `shouldParse` []
