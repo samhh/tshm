@@ -352,3 +352,12 @@ spec = describe "TSHM.Parser" $ do
       p "export declare const unary: <A extends unknown[], B>(f: (...xs: A) => B) => (xs: A) => B" `shouldParse`
         Declaration "unary" (TsTypeFunction (Function (Just $ fromList [TsTypeSubtype "A" (TsTypeGeneric "Array" $ fromList [TsTypeMisc "unknown"]), TsTypeMisc "B"]) [Required $ Normal $ TsTypeFunction (Function Nothing [Required $ Rest $ TsTypeMisc "A"] (TsTypeMisc "B"))] (TsTypeFunction (Function Nothing [Required $ Normal $ TsTypeMisc "A"] (TsTypeMisc "B")))))
 
+  describe "pSignature" $ do
+    it "parses all variants" $ do
+      parse' pSignature "declare const f: void" `shouldParse` SignatureDeclaration (Declaration "f" TsTypeVoid)
+      parse' pSignature "export declare const f: void" `shouldParse` SignatureDeclaration (Declaration "f" TsTypeVoid)
+      parse' pSignature "type X = void" `shouldParse` SignatureAlias (Alias "X" Nothing TsTypeVoid)
+      parse' pSignature "export type X = void" `shouldParse` SignatureAlias (Alias "X" Nothing TsTypeVoid)
+      parse' pSignature "interface X {}" `shouldParse` SignatureInterface (Interface "X" Nothing [] Nothing)
+      parse' pSignature "export interface X {}" `shouldParse` SignatureInterface (Interface "X" Nothing [] Nothing)
+

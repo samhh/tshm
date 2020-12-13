@@ -70,4 +70,5 @@ data Signature
   = SignatureAlias Alias
   | SignatureInterface Interface
   | SignatureDeclaration Declaration
+  deriving (Eq, Show)
 

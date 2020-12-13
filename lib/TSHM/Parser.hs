@@ -131,7 +131,7 @@ pInterface :: Parser Interface
 pInterface = Interface <$> (optional (string "export ") *> string "interface " *> some alphaNumChar) <*> (optional pTypeArgs <* string " ") <*> pObject <*> optional (string " extends " *> pType) <* eof
 
 pSignature :: Parser Signature
-pSignature = SignatureAlias <$> pAlias <|> SignatureInterface <$> pInterface <|> SignatureDeclaration <$> pDeclaration
+pSignature = try (SignatureAlias <$> pAlias) <|> try (SignatureInterface <$> pInterface) <|> SignatureDeclaration <$> pDeclaration
 
 parseSignature :: String -> ParseOutput
 parseSignature = parse pSignature "input"
