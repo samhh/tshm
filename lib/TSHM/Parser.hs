@@ -1,6 +1,7 @@
 module TSHM.Parser where
 
 import           Control.Monad.Combinators.Expr (Operator (..), makeExprParser)
+import           Data.List                      (foldr1)
 import           Data.Void                      ()
 import           Prelude
 import           TSHM.TypeScript
@@ -10,12 +11,9 @@ import qualified Text.Megaparsec.Char.Lexer     as L
 
 type Parser = Parsec Void String
 
-binary :: String -> (TsType -> TsType -> TsType) -> Operator Parser TsType
-binary x f = InfixR $ f <$ string (" " <> x <> " ")
-
 operators :: [[Operator Parser TsType]]
 operators =
-  [ [ Postfix (TsTypeGeneric "Array" . pure <$ string "[]")
+  [ [ Postfix (multi (TsTypeGeneric "Array" . pure <$ string "[]"))
     ]
   , [ Prefix (TsTypeKeysOf <$ string "keyof ")
     ]
@@ -23,6 +21,11 @@ operators =
     , binary "|" (TsTypeExpression TsOperatorUnion)
     ]
   ]
+    where multi :: Alternative f => f (a -> a) -> f (a -> a)
+          multi f = foldr1 (.) <$> some f
+
+          binary :: String -> (TsType -> TsType -> TsType) -> Operator Parser TsType
+          binary x f = InfixR $ f <$ string (" " <> x <> " ")
 
 pType :: Parser TsType
 pType = (`makeExprParser` operators) $ choice

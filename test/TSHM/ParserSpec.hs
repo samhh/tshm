@@ -39,6 +39,9 @@ spec = describe "TSHM.Parser" $ do
     it "parses number literal" $ do
       parse' pType "-.123" `shouldParse` TsTypeNumberLiteral "-.123"
 
+    it "parses special array syntax" $ do
+      parse' pType "a[][]" `shouldParse` TsTypeGeneric "Array" [TsTypeGeneric "Array" [TsTypeMisc "a"]]
+
     it "parses object reference" $ do
       parse' pType "A['key']" `shouldParse` TsTypeObjectReference "A" "key"
       parse' pType "A[\"key\"]" `shouldParse` TsTypeObjectReference "A" "key"
@@ -253,9 +256,8 @@ spec = describe "TSHM.Parser" $ do
     it "parses real declarations" $ do
       p "export declare const empty: ''" `shouldParse` Declaration "empty" (TsTypeStringLiteral "")
 
-      -- FAILS: requires nested []
-      -- p "export declare const aperture: (n: number) => <A>(xs: A[]) => A[][]" `shouldParse`
-      --   Declaration "aperture" (TsTypeFunction (Function Nothing [TsTypeMisc "number"] (TsTypeFunction (Function (Just [TsTypeMisc "A"]) [TsTypeGeneric "Array" [TsTypeMisc "A"]] (TsTypeGeneric "Array" [TsTypeGeneric "Array" [TsTypeMisc "A"]])))))
+      p "export declare const aperture: (n: number) => <A>(xs: A[]) => A[][]" `shouldParse`
+        Declaration "aperture" (TsTypeFunction (Function Nothing [TsTypeMisc "number"] (TsTypeFunction (Function (Just [TsTypeMisc "A"]) [TsTypeGeneric "Array" [TsTypeMisc "A"]] (TsTypeGeneric "Array" [TsTypeGeneric "Array" [TsTypeMisc "A"]])))))
 
       p "export declare const anyPass: <A>(fs: Predicate<A>[]) => Predicate<A>" `shouldParse`
         Declaration "anyPass" (TsTypeFunction (Function (Just [TsTypeMisc "A"]) [TsTypeGeneric "Array" [TsTypeGeneric "Predicate" [TsTypeMisc "A"]]] (TsTypeGeneric "Predicate" [TsTypeMisc "A"])))
