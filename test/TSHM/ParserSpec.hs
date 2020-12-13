@@ -56,6 +56,9 @@ spec = describe "TSHM.Parser" $ do
     it "parses keyof" $ do
       parse' pType "keyof A<B>" `shouldParse` TsTypeKeysOf (TsTypeGeneric "A" [TsTypeMisc "B"])
 
+    it "parses typeof" $ do
+      parse' pType "typeof x & y" `shouldParse` TsTypeExpression TsOperatorIntersection (TsTypeReflection "x") (TsTypeMisc "y")
+
   describe "pFunction" $ do
     it "parses minimal viable function" $ do
       parse' pFunction "() => void" `shouldParse` Function Nothing [] TsTypeVoid

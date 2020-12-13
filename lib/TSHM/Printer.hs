@@ -40,6 +40,7 @@ fTsType (TsTypeTuple xs)            = const $ "[" <> (intercalate ", " . fmap fT
 fTsType (TsTypeGeneric x ys)        = fGeneric (x, ys)
 fTsType (TsTypeSubtype x y)         = const $ x <> " extends " <> fTsType' y
 fTsType (TsTypeKeysOf x)            = const $ "keyof " <> fTsType' x
+fTsType (TsTypeReflection x)        = const $ "typeof " <> x
 fTsType (TsTypeObject [])           = const "{}"
 fTsType (TsTypeObject xs)           = const $ "{ " <> (intercalate ", " . fmap fObjectPair $ xs) <> " }"
 fTsType (TsTypeObjectReference x k) = const $ x <> "[\"" <> k <> "\"]"

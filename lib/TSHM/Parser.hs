@@ -37,6 +37,7 @@ pType = (`makeExprParser` operators) $ choice
   , TsTypeFunction <$> pFunction
   , uncurry TsTypeObjectReference <$> try pObjectReference
   , try pGeneric
+  , TsTypeReflection <$> (string "typeof " *> some alphaNumChar)
   , TsTypeMisc <$> pTypeMisc
   ]
 
