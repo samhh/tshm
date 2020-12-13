@@ -5,8 +5,8 @@ A WIP parser for TypeScript declarations that seeks to output HM-style type sign
 Example usage:
 
 ```
-$ tshm "export declare const f: <A>(a: A) => (b: string) => A"
-f :: a -> string -> a
+$ tshm "export declare const f: <A>(a: A) => <E>(b: Either<string, Option<A>>) => A"
+f :: a -> Either string (Option a) -> a
 ```
 
 Should an invalid input be provided the program will fail with the appropriate exit code, enabling the use of tshm in shell pipelines.
@@ -32,6 +32,4 @@ Whilst the parser is currently very strict about whitespace/similar (see below),
 ### Output
 
 There is an open question as to how "Haskell-ified" the output should be.
-
-- No parentheses around top-level higher-kinded types e.g. `(Either e (Option a))` -> `Either e (Option a)`
 

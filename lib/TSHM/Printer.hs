@@ -6,37 +6,48 @@ import           TSHM.TypeScript
 
 fParams :: [TsType] -> String
 fParams []  = "()"
-fParams [x] = fTsType x
-fParams xs  = "(" <> intercalate ", " (fmap fTsType xs) <> ")"
+fParams [x] = fTsType' x
+fParams xs  = "(" <> intercalate ", " (fmap fTsType' xs) <> ")"
 
 fFunction :: Function -> String
-fFunction x = fParams (functionParams x) <> " -> " <> fTsType (functionReturn x)
+fFunction x = fParams (functionParams x) <> " -> " <> fTsType' (functionReturn x)
+
+fGeneric :: (String, [TsType]) -> Location -> String
+fGeneric (x, ys) NestedGeneric = "(" <> fGeneric (x, ys) Other <> ")"
+fGeneric (x, ys) Other = x <> " " <> (intercalate " " . fmap (`fTsType` NestedGeneric) $ ys)
 
 fObjectPair :: (String, TsType) -> String
-fObjectPair (k, v) = k <> ": " <> fTsType v
+fObjectPair (k, v) = k <> ": " <> fTsType' v
 
 fOperator :: TsOperator -> String
 fOperator TsOperatorIntersection = "&"
 fOperator TsOperatorUnion        = "|"
 
-fTsType :: TsType -> String
-fTsType TsTypeVoid                  = "void"
-fTsType TsTypeUndefined             = "undefined"
-fTsType TsTypeNull                  = "null"
-fTsType (TsTypeBoolean x)           = if x then "true" else "false"
-fTsType (TsTypeMisc [x])            = pure . toLower $ x
-fTsType (TsTypeMisc x)              = x
-fTsType (TsTypeStringLiteral x)     = x
-fTsType (TsTypeNumberLiteral x)     = x
-fTsType (TsTypeTuple xs)            = "[" <> (intercalate ", " . fmap fTsType $ xs) <> "]"
-fTsType (TsTypeGeneric x ys)        = "(" <> x <> " " <> (intercalate " " . fmap fTsType $ ys) <> ")"
-fTsType (TsTypeSubtype x y)         = x <> " extends " <> fTsType y
-fTsType (TsTypeObject [])           = "{}"
-fTsType (TsTypeObject xs)           = "{ " <> (intercalate ", " . fmap fObjectPair $ xs) <> " }"
-fTsType (TsTypeObjectReference x k) = x <> "[\"" <> k <> "\"]"
-fTsType (TsTypeFunction x)          = fFunction x
-fTsType (TsTypeExpression x y z)    = fTsType y <> " " <> fOperator x <> " " <> fTsType z
+data Location
+  = NestedGeneric
+  | Other
+
+fTsType :: TsType -> Location -> String
+fTsType TsTypeVoid                  = const "void"
+fTsType TsTypeUndefined             = const "undefined"
+fTsType TsTypeNull                  = const "null"
+fTsType (TsTypeBoolean x)           = const $ if x then "true" else "false"
+fTsType (TsTypeMisc [x])            = const $ pure . toLower $ x
+fTsType (TsTypeMisc x)              = const x
+fTsType (TsTypeStringLiteral x)     = const x
+fTsType (TsTypeNumberLiteral x)     = const x
+fTsType (TsTypeTuple xs)            = const $ "[" <> (intercalate ", " . fmap fTsType' $ xs) <> "]"
+fTsType (TsTypeGeneric x ys)        = fGeneric (x, ys)
+fTsType (TsTypeSubtype x y)         = const $ x <> " extends " <> fTsType' y
+fTsType (TsTypeObject [])           = const "{}"
+fTsType (TsTypeObject xs)           = const $ "{ " <> (intercalate ", " . fmap fObjectPair $ xs) <> " }"
+fTsType (TsTypeObjectReference x k) = const $ x <> "[\"" <> k <> "\"]"
+fTsType (TsTypeFunction x)          = const $ fFunction x
+fTsType (TsTypeExpression x y z)    = const $ fTsType' y <> " " <> fOperator x <> " " <> fTsType' z
+
+fTsType' :: TsType -> String
+fTsType' = (`fTsType` Other)
 
 fDeclaration :: Declaration -> String
-fDeclaration x = declarationName x <> " :: " <> fTsType (declarationType x)
+fDeclaration x = declarationName x <> " :: " <> fTsType' (declarationType x)
 
