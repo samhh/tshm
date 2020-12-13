@@ -42,7 +42,7 @@ data Param
 
 data Function = Function
   { functionTypeArgs :: Maybe (NonEmpty TsType)
-  , functionParams   :: [Param]
+  , functionParams   :: [Partial Param]
   , functionReturn   :: TsType
   } deriving (Eq, Show)
 

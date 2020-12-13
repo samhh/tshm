@@ -4,11 +4,13 @@ import           Data.Char       (toLower)
 import           Prelude
 import           TSHM.TypeScript
 
-fParam :: Param -> String
-fParam (Normal x) = fTsType' x
-fParam (Rest x) = "..." <> fTsType' x
+fParam :: Partial Param -> String
+fParam (Required (Normal x)) = fTsType' x
+fParam (Required (Rest x)) = "..." <> fTsType' x
+fParam (Optional (Normal x)) = fTsType' x <> "?"
+fParam (Optional (Rest x)) = "..." <> fTsType' x <> "?"
 
-fParams :: [Param] -> String
+fParams :: [Partial Param] -> String
 fParams []  = "()"
 fParams [x] = fParam x
 fParams xs  = "(" <> intercalate ", " (fmap fParam xs) <> ")"

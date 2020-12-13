@@ -95,14 +95,22 @@ pTypeArgs = between (char '<') (char '>') (NE.sepBy1 pTypeArg (string ", "))
           , pType
           ]
 
-pParams :: Parser [Param]
+pParams :: Parser [Partial Param]
 pParams = between (char '(') (char ')') $ sepBy pParam (string ", ")
-  where pParam :: Parser Param
-        pParam = f <$> (isJust <$> optional (string "...")) <*> (some alphaNumChar *> string ": " *> optional (string "new ") *> pType)
+  where pParam :: Parser (Partial Param)
+        pParam = f <$> rest <*> (some alphaNumChar *> sep) <*> (optional (string "new ") *> pType)
 
-        f :: Bool -> TsType -> Param
-        f True  = Rest
-        f False = Normal
+        rest :: Parser Bool
+        rest = isJust <$> optional (string "...")
+
+        sep :: Parser Bool
+        sep = True <$ string ": " <|> False <$ string "?: "
+
+        f :: Bool -> Bool -> TsType -> Partial Param
+        f True True   = Required . Rest
+        f True False  = Optional . Rest
+        f False True  = Required . Normal
+        f False False = Optional . Normal
 
 pReturn :: Parser TsType
 pReturn = string " => " *> pType
