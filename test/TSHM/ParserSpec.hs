@@ -53,6 +53,9 @@ spec = describe "TSHM.Parser" $ do
     it "parses infix operators" $ do
       parse' pType "A & B | C" `shouldParse` TsTypeExpression TsOperatorIntersection (TsTypeMisc "A") (TsTypeExpression TsOperatorUnion (TsTypeMisc "B") (TsTypeMisc "C"))
 
+    it "parses keyof" $ do
+      parse' pType "keyof A<B>" `shouldParse` TsTypeKeysOf (TsTypeGeneric "A" [TsTypeMisc "B"])
+
   describe "pFunction" $ do
     it "parses minimal viable function" $ do
       parse' pFunction "() => void" `shouldParse` Function Nothing [] TsTypeVoid
@@ -254,7 +257,6 @@ spec = describe "TSHM.Parser" $ do
       p "export declare const merge: <A>(x: A) => <B>(y: B) => A & B" `shouldParse`
         Declaration "merge" (TsTypeFunction (Function (Just [TsTypeMisc "A"]) [TsTypeMisc "A"] (TsTypeFunction (Function (Just [TsTypeMisc "B"]) [TsTypeMisc "B"] (TsTypeExpression TsOperatorIntersection (TsTypeMisc "A") (TsTypeMisc "B"))))))
 
-      -- FAILS: requires keyof
-      -- p "export declare const omit: <K extends string>(ks: K[]) => <V, A extends Record<K, V>>(x: Partial<A>) => Pick<A, Exclude<keyof A, K>>" `shouldParse`
-      --   Declaration "omit" (TsTypeFunction (Function (Just [TsTypeSubtype "K" (TsTypeMisc "string")]) [TsTypeMisc "K[]"] (TsTypeFunction (Function (Just [TsTypeMisc "V", TsTypeMisc "A extends Record<K, V>"]) [TsTypeMisc "Partial<A>"] (TsTypeMisc "Pick<A, Exclude<keyof A, K>>")))))
+      p "export declare const omit: <K extends string>(ks: K[]) => <V, A extends Record<K, V>>(x: Partial<A>) => Pick<A, Exclude<keyof A, K>>" `shouldParse`
+        Declaration "omit" (TsTypeFunction (Function (Just [TsTypeSubtype "K" (TsTypeMisc "string")]) [TsTypeGeneric "Array" [TsTypeMisc "K"]] (TsTypeFunction (Function (Just [TsTypeMisc "V", TsTypeSubtype "A" (TsTypeGeneric "Record" [TsTypeMisc "K", TsTypeMisc "V"])]) [TsTypeGeneric "Partial" [TsTypeMisc "A"]] (TsTypeGeneric "Pick" [TsTypeMisc "A", TsTypeGeneric "Exclude" [TsTypeKeysOf (TsTypeMisc "A"), TsTypeMisc "K"]])))))
 

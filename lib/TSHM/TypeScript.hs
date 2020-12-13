@@ -23,6 +23,7 @@ data TsType
   | TsTypeObjectReference String String
   | TsTypeGeneric String [TsType]
   | TsTypeSubtype String TsType
+  | TsTypeKeysOf TsType
   | TsTypeFunction Function
   | TsTypeExpression TsOperator TsType TsType
   deriving (Eq, Show)

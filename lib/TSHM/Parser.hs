@@ -17,6 +17,8 @@ operators :: [[Operator Parser TsType]]
 operators =
   [ [ Postfix (TsTypeGeneric "Array" . pure <$ string "[]")
     ]
+  , [ Prefix (TsTypeKeysOf <$ string "keyof ")
+    ]
   , [ binary "&" (TsTypeExpression TsOperatorIntersection)
     , binary "|" (TsTypeExpression TsOperatorUnion)
     ]
