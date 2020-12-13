@@ -23,7 +23,6 @@ This is not an exhaustive list!
 - Nested special array syntax e.g. `string[][]`
 - Object literal keys that aren't ordinary static strings
 - Object type references e.g. `MyType['myProp']`
-- `extends` clauses
 - Irregular spacing
 - Newlines
 - Semicolons

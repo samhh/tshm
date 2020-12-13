@@ -67,6 +67,21 @@ spec = describe "TSHM.Parser" $ do
     it "parses curried function" $ do
       parse' pFunction "() => () => void" `shouldParse` Function Nothing [] (TsTypeFunction (Function Nothing [] TsTypeVoid))
 
+    it "supports extends clause in function generics" $ do
+      parse' pFunction "<B, A extends Array<B>>(f: <C extends number, D>(x: 'ciao') => string) => void" `shouldParse`
+        Function
+          ( Just
+            [ TsTypeMisc "B"
+            , TsTypeSubtype "A" (TsTypeGeneric "Array" [TsTypeMisc "B"])
+            ]
+          )
+          [ TsTypeFunction (Function
+              (Just [TsTypeSubtype "C" (TsTypeMisc "number"), TsTypeMisc "D"])
+              [TsTypeStringLiteral "ciao"]
+              (TsTypeMisc "string"))
+          ]
+          TsTypeVoid
+
     it "parses complex function" $ do
       parse' pFunction "<A, Array<Option<B>>>(x: number, y: <C>(z: C) => () => C) => () => void" `shouldParse`
         Function
@@ -81,9 +96,9 @@ spec = describe "TSHM.Parser" $ do
           )
           [ TsTypeMisc "number"
           , TsTypeFunction (Function
-            (Just [TsTypeMisc "C"])
-            [TsTypeMisc "C"]
-            (TsTypeFunction (Function Nothing [] (TsTypeMisc "C"))))
+              (Just [TsTypeMisc "C"])
+              [TsTypeMisc "C"]
+              (TsTypeFunction (Function Nothing [] (TsTypeMisc "C"))))
           ]
           ( TsTypeFunction (Function Nothing [] TsTypeVoid))
 

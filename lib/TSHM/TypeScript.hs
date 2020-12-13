@@ -21,6 +21,7 @@ data TsType
   | TsTypeTuple [TsType]
   | TsTypeObject [(String, TsType)]
   | TsTypeGeneric String [TsType]
+  | TsTypeSubtype String TsType
   | TsTypeFunction Function
   | TsTypeExpression TsOperator TsType TsType
   deriving (Eq, Show)

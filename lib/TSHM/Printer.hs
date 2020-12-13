@@ -28,6 +28,7 @@ fTsType (TsTypeStringLiteral x)  = x
 fTsType (TsTypeNumberLiteral x)  = x
 fTsType (TsTypeTuple xs)         = "[" <> (intercalate ", " . fmap fTsType $ xs) <> "]"
 fTsType (TsTypeGeneric x ys)     = "(" <> x <> " todo:" <> show (length ys) <> ")"
+fTsType (TsTypeSubtype x y)      = x <> " extends " <> fTsType y
 fTsType (TsTypeObject [])        = "{}"
 fTsType (TsTypeObject xs)        = "{ " <> (intercalate ", " . fmap fObjectPair $ xs) <> " }"
 fTsType (TsTypeFunction x)       = fFunction x
