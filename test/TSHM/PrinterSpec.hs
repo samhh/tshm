@@ -22,12 +22,11 @@ spec = describe "TSHM.Printer" $ do
     pp "type X = () => string" =*= "type X = () -> string"
 
   it "prints interfaces" $ do
-    pp "interface X { a: B }" =*= "type X = { a: b }"
-    -- TODO should only lowercase known type args i.e. B and Y should remain uppercase
-    pp "interface X extends Y { a: B }" =*= "type X = { a: b } & y"
+    pp "interface X { a: B }" =*= "type X = { a: B }"
+    pp "interface X extends Y { a: B }" =*= "type X = { a: B } & Y"
 
   it "prints declarations" $ do
-    pp "declare const f: (x: A) => (y: B) => C" =*= "f :: a -> b -> c"
+    pp "declare const f: (x: A) => (y: B) => C" =*= "f :: A -> B -> C"
     pp "declare const f: <A>(x: A) => [A, A]" =*= "f :: forall a. a -> [a, a]"
 
   it "prints universal quantification and subtypes" $ do

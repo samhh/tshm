@@ -34,7 +34,13 @@ fParams xs  = do
   pure y
 
 fMisc :: String -> State PrintState String
-fMisc [x] = pure . pure . toLower $ x
+-- If the type is a single character, and we know about it from a type argument
+-- somewhere, then lowercase it
+fMisc [x] = pure . bool x (toLower x) . any isTypeArg . ((<>) <$> implicitTypeArgs <*> explicitTypeArgs) <$> get
+  where isTypeArg :: TsType -> Bool
+        isTypeArg (TsTypeMisc [y])      = y == x
+        isTypeArg (TsTypeSubtype [y] _) = y == x
+        isTypeArg _                     = False
 fMisc x   = pure x
 
 fSubtype :: String -> TsType -> State PrintState String
@@ -44,7 +50,7 @@ fFunction :: Function -> State PrintState String
 fFunction x = do
   nested <- inParams <$> get
   let tas = maybe [] toList (functionTypeArgs x)
-  modify $ \s -> s { typeArgs = typeArgs s <> tas }
+  modify $ \s -> s { implicitTypeArgs = implicitTypeArgs s <> tas }
 
   (doIf (surround "(" ")") nested .) . surrounding " -> " <$> fParams (functionParams x) <*> fTsType (functionReturn x)
 
@@ -107,10 +113,12 @@ fDeclaration x = (\t ps -> declarationName x <> " :: " <> renderedTypeArgs ps <>
 
 fAlias :: Alias -> State PrintState String
 fAlias x = do
-  explicitTargs <- intercalate " " <$> mapMaybeM printableTypeArg (maybe [] toList (aliasTypeArgs x))
+  let explicitTargs = maybe [] toList (aliasTypeArgs x)
+  modify $ \s -> s { explicitTypeArgs = explicitTypeArgs s <> explicitTargs }
+  explicitTargsP <- intercalate " " <$> mapMaybeM printableTypeArg explicitTargs
   ttype <- fTsType (aliasType x)
   ps <- renderPrintState
-  pure $ "type " <> aliasName x <> (if null explicitTargs then "" else " ") <> explicitTargs <> " = " <> renderedTypeArgs ps <> renderedSubtypes ps <> ttype
+  pure $ "type " <> aliasName x <> (if null explicitTargsP then "" else " ") <> explicitTargsP <> " = " <> renderedTypeArgs ps <> renderedSubtypes ps <> ttype
     where printableTypeArg :: TsType -> State PrintState (Maybe String)
           printableTypeArg (TsTypeMisc y)      = Just <$> fMisc y
           printableTypeArg (TsTypeSubtype y z) = Just . surround "(" ")" <$> fSubtype y z
@@ -123,7 +131,7 @@ data RenderedPrintState = RenderedPrintState
 
 renderPrintState :: State PrintState RenderedPrintState
 renderPrintState = do
-  tas <- typeArgs <$> get
+  tas <- implicitTypeArgs <$> get
 
   targs <- fmap (guarded (not . null)) . mapMaybeM printableTypeArg $ tas
   let targsSig = maybe "" (("forall " <>) . (<> ". ") . intercalate " ") targs
@@ -150,8 +158,9 @@ fSignature (SignatureDeclaration y) = fDeclaration y
 data PrintState = PrintState
   { ambiguouslyNested :: Bool
   , inParams          :: Bool
-  , typeArgs          :: [TsType]
+  , explicitTypeArgs  :: [TsType]
+  , implicitTypeArgs  :: [TsType]
   }
 
 printSignature :: Signature -> String
-printSignature x = evalState (fSignature x) (PrintState False False [])
+printSignature x = evalState (fSignature x) (PrintState False False [] [])
