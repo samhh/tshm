@@ -137,7 +137,11 @@ pAlias :: Parser Alias
 pAlias = Alias <$> (optional (string "export ") *> string "type " *> some alphaNumChar) <*> (optional pTypeArgs <* string " = ") <*> pType <* optional (char ';')
 
 pInterface :: Parser Interface
-pInterface = Interface <$> (optional (string "export ") *> string "interface " *> some alphaNumChar) <*> (optional pTypeArgs <* string " ") <*> pObject <*> optional (string " extends " *> pType)
+pInterface = Interface
+  <$> (optional (string "export ") *> string "interface " *> some alphaNumChar)
+  <*> optional pTypeArgs
+  <*> optional (string " extends " *> pType)
+  <*> (char ' ' *> pObject)
 
 pSignature :: Parser Signature
 pSignature = (try (SignatureAlias <$> pAlias) <|> try (SignatureInterface <$> pInterface) <|> SignatureDeclaration <$> pDeclaration) <* eof

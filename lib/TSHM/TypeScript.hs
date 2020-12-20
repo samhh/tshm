@@ -62,8 +62,8 @@ data Alias = Alias
 data Interface = Interface
   { interfaceName     :: String
   , interfaceTypeArgs :: Maybe (NonEmpty TsType)
-  , interfaceType     :: ObjectLiteral
   , interfaceExtends  :: Maybe TsType
+  , interfaceType     :: ObjectLiteral
   } deriving (Eq, Show)
 
 fromInterface :: Interface -> Alias

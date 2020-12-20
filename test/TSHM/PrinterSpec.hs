@@ -24,7 +24,7 @@ spec = describe "TSHM.Printer" $ do
   it "prints interfaces" $ do
     pp "interface X { a: B }" =*= "type X = { a: b }"
     -- TODO should only lowercase known type args i.e. B and Y should remain uppercase
-    pp "interface X { a: B } extends Y" =*= "type X = { a: b } & y"
+    pp "interface X extends Y { a: B }" =*= "type X = { a: b } & y"
 
   it "prints declarations" $ do
     pp "declare const f: (x: A) => (y: B) => C" =*= "f :: a -> b -> c"
@@ -50,8 +50,8 @@ spec = describe "TSHM.Printer" $ do
         "Do :: Either never {}"
       pp "export type Json = boolean | number | string | null | JsonArray | JsonRecord" =*=
         "type Json = boolean | number | string | null | JsonArray | JsonRecord"
-      -- pp "export interface JsonArray extends ReadonlyArray<Json> {}" =*=
-      --   "type JsonArray = {} & ReadonlyArray Json"
+      pp "export interface JsonArray extends ReadonlyArray<Json> {}" =*=
+        "type JsonArray = {} & ReadonlyArray Json"
 
     it "fp-ts/Array" $ do
       pp "export declare const zero: <A>() => A[]" =*=

@@ -301,31 +301,30 @@ spec = describe "TSHM.Parser" $ do
         Interface
           "X"
           Nothing
-          [Required ("a", TsTypeMisc "A")]
           Nothing
+          [Required ("a", TsTypeMisc "A")]
 
       p "interface X<A, B extends Array<A>> { a: A }" `shouldParse`
         Interface
           "X"
           (Just $ fromList [TsTypeMisc "A", TsTypeSubtype "B" (TsTypeGeneric "Array" $ fromList [TsTypeMisc "A"])])
-          [Required ("a", TsTypeMisc "A")]
           Nothing
-
+          [Required ("a", TsTypeMisc "A")]
 
     it "parses with extends" $ do
-      p "interface X { a: A } extends B" `shouldParse`
+      p "interface X extends B { a: A }" `shouldParse`
         Interface
           "X"
           Nothing
-          [Required ("a", TsTypeMisc "A")]
           (Just $ TsTypeMisc "B")
+          [Required ("a", TsTypeMisc "A")]
 
-      p "interface X<A, B extends Array<A>> { a: A } extends C" `shouldParse`
+      p "interface X<A, B extends Array<A>> extends C { a: A }" `shouldParse`
         Interface
           "X"
           (Just $ fromList [TsTypeMisc "A", TsTypeSubtype "B" (TsTypeGeneric "Array" $ fromList [TsTypeMisc "A"])])
-          [Required ("a", TsTypeMisc "A")]
           (Just $ TsTypeMisc "C")
+          [Required ("a", TsTypeMisc "A")]
 
   describe "pDeclaration" $ do
     let p = parse' $ pDeclaration <* eof
@@ -340,8 +339,8 @@ spec = describe "TSHM.Parser" $ do
       parse' pSignature "export declare const f: void" `shouldParse` SignatureDeclaration (Declaration "f" TsTypeVoid)
       parse' pSignature "type X = void" `shouldParse` SignatureAlias (Alias "X" Nothing TsTypeVoid)
       parse' pSignature "export type X = void" `shouldParse` SignatureAlias (Alias "X" Nothing TsTypeVoid)
-      parse' pSignature "interface X {}" `shouldParse` SignatureInterface (Interface "X" Nothing [] Nothing)
-      parse' pSignature "export interface X {}" `shouldParse` SignatureInterface (Interface "X" Nothing [] Nothing)
+      parse' pSignature "interface X {}" `shouldParse` SignatureInterface (Interface "X" Nothing Nothing [])
+      parse' pSignature "export interface X {}" `shouldParse` SignatureInterface (Interface "X" Nothing Nothing [])
 
     it "parses real signatures" $ do
       parse' pSignature "export declare const empty: ''" `shouldParse` SignatureDeclaration (Declaration "empty" (TsTypeStringLiteral ""))
@@ -362,4 +361,4 @@ spec = describe "TSHM.Parser" $ do
         SignatureDeclaration (Declaration "unary" (TsTypeFunction (Function (Just $ fromList [TsTypeSubtype "A" (TsTypeGeneric "Array" $ fromList [TsTypeMisc "unknown"]), TsTypeMisc "B"]) [Required $ Normal $ TsTypeFunction (Function Nothing [Required $ Rest $ TsTypeMisc "A"] (TsTypeMisc "B"))] (TsTypeFunction (Function Nothing [Required $ Normal $ TsTypeMisc "A"] (TsTypeMisc "B"))))))
 
       parse' pSignature "export interface Some<A> { readonly _tag: 'Some', readonly value: A }" `shouldParse`
-        SignatureInterface (Interface "Some" (Just $ fromList [TsTypeMisc "A"]) [Required ("_tag", TsTypeStringLiteral "Some"), Required ("value", TsTypeMisc "A")] Nothing)
+        SignatureInterface (Interface "Some" (Just $ fromList [TsTypeMisc "A"]) Nothing [Required ("_tag", TsTypeStringLiteral "Some"), Required ("value", TsTypeMisc "A")])
