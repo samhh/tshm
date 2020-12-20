@@ -20,7 +20,7 @@ operators =
       <|> (flip TsTypeObjectReference <$> between (char '[') (char ']') pStringLiteral)
       )
     )]
-  , [ Prefix (TsTypeKeysOf <$ string "keyof ")
+  , [ Prefix (TsTypeKeysOf <$ string "keyof" <* hspace1)
     ]
   , [ binary "&" (TsTypeExpression TsOperatorIntersection)
     , binary "|" (TsTypeExpression TsOperatorUnion)
@@ -42,7 +42,7 @@ pIdentifier = f <$> uniChar <*> optional (some (uniChar <|> numberChar))
         f x ys = x : fromMaybe "" ys
 
 pType :: Parser TsType
-pType = (`makeExprParser` operators) $ optional (string "readonly ") *> choice
+pType = (`makeExprParser` operators) $ optional (string "readonly" <* hspace1) *> choice
   [ try $ TsTypeGrouped <$> between (char '(') (char ')') pType
   , TsTypeVoid <$ string "void"
   , TsTypeNull <$ string "null"
@@ -54,7 +54,7 @@ pType = (`makeExprParser` operators) $ optional (string "readonly ") *> choice
   , TsTypeObject <$> pObject
   , TsTypeFunction <$> pFunction
   , try pGeneric
-  , TsTypeReflection <$> (string "typeof " *> some alphaNumChar)
+  , TsTypeReflection <$> (string "typeof" *> hspace1 *> some alphaNumChar)
   , TsTypeMisc <$> pTypeMisc
   ]
 
@@ -82,14 +82,17 @@ pFunction :: Parser Function
 pFunction = Function <$> optional pTypeArgs <*> pParams <*> pReturn
 
 pTuple :: Parser [TsType]
-pTuple = between (char '[') (char ']') $ sepBy pType (string ", ")
+pTuple = between (char '[' <* space) (space *> char ']') $ sepBy pType (char ',' <* space)
 
 pObject :: Parser ObjectLiteral
-pObject = between (string "{ ") (string " }") (sepBy1 pPair (string ", " <|> string "; ")) <|> [] <$ string "{}"
+pObject =
+      [] <$ string "{}"
+  <|> between (char '{' <* space) (space *> char '}') (sepBy1 pPair
+        ((char ',' <|> char ';' <|> try (newline <* notFollowedBy (char '}'))) <* space))
   where pPair :: Parser (Partial (String, TsType))
-        pPair = optional (string "readonly ") *> choice
-          [ try $ flip fn <$> pIdentifier <*> (True <$ string ": " <|> False <$ string "?: ") <*> pType
-          , method <$> pIdentifier <*> (isJust <$> optional (char '?')) <*> optional pTypeArgs <*> pParams <*> (string ": " *> pType)
+        pPair = optional (string "readonly" <* hspace1) *> choice
+          [ try $ flip fn <$> pIdentifier <*> (True <$ (char ':' <* hspace) <|> False <$ (string "?:" <* hspace)) <*> pType
+          , method <$> pIdentifier <*> (isJust <$> optional (char '?')) <*> optional pTypeArgs <*> pParams <*> (char ':' *> hspace *> pType)
           ]
 
         fn :: Bool -> String -> TsType -> Partial (String, TsType)
@@ -100,26 +103,26 @@ pObject = between (string "{ ") (string " }") (sepBy1 pPair (string ", " <|> str
         method n o g p r = (if o then Optional else Required) (n, TsTypeFunction $ Function g p r)
 
 pDeclarationName :: Parser String
-pDeclarationName = optional (string "export ") *> string "declare const " *> pIdentifier <* string ": "
+pDeclarationName = optional (string "export" <* hspace1) *> (string "declare const" <* hspace1) *> pIdentifier <* char ':' <* hspace
 
 pTypeArgs :: Parser (NonEmpty TsType)
-pTypeArgs = between (char '<') (char '>') (NE.sepBy1 pTypeArg (string ", "))
+pTypeArgs = between (char '<') (char '>') (NE.sepBy1 pTypeArg (char ',' <* space))
   where pTypeArg :: Parser TsType
         pTypeArg = choice
-          [ try $ TsTypeSubtype <$> pTypeMisc <* string " extends " <*> pType
+          [ try $ TsTypeSubtype <$> pTypeMisc <* hspace1 <* string "extends" <* hspace1 <*> pType
           , pType
           ]
 
 pParams :: Parser [Partial Param]
-pParams = between (char '(') (char ')') $ space *> sepBy pParam (string "," <* space) <* space
+pParams = between (char '(') (char ')') $ space *> sepBy pParam (char ',' <* space) <* space
   where pParam :: Parser (Partial Param)
-        pParam = f <$> rest <*> (some alphaNumChar *> sep) <*> (optional (string "new ") *> pType)
+        pParam = f <$> rest <*> (some alphaNumChar *> sep) <*> (optional (string "new" <* hspace1) *> pType)
 
         rest :: Parser Bool
         rest = isJust <$> optional (string "...")
 
         sep :: Parser Bool
-        sep = True <$ string ": " <|> False <$ string "?: "
+        sep = True <$ (char ':' <* hspace) <|> False <$ (string "?:" <* hspace)
 
         f :: Bool -> Bool -> TsType -> Partial Param
         f True True   = Required . Rest
@@ -128,20 +131,20 @@ pParams = between (char '(') (char ')') $ space *> sepBy pParam (string "," <* s
         f False False = Optional . Normal
 
 pReturn :: Parser TsType
-pReturn = string " => " *> pType
+pReturn = hspace1 *> string "=>" *> space1 *> pType
 
 pDeclaration :: Parser Declaration
 pDeclaration = Declaration <$> pDeclarationName <*> pType <* optional (char ';')
 
 pAlias :: Parser Alias
-pAlias = Alias <$> (optional (string "export ") *> string "type " *> some alphaNumChar) <*> (optional pTypeArgs <* string " = ") <*> pType <* optional (char ';')
+pAlias = Alias <$> (optional (string "export" <* hspace1) *> (string "type" <* hspace1) *> some alphaNumChar) <*> (optional pTypeArgs <* (space1 *> char '=' <* space1)) <*> pType <* optional (char ';')
 
 pInterface :: Parser Interface
 pInterface = Interface
-  <$> (optional (string "export ") *> string "interface " *> some alphaNumChar)
+  <$> (optional (string "export" <* hspace1) *> (string "interface" <* hspace1) *> some alphaNumChar)
   <*> optional pTypeArgs
-  <*> optional (string " extends " *> pType)
-  <*> (char ' ' *> pObject)
+  <*> optional (try $ (hspace1 *> string "extends" <* hspace1) *> pType)
+  <*> (space1 *> pObject)
 
 pSignature :: Parser Signature
 pSignature = (try (SignatureAlias <$> pAlias) <|> try (SignatureInterface <$> pInterface) <|> SignatureDeclaration <$> pDeclaration) <* eof

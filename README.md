@@ -12,6 +12,8 @@ $ tshm "export type Option<A> = None | Some<A>"
 type Option a = None | Some a
 ```
 
+Check out the "printer" tests for some real-world examples.
+
 Should an invalid input be provided the program will fail with the appropriate exit code, enabling the use of tshm in shell pipelines.
 
 Messages are always printed upon failure. Should the failure be due to a parser error, the raw error is printed to the console to assist in debugging.
@@ -22,15 +24,14 @@ This is not an exhaustive list!
 
 ### Input
 
-Whilst the parser is currently very strict about whitespace/similar (see below), it's a little loose in some other areas. It is not intended to be a perfect parser of TypeScript syntax, rather merely able to support most normal use cases.
+The parser is not intended to be a perfect parser of TypeScript syntax, rather merely able to support most normal use cases. It may be a little strict with whitespace in some areas, and a little lax about correctness in others.
 
 - Enums
 - Object keys that aren't ordinary identifiers e.g. index signatures
 - Object property accessors that aren't string literals
 - `unique symbol`
 - Dedicated parsing for newtype-ts
-- Irregular spacing
-- Newlines (and by extension newline-delimited object types)
+- Trailing commas
 
 ### Output
 
@@ -39,8 +40,5 @@ There is an open question as to how "Haskell-ified" the output should be.
 - Generics aren't given clarifying parentheses in the presence of object reference types e.g. `F<A>['k']`
 - Output never utilises newlines
 - `readonly` modifier isn't output
-
-### Configuration
-
-- Toggle universal quantification
+- Toggleable universal quantification
 

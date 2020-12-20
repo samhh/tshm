@@ -11,7 +11,7 @@ import           Test.Hspec.Megaparsec
 import           Text.Megaparsec       (ParseErrorBundle, Parsec, parse, eof)
 
 unlines' :: [String] -> String
-unlines' = concatMap (<> "\n")
+unlines' = intercalate "\n"
 
 parse' :: Parsec e s a -> s -> Either (ParseErrorBundle s e) a
 parse' = flip parse ""

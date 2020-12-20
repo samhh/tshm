@@ -7,6 +7,9 @@ import           Test.Hspec
 import           Test.Hspec.Hedgehog (PropertyT, (===))
 import           Text.Megaparsec     (ParseErrorBundle)
 
+unlines' :: [String] -> String
+unlines' = intercalate "\n"
+
 pp :: String -> Either (ParseErrorBundle String Void) String
 pp = fmap printSignature . parseSignature
 
@@ -41,6 +44,13 @@ spec = describe "TSHM.Printer" $ do
     it "fp-ts/Option" $ do
       pp "export type Option<A> = None | Some<A>" =*=
         "type Option a = None | Some a"
+      pp (unlines'
+        [ "export interface Some<A> {"
+        , "  readonly _tag: 'Some'"
+        , "  readonly value: A"
+        , "}"
+        ]) =*=
+        "type Some a = { _tag: \"Some\", value: a }"
 
     it "fp-ts/Either" $ do
       pp "export type Either<E, A> = Left<E> | Right<A>" =*=
