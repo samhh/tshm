@@ -66,6 +66,13 @@ data Interface = Interface
   , interfaceExtends  :: Maybe TsType
   } deriving (Eq, Show)
 
+fromInterface :: Interface -> Alias
+fromInterface x = Alias (interfaceName x) (interfaceTypeArgs x) t
+  where obj = TsTypeObject $ interfaceType x
+        t = case interfaceExtends x of
+          Nothing -> obj
+          Just st -> TsTypeExpression TsOperatorIntersection obj st
+
 data Signature
   = SignatureAlias Alias
   | SignatureInterface Interface

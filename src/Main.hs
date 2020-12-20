@@ -3,7 +3,7 @@ module Main (main) where
 import           Prelude
 import           System.Environment (getArgs)
 import           TSHM.Parser        (ParseOutput, parseSignature)
-import           TSHM.Printer       (fSignature)
+import           TSHM.Printer       (printSignature)
 
 main :: IO ()
 main = render . parseSignature =<< argGuard =<< getArgs
@@ -14,5 +14,5 @@ main = render . parseSignature =<< argGuard =<< getArgs
 
         render :: ParseOutput -> IO ()
         render (Left e)  = print e *> exitFailure
-        render (Right x) = putStrLn . fSignature $ x
+        render (Right x) = putStrLn . printSignature $ x
 

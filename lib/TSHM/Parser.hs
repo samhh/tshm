@@ -140,7 +140,7 @@ pInterface :: Parser Interface
 pInterface = Interface <$> (optional (string "export ") *> string "interface " *> some alphaNumChar) <*> (optional pTypeArgs <* string " ") <*> pObject <*> optional (string " extends " *> pType)
 
 pSignature :: Parser Signature
-pSignature = try (SignatureAlias <$> pAlias) <|> try (SignatureInterface <$> pInterface) <|> SignatureDeclaration <$> pDeclaration <* eof
+pSignature = (try (SignatureAlias <$> pAlias) <|> try (SignatureInterface <$> pInterface) <|> SignatureDeclaration <$> pDeclaration) <* eof
 
 parseSignature :: String -> ParseOutput
 parseSignature = parse pSignature "input"

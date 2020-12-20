@@ -5,8 +5,8 @@ A parser and formatter for TypeScript declarations that outputs HM-style type si
 Example usage:
 
 ```
-$ tshm "export declare const f: <A>(a: A) => <E>(b: Either<string, Option<A>>) => A"
-f :: a -> Either string (Option a) -> a
+$ tshm "export declare const f: <A>(a: A) => <E>(b: Either<E, Option<A>>) => A"
+f :: forall a e. a -> Either e (Option a) -> a
 
 $ tshm "export type Option<A> = None | Some<A>"
 type Option a = None | Some a
@@ -24,6 +24,7 @@ This is not an exhaustive list!
 
 Whilst the parser is currently very strict about whitespace/similar (see below), it's a little loose in some other areas. It is not intended to be a perfect parser of TypeScript syntax, rather merely able to support most normal use cases.
 
+- Enums
 - Object keys that aren't ordinary identifiers e.g. index signatures
 - Object property accessors that aren't string literals
 - `unique symbol`
@@ -33,9 +34,13 @@ Whilst the parser is currently very strict about whitespace/similar (see below),
 
 ### Output
 
+There is an open question as to how "Haskell-ified" the output should be.
+
 - Generics aren't given clarifying parentheses in the presence of object reference types e.g. `F<A>['k']`
 - Output never utilises newlines
 - `readonly` modifier isn't output
 
-There is an open question as to how "Haskell-ified" the output should be.
+### Configuration
+
+- Toggle universal quantification
 

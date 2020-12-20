@@ -14,7 +14,7 @@ parse' :: Parsec e s a -> s -> Either (ParseErrorBundle s e) a
 parse' = flip parse ""
 
 (/=*) :: (Eq a, Show a) => (s -> Either e a) -> s -> PropertyT IO ()
-f /=* a = let x = f a in first (const ()) x === Left ()
+f /=* a = first (const ()) (f a) === Left ()
 
 (=*=) :: (Eq a, Eq e, Show a, Show e) => Either e a -> a -> PropertyT IO ()
 a =*= b = a === Right b

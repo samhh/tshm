@@ -1,80 +1,157 @@
-module TSHM.Printer (fSignature) where
+module TSHM.Printer (printSignature) where
 
 import           Data.Char       (toLower)
 import           Prelude
 import           TSHM.TypeScript
 
-fParam :: Partial Param -> String
-fParam (Required (Normal x)) = fTsType' x
-fParam (Required (Rest x))   = "..." <> fTsType' x
-fParam (Optional (Normal x)) = fTsType' x <> "?"
-fParam (Optional (Rest x))   = "..." <> fTsType' x <> "?"
+surround :: Semigroup a => a -> a -> a -> a
+surround l r x = l <> x <> r
 
-fParams :: [Partial Param] -> String
-fParams []  = "()"
-fParams [x] = fParam x
-fParams xs  = "(" <> intercalate ", " (fmap fParam xs) <> ")"
+surrounding :: Semigroup a => a -> a -> a -> a
+surrounding x l r = l <> x <> r
 
-fFunction :: Function -> String
-fFunction x = fParams (functionParams x) <> " -> " <> fTsType' (functionReturn x)
+doIf :: (a -> a) -> Bool -> a -> a
+doIf f True  = f
+doIf _ False = id
 
-fGeneric :: (String, NonEmpty TsType) -> Location -> String
-fGeneric (x, ys) NestedGeneric = "(" <> fGeneric (x, ys) Other <> ")"
-fGeneric (x, ys) Other = x <> " " <> (intercalate " " . fmap (`fTsType` NestedGeneric) $ toList ys)
+fParam :: Partial Param -> State PrintState String
+fParam (Required (Normal x)) = fTsType x
+fParam (Required (Rest x))   = ("..." <>) <$> fTsType x
+fParam (Optional (Normal x)) = (<> "?") <$> fTsType x
+fParam (Optional (Rest x))   = ("..." <>) . (<> "?") <$> fTsType x
 
-fObjectPair :: Partial (String, TsType) -> String
-fObjectPair (Required (k, v)) = k <> ": " <> fTsType' v
-fObjectPair (Optional (k, v)) = k <> "?: " <> fTsType' v
+fParams :: [Partial Param] -> State PrintState String
+fParams []  = pure "()"
+fParams [x] = do
+  modify $ \s -> s { inParams = True }
+  y <- fParam x
+  modify $ \s -> s { inParams = False }
+  pure y
+fParams xs  = do
+  modify $ \s -> s { inParams = True }
+  y <- surround "(" ")" . intercalate ", " <$> mapM fParam xs
+  modify $ \s -> s { inParams = False }
+  pure y
+
+fMisc :: String -> State PrintState String
+fMisc [x] = pure . pure . toLower $ x
+fMisc x   = pure x
+
+fSubtype :: String -> TsType -> State PrintState String
+fSubtype x y = surrounding " extends " <$> fMisc x <*> fTsType y
+
+fFunction :: Function -> State PrintState String
+fFunction x = do
+  nested <- inParams <$> get
+  let tas = maybe [] toList (functionTypeArgs x)
+  modify $ \s -> s { typeArgs = typeArgs s <> tas }
+
+  (doIf (surround "(" ")") nested .) . surrounding " -> " <$> fParams (functionParams x) <*> fTsType (functionReturn x)
+
+fGeneric :: (String, NonEmpty TsType) -> State PrintState String
+fGeneric (x, ys) = do
+  nested <- ambiguouslyNested <$> get
+  if nested then do
+    modify $ \s -> s { ambiguouslyNested = False }
+    surround "(" ")" <$> fGeneric (x, ys)
+  else ((x <> " ") <>) . intercalate " " <$> mapM fTsType' (toList ys)
+  where fTsType' :: TsType -> State PrintState String
+        fTsType' z = do
+          modify $ \s -> s { ambiguouslyNested = True }
+          res <- fTsType z
+          modify $ \s -> s { ambiguouslyNested = False }
+          pure res
+
+fObjectPair :: Partial (String, TsType) -> State PrintState String
+fObjectPair (Required (k, v)) = ((k <> ": ") <>) <$> fTsType v
+fObjectPair (Optional (k, v)) = ((k <> "?: ") <>) <$> fTsType v
 
 fOperator :: TsOperator -> String
 fOperator TsOperatorIntersection = "&"
 fOperator TsOperatorUnion        = "|"
 
-data Location
-  = NestedGeneric
-  | Other
+fExpression :: TsOperator -> TsType -> TsType -> State PrintState String
+fExpression o l r = do
+  nested <- ambiguouslyNested <$> get
+  (doIf (surround "(" ")") nested .) . surrounding (" " <> fOperator o <> " ")
+    <$> fTsType l <*> fTsType r
 
-fObject :: ObjectLiteral -> String
-fObject [] = "{}"
-fObject xs = "{ " <> (intercalate ", " . fmap fObjectPair $ xs) <> " }"
-
-fTsType :: TsType -> Location -> String
-fTsType TsTypeVoid                  = const "void"
-fTsType TsTypeUndefined             = const "undefined"
-fTsType TsTypeNull                  = const "null"
-fTsType (TsTypeBoolean x)           = const $ if x then "true" else "false"
-fTsType (TsTypeMisc [x])            = const $ pure . toLower $ x
-fTsType (TsTypeMisc x)              = const x
-fTsType (TsTypeStringLiteral x)     = const $ "\"" <> x <> "\""
-fTsType (TsTypeNumberLiteral x)     = const x
-fTsType (TsTypeTuple xs)            = const $ "[" <> (intercalate ", " . fmap fTsType' $ xs) <> "]"
+fTsType :: TsType -> State PrintState String
+fTsType TsTypeVoid                  = pure "void"
+fTsType TsTypeUndefined             = pure "undefined"
+fTsType TsTypeNull                  = pure "null"
+fTsType (TsTypeBoolean x)           = pure $ if x then "true" else "false"
+fTsType (TsTypeMisc x)              = fMisc x
+fTsType (TsTypeStringLiteral x)     = pure $ "\"" <> x <> "\""
+fTsType (TsTypeNumberLiteral x)     = pure x
+fTsType (TsTypeTuple xs)            = surround "[" "]" . intercalate ", " <$> mapM fTsType xs
 fTsType (TsTypeGeneric x ys)        = fGeneric (x, ys)
-fTsType (TsTypeSubtype x y)         = const $ x <> " extends " <> fTsType' y
-fTsType (TsTypeKeysOf x)            = const $ "keyof " <> fTsType' x
-fTsType (TsTypeReflection x)        = const $ "typeof " <> x
-fTsType (TsTypeObject xs)           = const $ fObject xs
-fTsType (TsTypeObjectReference x k) = const $ fTsType' x <> "[\"" <> k <> "\"]"
-fTsType (TsTypeFunction x)          = const $ fFunction x
-fTsType (TsTypeExpression x y z)    = const $ fTsType' y <> " " <> fOperator x <> " " <> fTsType' z
-fTsType (TsTypeGrouped x)           = const $ "(" <> fTsType' x <> ")"
+fTsType (TsTypeSubtype x y)         = fSubtype x y
+fTsType (TsTypeKeysOf x)            = ("keyof " <>) <$> fTsType x
+fTsType (TsTypeReflection x)        = pure $ "typeof " <> x
+fTsType (TsTypeObject xs)           = fObject xs
+fTsType (TsTypeObjectReference x k) = (<> ("[\"" <> k <> "\"]")) <$> fTsType x
+fTsType (TsTypeFunction x)          = fFunction x
+fTsType (TsTypeExpression x y z)    = fExpression x y z
+fTsType (TsTypeGrouped x)           = do
+  modify $ \s -> s { ambiguouslyNested = False }
+  surround "(" ")" <$> fTsType x
 
-fTsType' :: TsType -> String
-fTsType' = (`fTsType` Other)
+fObject :: ObjectLiteral -> State PrintState String
+fObject [] = pure "{}"
+fObject xs = surround "{ " " }" . intercalate ", " <$> mapM fObjectPair xs
 
-fDeclaration :: Declaration -> String
-fDeclaration x = declarationName x <> " :: " <> fTsType' (declarationType x)
+fDeclaration :: Declaration -> State PrintState String
+fDeclaration x = (\t ps -> declarationName x <> " :: " <> renderedTypeArgs ps <> renderedSubtypes ps <> t)
+  <$> fTsType (declarationType x) <*> renderPrintState
 
-fTypeArgs :: Maybe (NonEmpty TsType) -> String
-fTypeArgs = maybe "" $ (" " <>) . intercalate " " . fmap fTsType' . toList
+fAlias :: Alias -> State PrintState String
+fAlias x = do
+  explicitTargs <- intercalate " " <$> mapMaybeM printableTypeArg (maybe [] toList (aliasTypeArgs x))
+  ttype <- fTsType (aliasType x)
+  ps <- renderPrintState
+  pure $ "type " <> aliasName x <> (if null explicitTargs then "" else " ") <> explicitTargs <> " = " <> renderedTypeArgs ps <> renderedSubtypes ps <> ttype
+    where printableTypeArg :: TsType -> State PrintState (Maybe String)
+          printableTypeArg (TsTypeMisc y)      = Just <$> fMisc y
+          printableTypeArg (TsTypeSubtype y z) = Just . surround "(" ")" <$> fSubtype y z
+          printableTypeArg _                   = pure Nothing
 
-fAlias :: Alias -> String
-fAlias x = "type " <> aliasName x <> fTypeArgs (aliasTypeArgs x) <> " = " <> fTsType' (aliasType x)
+data RenderedPrintState = RenderedPrintState
+  { renderedTypeArgs :: String
+  , renderedSubtypes :: String
+  }
 
-fInterface :: Interface -> String
-fInterface x = "interface " <> interfaceName x <> fTypeArgs (interfaceTypeArgs x) <> " " <> fObject (interfaceType x)
+renderPrintState :: State PrintState RenderedPrintState
+renderPrintState = do
+  tas <- typeArgs <$> get
 
-fSignature :: Signature -> String
-fSignature (SignatureAlias x)       = fAlias x
-fSignature (SignatureInterface x)   = fInterface x
-fSignature (SignatureDeclaration x) = fDeclaration x
+  targs <- fmap (guarded (not . null)) . mapMaybeM printableTypeArg $ tas
+  let targsSig = maybe "" (("forall " <>) . (<> ". ") . intercalate " ") targs
 
+  sts <- fmap (guarded (not . null)) . mapM (uncurry fSubtype) . mapMaybe matchSubtype $ tas
+  let stsSig = maybe "" ((<> " => ") . intercalate ", ") sts
+
+  pure $ RenderedPrintState targsSig stsSig
+
+  where printableTypeArg :: TsType -> State PrintState (Maybe String)
+        printableTypeArg (TsTypeMisc y)      = Just <$> fMisc y
+        printableTypeArg (TsTypeSubtype y _) = Just <$> fMisc y
+        printableTypeArg _                   = pure Nothing
+
+        matchSubtype :: TsType -> Maybe (String, TsType)
+        matchSubtype (TsTypeSubtype y z) = Just (y, z)
+        matchSubtype _                   = Nothing
+
+fSignature :: Signature -> State PrintState String
+fSignature (SignatureAlias y)       = fAlias y
+fSignature (SignatureInterface y)   = fAlias $ fromInterface y
+fSignature (SignatureDeclaration y) = fDeclaration y
+
+data PrintState = PrintState
+  { ambiguouslyNested :: Bool
+  , inParams          :: Bool
+  , typeArgs          :: [TsType]
+  }
+
+printSignature :: Signature -> String
+printSignature x = evalState (fSignature x) (PrintState False False [])

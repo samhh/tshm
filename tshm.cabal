@@ -56,4 +56,5 @@ test-suite test-tshm
       hspec-discover:hspec-discover
   other-modules:
     TSHM.ParserSpec
+    TSHM.PrinterSpec
 
