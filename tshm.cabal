@@ -10,8 +10,8 @@ common common
   default-language:       Haskell2010
   default-extensions:
     ConstraintKinds
-    NoImplicitPrelude
     LambdaCase
+    NoImplicitPrelude
     TupleSections
   ghc-options:
     -Wall

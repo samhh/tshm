@@ -111,7 +111,7 @@ pTypeArgs = between (char '<') (char '>') (NE.sepBy1 pTypeArg (string ", "))
           ]
 
 pParams :: Parser [Partial Param]
-pParams = between (char '(') (char ')') $ sepBy pParam (string ", ")
+pParams = between (char '(') (char ')') $ space *> sepBy pParam (string "," <* space) <* space
   where pParam :: Parser (Partial Param)
         pParam = f <$> rest <*> (some alphaNumChar *> sep) <*> (optional (string "new ") *> pType)
 

@@ -10,6 +10,9 @@ import           Test.Hspec.Hedgehog   (PropertyT, forAll, hedgehog, (===))
 import           Test.Hspec.Megaparsec
 import           Text.Megaparsec       (ParseErrorBundle, Parsec, parse, eof)
 
+unlines' :: [String] -> String
+unlines' = concatMap (<> "\n")
+
 parse' :: Parsec e s a -> s -> Either (ParseErrorBundle s e) a
 parse' = flip parse ""
 
@@ -269,6 +272,11 @@ spec = describe "TSHM.Parser" $ do
         , Optional $ Rest $ TsTypeMisc "B"
         , Required $ Normal $ TsTypeMisc "C"
         ]
+
+    it "parses optional whitespace and newlines" $ do
+      parse' pParams (unlines' ["(", ")"]) `shouldParse` []
+      parse' pParams (unlines' ["(", "x: A", ")"]) `shouldParse` [Required $ Normal $ TsTypeMisc "A"]
+      parse' pParams (unlines' ["(", "x: A,", "y: B", ")"]) `shouldParse` [Required $ Normal $ TsTypeMisc "A", Required $ Normal $ TsTypeMisc "B"]
 
   describe "pReturn" $ do
     it "parses value after the lambda" $ do
