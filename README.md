@@ -26,6 +26,7 @@ This is not an exhaustive list!
 
 The parser is not intended to be a perfect parser of TypeScript syntax, rather merely able to support most normal use cases. It may be a little strict with whitespace in some areas, and a little lax about correctness in others.
 
+- Overloaded functions
 - Default type arguments
 - Enums
 - Object keys that aren't ordinary identifiers e.g. index signatures
