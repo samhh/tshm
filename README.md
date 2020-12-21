@@ -27,7 +27,6 @@ This is not an exhaustive list!
 The parser is not intended to be a perfect parser of TypeScript syntax, rather merely able to support most normal use cases. It may be a little strict with whitespace in some areas, and a little lax about correctness in others.
 
 - Overloaded functions
-- Default type arguments
 - Enums
 - Object keys that aren't ordinary identifiers e.g. index signatures
 - Mapped types
@@ -44,6 +43,7 @@ There is an open question as to how "Haskell-ified" the output should be.
 - Generics aren't given clarifying parentheses in subtypes e.g. `B extends Array<A>`
 - Keywords aren't given clarifying parentheses in generics e.g. `A<keyof B>`
 - Generics are needlessly parenthesised in tuples
+- Default type arguments
 - Output never utilises newlines
 - `readonly` modifier isn't output
 - Toggleable universal quantification

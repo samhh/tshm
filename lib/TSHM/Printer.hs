@@ -36,7 +36,7 @@ fParams xs  = do
 fMisc :: String -> State PrintState String
 -- If the type is a single character, and we know about it from a type argument
 -- somewhere, then lowercase it
-fMisc [x] = pure . bool x (toLower x) . any isTypeArg . ((<>) <$> implicitTypeArgs <*> explicitTypeArgs) <$> get
+fMisc [x] = pure . bool x (toLower x) . any (isTypeArg . fst) . ((<>) <$> implicitTypeArgs <*> explicitTypeArgs) <$> get
   where isTypeArg :: TsType -> Bool
         isTypeArg (TsTypeMisc [y])      = y == x
         isTypeArg (TsTypeSubtype [y] _) = y == x
@@ -54,17 +54,17 @@ fFunction x = do
 
   (doIf (surround "(" ")") nested .) . surrounding " -> " <$> fParams (functionParams x) <*> fTsType (functionReturn x)
 
-fGeneric :: (String, NonEmpty TsType) -> State PrintState String
+fGeneric :: (String, NonEmpty (TsType, Maybe TsType)) -> State PrintState String
 fGeneric (x, ys) = do
   nested <- ambiguouslyNested <$> get
   if nested then do
     modify $ \s -> s { ambiguouslyNested = False }
     surround "(" ")" <$> fGeneric (x, ys)
   else ((x <> " ") <>) . intercalate " " <$> mapM fTsType' (toList ys)
-  where fTsType' :: TsType -> State PrintState String
+  where fTsType' :: (TsType, Maybe TsType) -> State PrintState String
         fTsType' z = do
           modify $ \s -> s { ambiguouslyNested = True }
-          res <- fTsType z
+          res <- fTsType $ fst z
           modify $ \s -> s { ambiguouslyNested = False }
           pure res
 
@@ -123,9 +123,9 @@ fAlias x = do
   ttype <- fTsType (aliasType x)
   ps <- renderPrintState
   pure $ "type " <> aliasName x <> (if null explicitTargsP then "" else " ") <> explicitTargsP <> " = " <> renderedTypeArgs ps <> renderedSubtypes ps <> ttype
-    where printableTypeArg :: TsType -> State PrintState (Maybe String)
-          printableTypeArg (TsTypeMisc y)      = Just <$> fMisc y
-          printableTypeArg (TsTypeSubtype y z) = Just . surround "(" ")" <$> fSubtype y z
+    where printableTypeArg :: (TsType, Maybe TsType) -> State PrintState (Maybe String)
+          printableTypeArg (TsTypeMisc y, _)      = Just <$> fMisc y
+          printableTypeArg (TsTypeSubtype y z, _) = Just . surround "(" ")" <$> fSubtype y z
           printableTypeArg _                   = pure Nothing
 
 data RenderedPrintState = RenderedPrintState
@@ -145,13 +145,13 @@ renderPrintState = do
 
   pure $ RenderedPrintState targsSig stsSig
 
-  where printableTypeArg :: TsType -> State PrintState (Maybe String)
-        printableTypeArg (TsTypeMisc y)      = Just <$> fMisc y
-        printableTypeArg (TsTypeSubtype y _) = Just <$> fMisc y
+  where printableTypeArg :: (TsType, Maybe TsType) -> State PrintState (Maybe String)
+        printableTypeArg (TsTypeMisc y, _)      = Just <$> fMisc y
+        printableTypeArg (TsTypeSubtype y _, _) = Just <$> fMisc y
         printableTypeArg _                   = pure Nothing
 
-        matchSubtype :: TsType -> Maybe (String, TsType)
-        matchSubtype (TsTypeSubtype y z) = Just (y, z)
+        matchSubtype :: (TsType, Maybe TsType) -> Maybe (String, TsType)
+        matchSubtype (TsTypeSubtype y z, _) = Just (y, z)
         matchSubtype _                   = Nothing
 
 fSignature :: Signature -> State PrintState String
@@ -163,8 +163,8 @@ fSignature (SignatureFunctionDeclaration y) = fFunctionDeclaration y
 data PrintState = PrintState
   { ambiguouslyNested :: Bool
   , inParams          :: Bool
-  , explicitTypeArgs  :: [TsType]
-  , implicitTypeArgs  :: [TsType]
+  , explicitTypeArgs  :: [(TsType, Maybe TsType)]
+  , implicitTypeArgs  :: [(TsType, Maybe TsType)]
   }
 
 printSignature :: Signature -> String

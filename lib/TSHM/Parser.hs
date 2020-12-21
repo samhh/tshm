@@ -16,7 +16,7 @@ type Parser = Parsec Void String
 operators :: [[Operator Parser TsType]]
 operators =
   [ [ Postfix (multi
-      (   (TsTypeGeneric "Array" . pure <$ string "[]")
+      (   (TsTypeGeneric "Array" . pure . (, Nothing) <$ string "[]")
       <|> (flip TsTypeObjectReference <$> between (char '[') (char ']') pStringLiteral)
       )
     )]
@@ -96,16 +96,21 @@ pObject =
         fn True  = (Required .) . (,)
         fn False = (Optional .) . (,)
 
-        method :: String -> Bool -> Maybe (NonEmpty TsType) -> [Partial Param] -> TsType -> Partial (String, TsType)
+        method :: String -> Bool -> Maybe (NonEmpty TypeArgument) -> [Partial Param] -> TsType -> Partial (String, TsType)
         method n o g p r = (if o then Optional else Required) (n, TsTypeFunction $ Function g p r)
 
-pTypeArgs :: Parser (NonEmpty TsType)
+pTypeArgs :: Parser (NonEmpty TypeArgument)
 pTypeArgs = between (char '<') (char '>') (NE.sepBy1 pTypeArg (char ',' <* space))
-  where pTypeArg :: Parser TsType
-        pTypeArg = choice
-          [ try $ TsTypeSubtype <$> pTypeMisc <* hspace1 <* string "extends" <* hspace1 <*> pType
-          , pType
-          ]
+  where pTypeArg :: Parser TypeArgument
+        pTypeArg = (,)
+          <$> choice
+            [ try $ TsTypeSubtype <$> pTypeMisc <* hspace1 <* string "extends" <* hspace1 <*> pType
+            , pType
+            ]
+          <*> pDefault
+
+        pDefault :: Parser (Maybe TsType)
+        pDefault = optional $ hspace1 *> char '=' *> hspace1 *> pType
 
 pParams :: Parser [Partial Param]
 pParams = between (char '(') (char ')') $ space *> sepBy pParam (char ',' <* space) <* space

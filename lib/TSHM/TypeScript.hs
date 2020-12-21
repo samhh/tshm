@@ -14,6 +14,8 @@ data Partial a
 
 type ObjectLiteral = [Partial (String, TsType)]
 
+type TypeArgument = (TsType, Maybe TsType)
+
 data TsType
   = TsTypeVoid
   | TsTypeNull
@@ -28,7 +30,7 @@ data TsType
   | TsTypeTuple [TsType]
   | TsTypeObject ObjectLiteral
   | TsTypeObjectReference TsType String
-  | TsTypeGeneric String (NonEmpty TsType)
+  | TsTypeGeneric String (NonEmpty TypeArgument)
   | TsTypeSubtype String TsType
   | TsTypeReflection String
   | TsTypeKeysOf TsType
@@ -43,7 +45,7 @@ data Param
   deriving (Eq, Show)
 
 data Function = Function
-  { functionTypeArgs :: Maybe (NonEmpty TsType)
+  { functionTypeArgs :: Maybe (NonEmpty TypeArgument)
   , functionParams   :: [Partial Param]
   , functionReturn   :: TsType
   } deriving (Eq, Show)
@@ -63,13 +65,13 @@ fromFunctionDeclaration (FunctionDeclaration x y) = ConstDeclaration x (TsTypeFu
 
 data Alias = Alias
   { aliasName     :: String
-  , aliasTypeArgs :: Maybe (NonEmpty TsType)
+  , aliasTypeArgs :: Maybe (NonEmpty TypeArgument)
   , aliasType     :: TsType
   } deriving (Eq, Show)
 
 data Interface = Interface
   { interfaceName     :: String
-  , interfaceTypeArgs :: Maybe (NonEmpty TsType)
+  , interfaceTypeArgs :: Maybe (NonEmpty TypeArgument)
   , interfaceExtends  :: Maybe TsType
   , interfaceType     :: ObjectLiteral
   } deriving (Eq, Show)

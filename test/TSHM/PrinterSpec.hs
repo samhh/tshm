@@ -83,14 +83,13 @@ spec = describe "TSHM.Printer" $ do
         ]) =*=
         "type Ord a = { compare: (a, a) -> Ordering } & Eq a"
 
-      -- Requires: function declarations, default type arguments
-      -- pp "export declare function getMonoid<A = never>(): Monoid<Ord<A>>" =*=
-      --   "getMonoid :: forall a. () -> Monoid (Ord a)"
+      pp "export declare function getMonoid<A = never>(): Monoid<Ord<A>>" =*=
+        "getMonoid :: forall a. () -> Monoid (Ord a)"
 
       pp "export declare function fromCompare<A>(compare: (x: A, y: A) => Ordering): Ord<A>" =*=
         "fromCompare :: forall a. ((a, a) -> Ordering) -> Ord a"
 
-      -- Requires: function declarations, mapped types
+      -- Requires: mapped types
       -- pp (unlines'
       --   [ "export declare function getTupleOrd<T extends ReadonlyArray<Ord<any>>>("
       --   , "  ...ords: T"
