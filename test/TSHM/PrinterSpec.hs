@@ -87,9 +87,8 @@ spec = describe "TSHM.Printer" $ do
       -- pp "export declare function getMonoid<A = never>(): Monoid<Ord<A>>" =*=
       --   "getMonoid :: forall a. () -> Monoid (Ord a)"
 
-      -- Requires: function declarations
-      -- pp "export declare function fromCompare<A>(compare: (x: A, y: A) => Ordering): Ord<A>" =*=
-      --   "fromCompare :: forall a. ((a, a) -> Ordering) -> Ord a"
+      pp "export declare function fromCompare<A>(compare: (x: A, y: A) => Ordering): Ord<A>" =*=
+        "fromCompare :: forall a. ((a, a) -> Ordering) -> Ord a"
 
       -- Requires: function declarations, mapped types
       -- pp (unlines'

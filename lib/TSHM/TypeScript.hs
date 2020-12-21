@@ -48,10 +48,18 @@ data Function = Function
   , functionReturn   :: TsType
   } deriving (Eq, Show)
 
-data Declaration = Declaration
-  { declarationName :: String
-  , declarationType :: TsType
+data ConstDeclaration = ConstDeclaration
+  { constDeclarationName :: String
+  , constDeclarationType :: TsType
   } deriving (Eq, Show)
+
+data FunctionDeclaration = FunctionDeclaration
+  { functionDeclarationName :: String
+  , functionDeclarationType :: Function
+  } deriving (Eq, Show)
+
+fromFunctionDeclaration :: FunctionDeclaration -> ConstDeclaration
+fromFunctionDeclaration (FunctionDeclaration x y) = ConstDeclaration x (TsTypeFunction y)
 
 data Alias = Alias
   { aliasName     :: String
@@ -76,6 +84,7 @@ fromInterface x = Alias (interfaceName x) (interfaceTypeArgs x) t
 data Signature
   = SignatureAlias Alias
   | SignatureInterface Interface
-  | SignatureDeclaration Declaration
+  | SignatureConstDeclaration ConstDeclaration
+  | SignatureFunctionDeclaration FunctionDeclaration
   deriving (Eq, Show)
 

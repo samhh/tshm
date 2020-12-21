@@ -52,7 +52,7 @@ pType = (`makeExprParser` operators) $ optional (string "readonly" <* hspace1) *
   , TsTypeNumberLiteral <$> pNumberLiteral
   , TsTypeTuple <$> pTuple
   , TsTypeObject <$> pObject
-  , TsTypeFunction <$> pFunction
+  , TsTypeFunction <$> pFunctionLiteral
   , try pGeneric
   , TsTypeReflection <$> (string "typeof" *> hspace1 *> some alphaNumChar)
   , TsTypeMisc <$> pTypeMisc
@@ -78,9 +78,6 @@ pNumberLiteral = (<>) . maybe "" pure <$> optional (char '-') <*> choice
   , some numberChar
   ]
 
-pFunction :: Parser Function
-pFunction = Function <$> optional pTypeArgs <*> pParams <*> pReturn
-
 pTuple :: Parser [TsType]
 pTuple = between (char '[' <* space) (space *> char ']') $ sepBy pType (char ',' <* space)
 
@@ -101,9 +98,6 @@ pObject =
 
         method :: String -> Bool -> Maybe (NonEmpty TsType) -> [Partial Param] -> TsType -> Partial (String, TsType)
         method n o g p r = (if o then Optional else Required) (n, TsTypeFunction $ Function g p r)
-
-pDeclarationName :: Parser String
-pDeclarationName = optional (string "export" <* hspace1) *> (string "declare const" <* hspace1) *> pIdentifier <* char ':' <* hspace
 
 pTypeArgs :: Parser (NonEmpty TsType)
 pTypeArgs = between (char '<') (char '>') (NE.sepBy1 pTypeArg (char ',' <* space))
@@ -130,14 +124,35 @@ pParams = between (char '(') (char ')') $ space *> sepBy pParam (char ',' <* spa
         f False True  = Required . Normal
         f False False = Optional . Normal
 
-pReturn :: Parser TsType
-pReturn = hspace1 *> string "=>" *> space1 *> pType
+pFunctionLiteralReturn :: Parser TsType
+pFunctionLiteralReturn = hspace1 *> string "=>" *> space1 *> pType
 
-pDeclaration :: Parser Declaration
-pDeclaration = Declaration <$> pDeclarationName <*> pType <* optional (char ';')
+pFunctionLiteral :: Parser Function
+pFunctionLiteral = Function <$> optional pTypeArgs <*> pParams <*> pFunctionLiteralReturn
+
+pConstDeclarationName :: Parser String
+pConstDeclarationName = optional (string "export" <* hspace1) *> (string "declare const" <* hspace1) *> pIdentifier <* char ':' <* hspace
+
+pConstDeclaration :: Parser ConstDeclaration
+pConstDeclaration = ConstDeclaration <$> pConstDeclarationName <*> pType <* optional (char ';')
+
+pFunctionDeclarationName :: Parser String
+pFunctionDeclarationName =
+      optional (string "export" <* hspace1)
+   *> (string "declare" <* hspace1)
+   *> (string "function" <* hspace1)
+   *> pIdentifier
+
+pFunctionDeclaration :: Parser FunctionDeclaration
+pFunctionDeclaration = FunctionDeclaration
+  <$> pFunctionDeclarationName
+  <*> (Function <$> optional pTypeArgs <*> pParams <* char ':' <* space1 <*> pType)
 
 pAlias :: Parser Alias
-pAlias = Alias <$> (optional (string "export" <* hspace1) *> (string "type" <* hspace1) *> some alphaNumChar) <*> (optional pTypeArgs <* (space1 *> char '=' <* space1)) <*> pType <* optional (char ';')
+pAlias = Alias
+  <$> (optional (string "export" <* hspace1) *> (string "type" <* hspace1) *> some alphaNumChar)
+  <*> (optional pTypeArgs <* (space1 *> char '=' <* space1))
+  <*> pType <* optional (char ';')
 
 pInterface :: Parser Interface
 pInterface = Interface
@@ -147,7 +162,12 @@ pInterface = Interface
   <*> (space1 *> pObject)
 
 pSignature :: Parser Signature
-pSignature = (try (SignatureAlias <$> pAlias) <|> try (SignatureInterface <$> pInterface) <|> SignatureDeclaration <$> pDeclaration) <* eof
+pSignature = choice
+  [ try $ SignatureAlias <$> pAlias
+  , try $ SignatureInterface <$> pInterface
+  , try $ SignatureConstDeclaration <$> pConstDeclaration
+  , SignatureFunctionDeclaration <$> pFunctionDeclaration
+  ] <* eof
 
 parseSignature :: String -> ParseOutput
 parseSignature = parse pSignature "input"

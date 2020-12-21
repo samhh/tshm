@@ -107,9 +107,13 @@ fObject :: ObjectLiteral -> State PrintState String
 fObject [] = pure "{}"
 fObject xs = surround "{ " " }" . intercalate ", " <$> mapM fObjectPair xs
 
-fDeclaration :: Declaration -> State PrintState String
-fDeclaration x = (\t ps -> declarationName x <> " :: " <> renderedTypeArgs ps <> renderedSubtypes ps <> t)
-  <$> fTsType (declarationType x) <*> renderPrintState
+fConstDeclaration :: ConstDeclaration -> State PrintState String
+fConstDeclaration x = (\t ps -> constDeclarationName x <> " :: " <> renderedTypeArgs ps <> renderedSubtypes ps <> t)
+  <$> fTsType (constDeclarationType x) <*> renderPrintState
+
+fFunctionDeclaration :: FunctionDeclaration -> State PrintState String
+fFunctionDeclaration x = (\t ps -> functionDeclarationName x <> " :: " <> renderedTypeArgs ps <> renderedSubtypes ps <> t)
+  <$> fFunction (functionDeclarationType x) <*> renderPrintState
 
 fAlias :: Alias -> State PrintState String
 fAlias x = do
@@ -151,9 +155,10 @@ renderPrintState = do
         matchSubtype _                   = Nothing
 
 fSignature :: Signature -> State PrintState String
-fSignature (SignatureAlias y)       = fAlias y
-fSignature (SignatureInterface y)   = fAlias $ fromInterface y
-fSignature (SignatureDeclaration y) = fDeclaration y
+fSignature (SignatureAlias y)               = fAlias y
+fSignature (SignatureInterface y)           = fAlias $ fromInterface y
+fSignature (SignatureConstDeclaration y)    = fConstDeclaration y
+fSignature (SignatureFunctionDeclaration y) = fFunctionDeclaration y
 
 data PrintState = PrintState
   { ambiguouslyNested :: Bool
