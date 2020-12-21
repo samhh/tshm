@@ -47,6 +47,7 @@ pType = (`makeExprParser` operators) $ optional (string "readonly" <* hspace1) *
   , TsTypeVoid <$ string "void"
   , TsTypeNull <$ string "null"
   , TsTypeUndefined <$ string "undefined"
+  , TsTypeUniqueSymbol <$ string "unique symbol"
   , TsTypeBoolean <$> ((True <$ string "true") <|> (False <$ string "false"))
   , TsTypeStringLiteral <$> pStringLiteral
   , TsTypeNumberLiteral <$> pNumberLiteral

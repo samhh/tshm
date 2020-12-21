@@ -122,6 +122,9 @@ spec = describe "TSHM.Printer" $ do
         "pluckFirst :: forall a. Predicate a -> Array a -> [Option a, Array a]"
 
     it "fp-ts-std/Date" $ do
+      pp "export type Milliseconds = Newtype<{ readonly Milliseconds: unique symbol }, number>" =*=
+        "type Milliseconds = Newtype { Milliseconds: unique symbol } number"
+
       pp "export declare const fieldMilliseconds: Field<Milliseconds>" =*=
         "fieldMilliseconds :: Field Milliseconds"
 

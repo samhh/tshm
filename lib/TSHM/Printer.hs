@@ -86,6 +86,7 @@ fTsType :: TsType -> State PrintState String
 fTsType TsTypeVoid                  = pure "void"
 fTsType TsTypeUndefined             = pure "undefined"
 fTsType TsTypeNull                  = pure "null"
+fTsType TsTypeUniqueSymbol          = pure "unique symbol"
 fTsType (TsTypeBoolean x)           = pure $ if x then "true" else "false"
 fTsType (TsTypeMisc x)              = fMisc x
 fTsType (TsTypeStringLiteral x)     = pure $ "\"" <> x <> "\""

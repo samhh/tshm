@@ -20,6 +20,7 @@ data TsType
   = TsTypeVoid
   | TsTypeNull
   | TsTypeUndefined
+  | TsTypeUniqueSymbol
   | TsTypeBoolean Bool
   | TsTypeMisc String
   | TsTypeStringLiteral String
