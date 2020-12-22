@@ -37,11 +37,14 @@ fParams xs  = do
 fMisc :: String -> State PrintState String
 -- If the type is a single character, and we know about it from a type argument
 -- somewhere, then lowercase it
-fMisc [x] = pure . bool x (toLower x) . any (isTypeArg . fst) . ((<>) <$> implicitTypeArgs <*> explicitTypeArgs) <$> get
-  where isTypeArg :: TsType -> Bool
-        isTypeArg (TsTypeMisc [y])      = y == x
-        isTypeArg (TsTypeSubtype [y] _) = y == x
-        isTypeArg _                     = False
+fMisc [x] = trans x . any (isViable . fst) . ((<>) <$> implicitTypeArgs <*> explicitTypeArgs) <$> get
+  where isViable :: TsType -> Bool
+        isViable (TsTypeMisc [y])      = y == x
+        isViable (TsTypeSubtype [y] _) = y == x
+        isViable _                     = False
+
+        trans :: Char -> Bool -> String
+        trans c b = pure $ if b then toLower c else c
 fMisc x   = pure x
 
 fSubtype :: String -> TsType -> State PrintState String
