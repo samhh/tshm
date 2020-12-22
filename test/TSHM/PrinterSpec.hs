@@ -40,6 +40,13 @@ spec = describe "TSHM.Printer" $ do
     pp "type X = <E, A>(x: Either<E, Option<A | E>>) => <B>(f: (x: A) => B) => (x: A | B) => Option<B>" =*=
       "type X = forall e a b. Either e (Option (a | e)) -> (a -> b) -> a | b -> Option b"
 
+  it "prints stylised newtype-ts newtypes" $ do
+    pp "export type X = Newtype<{ readonly Y: unique symbol }, Z>" =*=
+      "newtype X = Z"
+
+    pp "export interface X extends Newtype<{ readonly Y: unique symbol }, Z> {}" =*=
+      "newtype X = Z"
+
   describe "prints real signatures from" $ do
     it "fp-ts/Array" $ do
       pp "export declare const zero: <A>() => A[]" =*=
@@ -123,7 +130,7 @@ spec = describe "TSHM.Printer" $ do
 
     it "fp-ts-std/Date" $ do
       pp "export type Milliseconds = Newtype<{ readonly Milliseconds: unique symbol }, number>" =*=
-        "type Milliseconds = Newtype { Milliseconds: unique symbol } number"
+        "newtype Milliseconds = number"
 
       pp "export declare const fieldMilliseconds: Field<Milliseconds>" =*=
         "fieldMilliseconds :: Field Milliseconds"

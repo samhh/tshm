@@ -45,8 +45,8 @@ pIdentifierTailChar = pIdentifierHeadChar <|> numberChar
 pIdentifier :: Parser String
 pIdentifier = (:) <$> pIdentifierHeadChar <*> (maybeToMonoid <$> optional (some pIdentifierTailChar))
 
-pPreciseIdentifierString :: String -> Parser String
-pPreciseIdentifierString x = try $ string x <* notFollowedBy pIdentifierTailChar
+pPreciseIdentifier :: String -> Parser String
+pPreciseIdentifier x = try $ string x <* notFollowedBy pIdentifierTailChar
 
 pTypeMisc :: Parser String
 pTypeMisc = some alphaNumChar
@@ -54,13 +54,13 @@ pTypeMisc = some alphaNumChar
 pType :: Parser TsType
 pType = (`makeExprParser` operators) $ optional (string "readonly" <* hspace1) *> choice
   [ try $ TsTypeGrouped <$> between (char '(') (char ')') pType
-  , TsTypeAny <$ pPreciseIdentifierString "any"
-  , TsTypeUnknown <$ pPreciseIdentifierString "unknown"
-  , TsTypeVoid <$ pPreciseIdentifierString "void"
-  , TsTypeNull <$ pPreciseIdentifierString "null"
-  , TsTypeUndefined <$ pPreciseIdentifierString "undefined"
+  , TsTypeAny <$ pPreciseIdentifier "any"
+  , TsTypeUnknown <$ pPreciseIdentifier "unknown"
+  , TsTypeVoid <$ pPreciseIdentifier "void"
+  , TsTypeNull <$ pPreciseIdentifier "null"
+  , TsTypeUndefined <$ pPreciseIdentifier "undefined"
   , TsTypeUniqueSymbol <$ string "unique symbol"
-  , TsTypeBoolean <$> ((True <$ pPreciseIdentifierString "true") <|> (False <$ pPreciseIdentifierString "false"))
+  , TsTypeBoolean <$> ((True <$ pPreciseIdentifier "true") <|> (False <$ pPreciseIdentifier "false"))
   , TsTypeStringLiteral <$> pStringLiteral
   , TsTypeNumberLiteral <$> pNumberLiteral
   , TsTypeTuple <$> pTuple

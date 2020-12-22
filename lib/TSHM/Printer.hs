@@ -1,6 +1,7 @@
 module TSHM.Printer (printSignature) where
 
-import           Data.Char       (toLower)
+import           Data.Char          (toLower)
+import           Data.List.NonEmpty ((!!))
 import           Prelude
 import           TSHM.TypeScript
 
@@ -53,6 +54,25 @@ fFunction x = do
   modify $ \s -> s { implicitTypeArgs = implicitTypeArgs s <> tas }
 
   (doIf (surround "(" ")") nested .) . surrounding " -> " <$> fParams (functionParams x) <*> fTsType (functionReturn x)
+
+fNewtype :: String -> TsType -> State PrintState String
+fNewtype x y = (("newtype " <> x <> " = ") <>) <$> fTsType y
+
+isNewtype :: TsType -> Maybe TsType
+isNewtype (TsTypeGeneric "Newtype" xs) = fmap snd . guarded (isNewtypeObject . fst) =<< isNewtypeTypeArgs xs
+  where isNewtypeTypeArgs :: NonEmpty TypeArgument -> Maybe (ObjectLiteral, TsType)
+        isNewtypeTypeArgs ys
+          | length ys == 2 = (, fst $ ys !! 1) <$> isObjectLiteral (head ys)
+          | otherwise = Nothing
+
+        isObjectLiteral :: TypeArgument -> Maybe ObjectLiteral
+        isObjectLiteral (TsTypeObject x, Nothing) = Just x
+        isObjectLiteral _                         = Nothing
+
+        isNewtypeObject :: ObjectLiteral -> Bool
+        isNewtypeObject [Required (_, TsTypeUniqueSymbol)] = True
+        isNewtypeObject _                                  = False
+isNewtype _ = Nothing
 
 fGeneric :: (String, NonEmpty (TsType, Maybe TsType)) -> State PrintState String
 fGeneric (x, ys) = do
@@ -119,17 +139,24 @@ fFunctionDeclaration x = (\t ps -> functionDeclarationName x <> " :: " <> render
   <$> fFunction (functionDeclarationType x) <*> renderPrintState
 
 fAlias :: Alias -> State PrintState String
-fAlias x = do
-  let explicitTargs = foldMap toList (aliasTypeArgs x)
-  modify $ \s -> s { explicitTypeArgs = explicitTypeArgs s <> explicitTargs }
-  explicitTargsP <- intercalate " " <$> mapMaybeM printableTypeArg explicitTargs
-  ttype <- fTsType (aliasType x)
-  ps <- renderPrintState
-  pure $ "type " <> aliasName x <> (if null explicitTargsP then "" else " ") <> explicitTargsP <> " = " <> renderedTypeArgs ps <> renderedSubtypes ps <> ttype
-    where printableTypeArg :: (TsType, Maybe TsType) -> State PrintState (Maybe String)
-          printableTypeArg (TsTypeMisc y, _)      = Just <$> fMisc y
-          printableTypeArg (TsTypeSubtype y z, _) = Just . surround "(" ")" <$> fSubtype y z
-          printableTypeArg _                   = pure Nothing
+fAlias x = case isNewtype (aliasType x) of
+  Just y -> fNewtype (aliasName x) y
+  Nothing -> do
+    let explicitTargs = foldMap toList (aliasTypeArgs x)
+    modify $ \s -> s { explicitTypeArgs = explicitTypeArgs s <> explicitTargs }
+    explicitTargsP <- intercalate " " <$> mapMaybeM printableTypeArg explicitTargs
+    ttype <- fTsType (aliasType x)
+    ps <- renderPrintState
+    pure $ "type " <> aliasName x <> (if null explicitTargsP then "" else " ") <> explicitTargsP <> " = " <> renderedTypeArgs ps <> renderedSubtypes ps <> ttype
+      where printableTypeArg :: (TsType, Maybe TsType) -> State PrintState (Maybe String)
+            printableTypeArg (TsTypeMisc y, _)      = Just <$> fMisc y
+            printableTypeArg (TsTypeSubtype y z, _) = Just . surround "(" ")" <$> fSubtype y z
+            printableTypeArg _                   = pure Nothing
+
+fInterface :: Interface -> State PrintState String
+fInterface x = case isNewtype =<< interfaceExtends x of
+  Just y -> fNewtype (interfaceName x) y
+  Nothing -> fAlias $ fromInterface x
 
 data RenderedPrintState = RenderedPrintState
   { renderedTypeArgs :: String
@@ -158,10 +185,10 @@ renderPrintState = do
         matchSubtype _                      = Nothing
 
 fSignature :: Signature -> State PrintState String
-fSignature (SignatureAlias y)               = fAlias y
-fSignature (SignatureInterface y)           = fAlias $ fromInterface y
-fSignature (SignatureConstDeclaration y)    = fConstDeclaration y
-fSignature (SignatureFunctionDeclaration y) = fFunctionDeclaration y
+fSignature (SignatureAlias x)               = fAlias x
+fSignature (SignatureInterface x)           = fInterface x
+fSignature (SignatureConstDeclaration x)    = fConstDeclaration x
+fSignature (SignatureFunctionDeclaration x) = fFunctionDeclaration x
 
 data PrintState = PrintState
   { ambiguouslyNested :: Bool

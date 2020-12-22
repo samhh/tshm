@@ -31,7 +31,6 @@ The parser is not intended to be a perfect parser of TypeScript syntax, rather m
 - Object keys that aren't ordinary identifiers e.g. index signatures
 - Mapped types
 - Object property accessors that aren't string literals
-- Dedicated parsing for newtype-ts
 - Trailing commas
 
 ### Output
