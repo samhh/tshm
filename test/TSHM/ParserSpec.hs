@@ -8,7 +8,7 @@ import           TSHM.TypeScript
 import           Test.Hspec
 import           Test.Hspec.Hedgehog   (PropertyT, forAll, hedgehog, (===))
 import           Test.Hspec.Megaparsec
-import           Text.Megaparsec       (ParseErrorBundle, Parsec, parse, eof)
+import           Text.Megaparsec       (ParseErrorBundle, Parsec, eof, parse)
 
 unlines' :: [String] -> String
 unlines' = intercalate "\n"
@@ -388,7 +388,7 @@ spec = describe "TSHM.Parser" $ do
         SignatureConstDeclaration (ConstDeclaration "omit" (TsTypeFunction (Function (Just $ typeArgs [TsTypeSubtype "K" (TsTypeMisc "string")]) [Required $ Normal $ TsTypeGeneric "Array" $ typeArgs [TsTypeMisc "K"]] (TsTypeFunction (Function (Just $ typeArgs [TsTypeMisc "V", TsTypeSubtype "A" (TsTypeGeneric "Record" $ typeArgs [TsTypeMisc "K", TsTypeMisc "V"])]) [Required $ Normal $ TsTypeGeneric "Partial" $ typeArgs [TsTypeMisc "A"]] (TsTypeGeneric "Pick" $ typeArgs [TsTypeMisc "A", TsTypeGeneric "Exclude" $ typeArgs [TsTypeKeysOf (TsTypeMisc "A"), TsTypeMisc "K"]]))))))
 
       parse' pSignature "export declare const unary: <A extends unknown[], B>(f: (...xs: A) => B) => (xs: A) => B" `shouldParse`
-        SignatureConstDeclaration (ConstDeclaration "unary" (TsTypeFunction (Function (Just $ typeArgs [TsTypeSubtype "A" (TsTypeGeneric "Array" $ typeArgs [TsTypeMisc "unknown"]), TsTypeMisc "B"]) [Required $ Normal $ TsTypeFunction (Function Nothing [Required $ Rest $ TsTypeMisc "A"] (TsTypeMisc "B"))] (TsTypeFunction (Function Nothing [Required $ Normal $ TsTypeMisc "A"] (TsTypeMisc "B"))))))
+        SignatureConstDeclaration (ConstDeclaration "unary" (TsTypeFunction (Function (Just $ typeArgs [TsTypeSubtype "A" (TsTypeGeneric "Array" $ typeArgs [TsTypeUnknown]), TsTypeMisc "B"]) [Required $ Normal $ TsTypeFunction (Function Nothing [Required $ Rest $ TsTypeMisc "A"] (TsTypeMisc "B"))] (TsTypeFunction (Function Nothing [Required $ Normal $ TsTypeMisc "A"] (TsTypeMisc "B"))))))
 
       parse' pSignature "export interface Some<A> { readonly _tag: 'Some', readonly value: A }" `shouldParse`
         SignatureInterface (Interface "Some" (Just $ typeArgs [TsTypeMisc "A"]) Nothing [Required ("_tag", TsTypeStringLiteral "Some"), Required ("value", TsTypeMisc "A")])

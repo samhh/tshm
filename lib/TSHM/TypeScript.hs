@@ -17,7 +17,9 @@ type ObjectLiteral = [Partial (String, TsType)]
 type TypeArgument = (TsType, Maybe TsType)
 
 data TsType
-  = TsTypeVoid
+  = TsTypeAny
+  | TsTypeUnknown
+  | TsTypeVoid
   | TsTypeNull
   | TsTypeUndefined
   | TsTypeUniqueSymbol

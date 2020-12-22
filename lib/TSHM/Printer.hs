@@ -83,6 +83,8 @@ fExpression o l r = do
     <$> fTsType l <*> fTsType r
 
 fTsType :: TsType -> State PrintState String
+fTsType TsTypeAny                   = pure "any"
+fTsType TsTypeUnknown               = pure "unknown"
 fTsType TsTypeVoid                  = pure "void"
 fTsType TsTypeUndefined             = pure "undefined"
 fTsType TsTypeNull                  = pure "null"
@@ -149,11 +151,11 @@ renderPrintState = do
   where printableTypeArg :: (TsType, Maybe TsType) -> State PrintState (Maybe String)
         printableTypeArg (TsTypeMisc y, _)      = Just <$> fMisc y
         printableTypeArg (TsTypeSubtype y _, _) = Just <$> fMisc y
-        printableTypeArg _                   = pure Nothing
+        printableTypeArg _                      = pure Nothing
 
         matchSubtype :: (TsType, Maybe TsType) -> Maybe (String, TsType)
         matchSubtype (TsTypeSubtype y z, _) = Just (y, z)
-        matchSubtype _                   = Nothing
+        matchSubtype _                      = Nothing
 
 fSignature :: Signature -> State PrintState String
 fSignature (SignatureAlias y)               = fAlias y

@@ -54,6 +54,8 @@ pTypeMisc = some alphaNumChar
 pType :: Parser TsType
 pType = (`makeExprParser` operators) $ optional (string "readonly" <* hspace1) *> choice
   [ try $ TsTypeGrouped <$> between (char '(') (char ')') pType
+  , TsTypeAny <$ pPreciseIdentifierString "any"
+  , TsTypeUnknown <$ pPreciseIdentifierString "unknown"
   , TsTypeVoid <$ pPreciseIdentifierString "void"
   , TsTypeNull <$ pPreciseIdentifierString "null"
   , TsTypeUndefined <$ pPreciseIdentifierString "undefined"
