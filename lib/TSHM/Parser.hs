@@ -32,20 +32,33 @@ operators =
           binary :: String -> (TsType -> TsType -> TsType) -> Operator Parser TsType
           binary x f = InfixR $ f <$ string (" " <> x <> " ")
 
+pIdentifierHeadChar :: Parser Char
+pIdentifierHeadChar = letterChar <|> char '$' <|> char '_'
+
+pIdentifierTailChar :: Parser Char
+pIdentifierTailChar = pIdentifierHeadChar <|> numberChar
+
 -- https://developer.mozilla.org/en-US/docs/Glossary/identifier
+-- I can't find any documentation for this, but TypeScript appears to follow
+-- the same rules for type-level identifiers as JavaScript does for runtime
+-- identifiers.
 pIdentifier :: Parser String
-pIdentifier = (:) <$> uniChar <*> (maybeToMonoid <$> optional (some (uniChar <|> numberChar)))
-  where uniChar :: Parser Char
-        uniChar = letterChar <|> char '$' <|> char '_'
+pIdentifier = (:) <$> pIdentifierHeadChar <*> (maybeToMonoid <$> optional (some pIdentifierTailChar))
+
+pPreciseIdentifierString :: String -> Parser String
+pPreciseIdentifierString x = try $ string x <* notFollowedBy pIdentifierTailChar
+
+pTypeMisc :: Parser String
+pTypeMisc = some alphaNumChar
 
 pType :: Parser TsType
 pType = (`makeExprParser` operators) $ optional (string "readonly" <* hspace1) *> choice
   [ try $ TsTypeGrouped <$> between (char '(') (char ')') pType
-  , TsTypeVoid <$ string "void"
-  , TsTypeNull <$ string "null"
-  , TsTypeUndefined <$ string "undefined"
+  , TsTypeVoid <$ pPreciseIdentifierString "void"
+  , TsTypeNull <$ pPreciseIdentifierString "null"
+  , TsTypeUndefined <$ pPreciseIdentifierString "undefined"
   , TsTypeUniqueSymbol <$ string "unique symbol"
-  , TsTypeBoolean <$> ((True <$ string "true") <|> (False <$ string "false"))
+  , TsTypeBoolean <$> ((True <$ pPreciseIdentifierString "true") <|> (False <$ pPreciseIdentifierString "false"))
   , TsTypeStringLiteral <$> pStringLiteral
   , TsTypeNumberLiteral <$> pNumberLiteral
   , TsTypeTuple <$> pTuple
@@ -55,9 +68,6 @@ pType = (`makeExprParser` operators) $ optional (string "readonly" <* hspace1) *
   , TsTypeReflection <$> (string "typeof" *> hspace1 *> some alphaNumChar)
   , TsTypeMisc <$> pTypeMisc
   ]
-
-pTypeMisc :: Parser String
-pTypeMisc = some alphaNumChar
 
 pGeneric :: Parser TsType
 pGeneric = TsTypeGeneric <$> pTypeMisc <*> pTypeArgs

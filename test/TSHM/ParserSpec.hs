@@ -39,6 +39,10 @@ spec = describe "TSHM.Parser" $ do
       parse' pType "A" `shouldParse` TsTypeMisc "A"
       parse' pType "string" `shouldParse` TsTypeMisc "string"
 
+    it "parses primitive with identifier starting with a known identifier" $ do
+      parse' pType "void" `shouldParse` TsTypeVoid
+      parse' pType "voidx" `shouldParse` TsTypeMisc "voidx"
+
     it "parses string literal" $ do
       parse' pType "'abc'" `shouldParse` TsTypeStringLiteral "abc"
 
