@@ -49,7 +49,7 @@ fSubtype x y = surrounding " extends " <$> fMisc x <*> fTsType y
 fFunction :: Function -> State PrintState String
 fFunction x = do
   nested <- inParams <$> get
-  let tas = maybe [] toList (functionTypeArgs x)
+  let tas = foldMap toList (functionTypeArgs x)
   modify $ \s -> s { implicitTypeArgs = implicitTypeArgs s <> tas }
 
   (doIf (surround "(" ")") nested .) . surrounding " -> " <$> fParams (functionParams x) <*> fTsType (functionReturn x)
@@ -118,7 +118,7 @@ fFunctionDeclaration x = (\t ps -> functionDeclarationName x <> " :: " <> render
 
 fAlias :: Alias -> State PrintState String
 fAlias x = do
-  let explicitTargs = maybe [] toList (aliasTypeArgs x)
+  let explicitTargs = foldMap toList (aliasTypeArgs x)
   modify $ \s -> s { explicitTypeArgs = explicitTypeArgs s <> explicitTargs }
   explicitTargsP <- intercalate " " <$> mapMaybeM printableTypeArg explicitTargs
   ttype <- fTsType (aliasType x)
@@ -138,11 +138,11 @@ renderPrintState :: State PrintState RenderedPrintState
 renderPrintState = do
   tas <- implicitTypeArgs <$> get
 
-  targs <- fmap (guarded (not . null)) . mapMaybeM printableTypeArg $ tas
-  let targsSig = maybe "" (("forall " <>) . (<> ". ") . intercalate " ") targs
+  targs :: Maybe [String] <- fmap (guarded (not . null)) . mapMaybeM printableTypeArg $ tas
+  let targsSig = foldMap (("forall " <>) . (<> ". ") . intercalate " ") targs
 
-  sts <- fmap (guarded (not . null)) . mapM (uncurry fSubtype) . mapMaybe matchSubtype $ tas
-  let stsSig = maybe "" ((<> " => ") . intercalate ", ") sts
+  sts :: Maybe [String] <- fmap (guarded (not . null)) . mapM (uncurry fSubtype) . mapMaybe matchSubtype $ tas
+  let stsSig = foldMap ((<> " => ") . intercalate ", ") sts
 
   pure $ RenderedPrintState targsSig stsSig
 

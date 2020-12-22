@@ -12,6 +12,7 @@ common common
     ConstraintKinds
     LambdaCase
     NoImplicitPrelude
+    ScopedTypeVariables
     TupleSections
   ghc-options:
     -Wall

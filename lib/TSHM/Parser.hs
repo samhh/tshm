@@ -34,12 +34,9 @@ operators =
 
 -- https://developer.mozilla.org/en-US/docs/Glossary/identifier
 pIdentifier :: Parser String
-pIdentifier = f <$> uniChar <*> optional (some (uniChar <|> numberChar))
+pIdentifier = (:) <$> uniChar <*> (maybeToMonoid <$> optional (some (uniChar <|> numberChar)))
   where uniChar :: Parser Char
         uniChar = letterChar <|> char '$' <|> char '_'
-
-        f :: Char -> Maybe String -> String
-        f x ys = x : fromMaybe "" ys
 
 pType :: Parser TsType
 pType = (`makeExprParser` operators) $ optional (string "readonly" <* hspace1) *> choice
@@ -73,7 +70,7 @@ pStringLiteral = stringLiteral '\'' <|> stringLiteral '"'
            in p *> manyTill L.charLiteral p
 
 pNumberLiteral :: Parser String
-pNumberLiteral = (<>) . maybe "" pure <$> optional (char '-') <*> choice
+pNumberLiteral = (<>) . foldMap pure <$> optional (char '-') <*> choice
   [ try $ (\x y z -> x <> pure y <> z) <$> some numberChar <*> char '.' <*> some numberChar
   , (:) <$> char '.' <*> some numberChar
   , some numberChar
