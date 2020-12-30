@@ -7,7 +7,7 @@ import           Data.List                          (foldr1)
 import           Data.Void                          ()
 import           Prelude
 import           TSHM.TypeScript
-import           Text.Megaparsec                    hiding (many, some)
+import           Text.Megaparsec                    hiding (some)
 import           Text.Megaparsec.Char
 import qualified Text.Megaparsec.Char.Lexer         as L
 
