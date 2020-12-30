@@ -33,6 +33,15 @@ executable tshm
   other-modules:
     CLI
 
+executable tshm-docs-ts
+  import:                 common
+  hs-source-dirs:         docs-ts/
+  main-is:                Main.hs
+  build-depends:
+      tshm
+    , megaparsec          ^>=9.0
+    , parser-combinators  ^>=1.2
+
 library
   import:                  common
   hs-source-dirs:          lib/
