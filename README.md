@@ -19,7 +19,7 @@ Example:
 
 ```
 $ tshm "export declare const f: <A>(a: A) => <E>(b: Either<E, Option<A>>) => A"
-f :: forall a e. a -> Either e (Option a) -> a
+f :: a -> Either e (Option a) -> a
 
 $ tshm "export type Option<A> = None | Some<A>"
 type Option a = None | Some a
