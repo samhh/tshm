@@ -2,7 +2,7 @@ module TSHM.PrinterSpec (spec) where
 
 import           Prelude
 import           TSHM.Parser         (parseSignature)
-import           TSHM.Printer        (printSignature)
+import           TSHM.Printer        (PrintConfig (PrintConfig), printSignature)
 import           Test.Hspec
 import           Test.Hspec.Hedgehog (PropertyT, (===))
 import           Text.Megaparsec     (ParseErrorBundle)
@@ -10,14 +10,22 @@ import           Text.Megaparsec     (ParseErrorBundle)
 unlines' :: [String] -> String
 unlines' = intercalate "\n"
 
+ppWith :: Maybe String -> String -> Either (ParseErrorBundle String Void) String
+ppWith x = fmap (printSignature . flip PrintConfig x) . parseSignature
+
 pp :: String -> Either (ParseErrorBundle String Void) String
-pp = fmap printSignature . parseSignature
+pp = ppWith $ Just "forall"
 
 (=*=) :: (Eq a, Eq e, Show a, Show e) => Either e a -> a -> PropertyT IO ()
 a =*= b = a === Right b
 
 spec :: Spec
 spec = describe "TSHM.Printer" $ do
+  it "prints specified universal quantification" $ do
+    ppWith Nothing "declare const f: <A>() => A" =*= "f :: () -> a"
+    ppWith (Just "forall") "declare const f: <A>() => A" =*= "f :: forall a. () -> a"
+    ppWith (Just "∀") "declare const f: <A>() => A" =*= "f :: ∀ a. () -> a"
+
   it "prints type aliases" $ do
     pp "type X = string" =*= "type X = string"
     pp "type X<A> = string" =*= "type X a = string"
