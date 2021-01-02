@@ -2,7 +2,20 @@
 
 A parser and formatter for TypeScript declarations that outputs HM-style type signatures.
 
-Example usage:
+```
+Usage: tshm [-f|--forall string] input
+  A parser and formatter for TypeScript declarations that outputs HM-style type
+  signatures.
+
+Available options:
+  -h,--help                Show this help text
+  -f,--forall string       Specify a string to be used to express universal
+                           quantification, for example "forall" or "∀". If set
+                           to "none" or omitted, no universal quantification
+                           will be displayed
+```
+
+Example:
 
 ```
 $ tshm "export declare const f: <A>(a: A) => <E>(b: Either<E, Option<A>>) => A"
@@ -44,5 +57,4 @@ There is an open question as to how "Haskell-ified" the output should be.
 - Default type arguments
 - Output never utilises newlines
 - `readonly` modifier isn't output
-- Toggleable universal quantification
 

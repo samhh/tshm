@@ -1,18 +1,15 @@
 module Main (main) where
 
+import           CLI          (Input (..), parse)
 import           Prelude
-import           System.Environment (getArgs)
-import           TSHM.Parser        (ParseOutput, parseSignature)
-import           TSHM.Printer       (printSignature)
+import           TSHM.Parser  (ParseOutput, parseSignature)
+import           TSHM.Printer (PrintConfig (PrintConfig), printSignature)
 
 main :: IO ()
-main = render . parseSignature =<< argGuard =<< getArgs
-  where argGuard :: [String] -> IO String
-        argGuard []  = putStrLn "No input provided." *> exitFailure
-        argGuard [x] = pure x
-        argGuard _   = putStrLn "Too many inputs provided." *> exitFailure
-
-        render :: ParseOutput -> IO ()
-        render (Left e)  = print e *> exitFailure
-        render (Right x) = putStrLn . printSignature $ x
+main = do
+  input <- parse
+  render (forall input) (parseSignature (declaration input))
+  where render :: Maybe String -> ParseOutput -> IO ()
+        render _ (Left e)   = print e *> exitFailure
+        render fa (Right x) = putStrLn . printSignature $ PrintConfig x fa
 

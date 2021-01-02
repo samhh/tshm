@@ -1,11 +1,14 @@
-module TSHM.Printer (printSignature) where
+module TSHM.Printer (printSignature, PrintConfig (PrintConfig)) where
 
-import           Data.Char          (toLower)
-import           Data.List.NonEmpty ((!!))
+import           Control.Monad.RWS   (RWS, evalRWS)
+import           Data.Char           (toLower)
+import           Data.List.NonEmpty  ((!!))
+import           Data.Tuple.Sequence (sequenceT)
 import           Prelude
 import           TSHM.TypeScript
 
-type Printer = State PrintState String
+type Printer a = RWS PrintConfig () PrintState a
+type Printer' = Printer String
 
 surround :: Semigroup a => a -> a -> a -> a
 surround l r x = l <> x <> r
@@ -17,13 +20,13 @@ doIf :: (a -> a) -> Bool -> a -> a
 doIf f True  = f
 doIf _ False = id
 
-fParam :: Partial Param -> Printer
+fParam :: Partial Param -> Printer'
 fParam (Required (Normal x)) = fTsType x
 fParam (Required (Rest x))   = ("..." <>) <$> fTsType x
 fParam (Optional (Normal x)) = (<> "?") <$> fTsType x
 fParam (Optional (Rest x))   = ("..." <>) . (<> "?") <$> fTsType x
 
-fParams :: [Partial Param] -> Printer
+fParams :: [Partial Param] -> Printer'
 fParams []  = pure "()"
 fParams [x] = do
   modify $ \s -> s { inParams = True }
@@ -36,7 +39,7 @@ fParams xs  = do
   modify $ \s -> s { inParams = False }
   pure y
 
-fMisc :: String -> Printer
+fMisc :: String -> Printer'
 -- If the type is a single character, and we know about it from a type argument
 -- somewhere, then lowercase it
 fMisc [x] = trans x . any (isViable . fst) . ((<>) <$> implicitTypeArgs <*> explicitTypeArgs) <$> get
@@ -49,10 +52,10 @@ fMisc [x] = trans x . any (isViable . fst) . ((<>) <$> implicitTypeArgs <*> expl
         trans c b = pure $ if b then toLower c else c
 fMisc x   = pure x
 
-fSubtype :: String -> TsType -> Printer
+fSubtype :: String -> TsType -> Printer'
 fSubtype x y = surrounding " extends " <$> fMisc x <*> fTsType y
 
-fFunction :: Function -> Printer
+fFunction :: Function -> Printer'
 fFunction x = do
   nested <- inParams <$> get
   let tas = foldMap toList (functionTypeArgs x)
@@ -60,7 +63,7 @@ fFunction x = do
 
   (doIf (surround "(" ")") nested .) . surrounding " -> " <$> fParams (functionParams x) <*> fTsType (functionReturn x)
 
-fNewtype :: String -> TsType -> Printer
+fNewtype :: String -> TsType -> Printer'
 fNewtype x y = (("newtype " <> x <> " = ") <>) <$> fTsType y
 
 isNewtype :: TsType -> Maybe TsType
@@ -79,21 +82,21 @@ isNewtype (TsTypeGeneric "Newtype" xs) = fmap snd . guarded (isNewtypeObject . f
         isNewtypeObject _                                  = False
 isNewtype _ = Nothing
 
-fGeneric :: (String, NonEmpty TypeArgument) -> Printer
+fGeneric :: (String, NonEmpty TypeArgument) -> Printer'
 fGeneric (x, ys) = do
   nested <- ambiguouslyNested <$> get
   if nested then do
     modify $ \s -> s { ambiguouslyNested = False }
     surround "(" ")" <$> fGeneric (x, ys)
   else ((x <> " ") <>) . intercalate " " <$> mapM fTsType' (toList ys)
-  where fTsType' :: TypeArgument -> Printer
+  where fTsType' :: TypeArgument -> Printer'
         fTsType' z = do
           modify $ \s -> s { ambiguouslyNested = True }
           res <- fTsType $ fst z
           modify $ \s -> s { ambiguouslyNested = False }
           pure res
 
-fObjectPair :: Partial (String, TsType) -> Printer
+fObjectPair :: Partial (String, TsType) -> Printer'
 fObjectPair (Required (k, v)) = ((k <> ": ") <>) <$> fTsType v
 fObjectPair (Optional (k, v)) = ((k <> "?: ") <>) <$> fTsType v
 
@@ -101,13 +104,13 @@ fOperator :: TsOperator -> String
 fOperator TsOperatorIntersection = "&"
 fOperator TsOperatorUnion        = "|"
 
-fExpression :: TsOperator -> TsType -> TsType -> Printer
+fExpression :: TsOperator -> TsType -> TsType -> Printer'
 fExpression o l r = do
   nested <- ambiguouslyNested <$> get
   (doIf (surround "(" ")") nested .) . surrounding (" " <> fOperator o <> " ")
     <$> fTsType l <*> fTsType r
 
-fTsType :: TsType -> Printer
+fTsType :: TsType -> Printer'
 fTsType TsTypeAny                   = pure "any"
 fTsType TsTypeUnknown               = pure "unknown"
 fTsType TsTypeVoid                  = pure "void"
@@ -131,19 +134,19 @@ fTsType (TsTypeGrouped x)           = do
   modify $ \s -> s { ambiguouslyNested = False }
   surround "(" ")" <$> fTsType x
 
-fObject :: ObjectLiteral -> Printer
+fObject :: ObjectLiteral -> Printer'
 fObject [] = pure "{}"
 fObject xs = surround "{ " " }" . intercalate ", " <$> mapM fObjectPair xs
 
-fConstDeclaration :: ConstDeclaration -> Printer
+fConstDeclaration :: ConstDeclaration -> Printer'
 fConstDeclaration x = (\t ps -> constDeclarationName x <> " :: " <> renderedTypeArgs ps <> renderedSubtypes ps <> t)
   <$> fTsType (constDeclarationType x) <*> renderPrintState
 
-fFunctionDeclaration :: FunctionDeclaration -> Printer
+fFunctionDeclaration :: FunctionDeclaration -> Printer'
 fFunctionDeclaration x = (\t ps -> functionDeclarationName x <> " :: " <> renderedTypeArgs ps <> renderedSubtypes ps <> t)
   <$> fFunction (functionDeclarationType x) <*> renderPrintState
 
-fAlias :: Alias -> Printer
+fAlias :: Alias -> Printer'
 fAlias x = case isNewtype (aliasType x) of
   Just y -> fNewtype (aliasName x) y
   Nothing -> do
@@ -153,12 +156,12 @@ fAlias x = case isNewtype (aliasType x) of
     ttype <- fTsType (aliasType x)
     ps <- renderPrintState
     pure $ "type " <> aliasName x <> (if null explicitTargsP then "" else " ") <> explicitTargsP <> " = " <> renderedTypeArgs ps <> renderedSubtypes ps <> ttype
-      where printableTypeArg :: TypeArgument -> State PrintState (Maybe String)
+      where printableTypeArg :: TypeArgument -> Printer (Maybe String)
             printableTypeArg (TsTypeMisc y, _)      = Just <$> fMisc y
             printableTypeArg (TsTypeSubtype y z, _) = Just . surround "(" ")" <$> fSubtype y z
             printableTypeArg _                   = pure Nothing
 
-fInterface :: Interface -> Printer
+fInterface :: Interface -> Printer'
 fInterface x = case isNewtype =<< interfaceExtends x of
   Just y  -> fNewtype (interfaceName x) y
   Nothing -> fAlias $ fromInterface x
@@ -168,19 +171,22 @@ data RenderedPrintState = RenderedPrintState
   , renderedSubtypes :: String
   }
 
-renderPrintState :: State PrintState RenderedPrintState
+renderPrintState :: Printer RenderedPrintState
 renderPrintState = do
   tas <- implicitTypeArgs <$> get
+  fam <- forall <$> ask
 
-  targs :: Maybe [String] <- fmap (guarded (not . null)) . mapMaybeM printableTypeArg $ tas
-  let targsSig = foldMap (("forall " <>) . (<> ". ") . intercalate " ") targs
+  targsm :: Maybe [String] <- fmap (guarded (not . null)) . mapMaybeM printableTypeArg $ tas
+  let targsSig = case sequenceT (fam, targsm) of
+        Just (fa, ts) -> fa <> " " <> intercalate " " ts <> ". "
+        Nothing       -> ""
 
   sts :: Maybe [String] <- fmap (guarded (not . null)) . mapM (uncurry fSubtype) . mapMaybe matchSubtype $ tas
   let stsSig = foldMap ((<> " => ") . intercalate ", ") sts
 
   pure $ RenderedPrintState targsSig stsSig
 
-  where printableTypeArg :: TypeArgument -> State PrintState (Maybe String)
+  where printableTypeArg :: TypeArgument -> Printer (Maybe String)
         printableTypeArg (TsTypeMisc y, _)      = Just <$> fMisc y
         printableTypeArg (TsTypeSubtype y _, _) = Just <$> fMisc y
         printableTypeArg _                      = pure Nothing
@@ -189,11 +195,12 @@ renderPrintState = do
         matchSubtype (TsTypeSubtype y z, _) = Just (y, z)
         matchSubtype _                      = Nothing
 
-fSignature :: Signature -> Printer
-fSignature (SignatureAlias x)               = fAlias x
-fSignature (SignatureInterface x)           = fInterface x
-fSignature (SignatureConstDeclaration x)    = fConstDeclaration x
-fSignature (SignatureFunctionDeclaration x) = fFunctionDeclaration x
+fSignature :: Printer'
+fSignature = f . signature =<< ask
+  where f (SignatureAlias x)               = fAlias x
+        f (SignatureInterface x)           = fInterface x
+        f (SignatureConstDeclaration x)    = fConstDeclaration x
+        f (SignatureFunctionDeclaration x) = fFunctionDeclaration x
 
 data PrintState = PrintState
   { ambiguouslyNested :: Bool
@@ -202,5 +209,10 @@ data PrintState = PrintState
   , implicitTypeArgs  :: [TypeArgument]
   }
 
-printSignature :: Signature -> String
-printSignature x = evalState (fSignature x) (PrintState False False [] [])
+data PrintConfig = PrintConfig
+  { signature :: Signature
+  , forall    :: Maybe String
+  }
+
+printSignature :: PrintConfig -> String
+printSignature x = fst $ evalRWS fSignature x (PrintState False False [] [])

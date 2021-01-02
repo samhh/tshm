@@ -1,13 +1,13 @@
-cabal-version:            2.2
-version:                  0.1.0
-license:                  MIT
-author:                   Sam A. Horvath-Hunt
-maintainer:               hello@samhh.com
-name:                     tshm
-build-type:               Simple
+cabal-version:             2.2
+version:                   0.1.0
+license:                   MIT
+author:                    Sam A. Horvath-Hunt
+maintainer:                hello@samhh.com
+name:                      tshm
+build-type:                Simple
 
 common common
-  default-language:       Haskell2010
+  default-language:        Haskell2010
   default-extensions:
     ConstraintKinds
     LambdaCase
@@ -17,42 +17,47 @@ common common
   ghc-options:
     -Wall
   build-depends:
-      base                ^>=4.14
-    , relude              ^>=0.7
+      base                 ^>=4.14
+    , relude               ^>=0.7
   mixins:
       base hiding (Prelude)
     , relude (Relude as Prelude)
 
 executable tshm
-  import:                 common
-  hs-source-dirs:         src/
-  main-is:                Main.hs
+  import:                  common
+  hs-source-dirs:          src/
+  main-is:                 Main.hs
   build-depends:
       tshm
+    , optparse-applicative ^>=0.16.1
+  other-modules:
+    CLI
 
 library
-  import:                 common
-  hs-source-dirs:         lib/
+  import:                  common
+  hs-source-dirs:          lib/
   exposed-modules:
     TSHM.Parser
     TSHM.Printer
     TSHM.TypeScript
   build-depends:
-      megaparsec          ^>=9.0
-    , parser-combinators  ^>=1.2
+      megaparsec           ^>=9.0
+    , parser-combinators   ^>=1.2
+    , mtl                  ^>=2.2
+    , tuple                ^>=0.3.0
 
 test-suite test-tshm
-  import:                 common
-  hs-source-dirs:         test/
-  main-is:                Spec.hs
-  type:                   exitcode-stdio-1.0
+  import:                  common
+  hs-source-dirs:          test/
+  main-is:                 Spec.hs
+  type:                    exitcode-stdio-1.0
   build-depends:
       tshm
-    , hedgehog            ^>=1.0
-    , hspec               ^>=2.7
-    , hspec-hedgehog      ^>=0.0.1
-    , hspec-megaparsec    ^>=2.2
-    , megaparsec          ^>=9.0
+    , hedgehog             ^>=1.0
+    , hspec                ^>=2.7
+    , hspec-hedgehog       ^>=0.0.1
+    , hspec-megaparsec     ^>=2.2
+    , megaparsec           ^>=9.0
   build-tool-depends:
       hspec-discover:hspec-discover
   other-modules:
