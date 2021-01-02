@@ -18,14 +18,17 @@ Available options:
 Example:
 
 ```
-$ tshm "export declare const f: <A>(a: A) => <E>(b: Either<E, Option<A>>) => A"
-f :: a -> Either e (Option a) -> a
-
 $ tshm "export type Option<A> = None | Some<A>"
 type Option a = None | Some a
-```
 
-Check out the "printer" tests for some real-world examples.
+$ tshm "export declare const invertAll: <A>(f: (x: A) => string) => (x: Record<string, A>) => Record<string, string[]>"
+invertAll :: (a -> string) -> Record string a -> Record string (Array string)
+
+$ tshm --forall ∀ "export declare const withIndex: <A, B, C>(
+    f: (g: (x: A) => B) => (ys: A[]) => C[]
+  ) => (g: (i: number) => (x: A) => B) => (ys: A[]) => C[]"
+withIndex :: ∀ a b c. ((a -> b) -> Array a -> Array c) -> (number -> a -> b) -> Array a -> Array c
+```
 
 Should an invalid input be provided the program will fail with the appropriate exit code, enabling the use of tshm in shell pipelines.
 
