@@ -20,6 +20,8 @@ f :: ∀ a. () -> a
 
 Aside from that, the CLI has been generally improved, now providing useful help text.
 
+In terms of parsing, trailing commas are now supported in tuples.
+
 ## 0.1.0 -- 2021-01-02
 
 This is tshm's initial release!

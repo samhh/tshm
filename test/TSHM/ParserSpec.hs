@@ -172,6 +172,12 @@ spec = describe "TSHM.Parser" $ do
     it "parses non-empty nested tuple" $ do
       parse' pTuple "[a, ['b', 3]]" `shouldParse` [TsTypeMisc "a", TsTypeTuple [TsTypeStringLiteral "b", TsTypeNumberLiteral "3"]]
 
+    it "parses non-empty tuple with trailing comma" $ do
+      parse' pTuple "[a,]" `shouldParse` [TsTypeMisc "a"]
+      parse' pTuple "[a, ]" `shouldParse` [TsTypeMisc "a"]
+      parse' pTuple "[a, b,]" `shouldParse` [TsTypeMisc "a", TsTypeMisc "b"]
+      parse' pTuple "[a, b, ]" `shouldParse` [TsTypeMisc "a", TsTypeMisc "b"]
+
   describe "pNumberLiteral" $ do
     let p = pNumberLiteral <* eof
 

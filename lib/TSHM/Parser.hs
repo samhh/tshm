@@ -89,7 +89,7 @@ pNumberLiteral = (<>) . foldMap pure <$> optional (char '-') <*> choice
   ]
 
 pTuple :: Parser [TsType]
-pTuple = between (char '[' <* space) (space *> char ']') $ sepBy pType (space *> char ',' <* space)
+pTuple = between (char '[' <* space) (space *> char ']') $ sepEndBy pType (space *> char ',' <* space)
 
 pObject :: Parser ObjectLiteral
 pObject =
