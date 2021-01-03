@@ -36,9 +36,14 @@ spec = describe "TSHM.Printer" $ do
     pp "interface X { a: B }" =*= "type X = { a: B }"
     pp "interface X extends Y { a: B }" =*= "type X = { a: B } & Y"
 
-  it "prints declarations" $ do
+  it "prints const declarations" $ do
+    pp "declare const x: number" =*= "x :: number"
     pp "declare const f: (x: A) => (y: B) => C" =*= "f :: A -> B -> C"
     pp "declare const f: <A>(x: A) => [A, A]" =*= "f :: forall a. a -> [a, a]"
+
+  it "prints function declarations" $ do
+    pp "declare function f(x: A): (y: B) => C" =*= "f :: A -> B -> C"
+    pp "declare function f<A>(x: A): [A, A]" =*= "f :: forall a. a -> [a, a]"
 
   it "prints universal quantification and subtypes" $ do
     pp "type X = <A>(x: A) => <B>(y: B) => <C, D extends A, E>(c: [C, D, E]) => Either<E, C & D>" =*=
