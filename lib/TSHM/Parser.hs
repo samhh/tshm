@@ -94,7 +94,7 @@ pTuple = between (char '[' <* space) (space *> char ']') $ sepEndBy pType (space
 pObject :: Parser ObjectLiteral
 pObject =
       [] <$ string "{}"
-  <|> between (char '{' <* space) (space *> char '}') (sepBy1 pPair
+  <|> between (char '{' <* space) (space *> char '}') (sepEndBy1 pPair
         ((char ',' <|> char ';' <|> try (newline <* notFollowedBy (char '}'))) <* space))
   where pPair :: Parser (Partial (String, TsType))
         pPair = optional (string "readonly" <* hspace1) *> choice

@@ -162,6 +162,10 @@ spec = describe "TSHM.Parser" $ do
       parse' pObject "{ f?<A>(): void }" `shouldParse`
         [Optional ("f", TsTypeFunction $ Function (Just $ typeArgs [TsTypeMisc "A"]) [] TsTypeVoid)]
 
+    it "parses trailing delimiter in non-empty object" $ do
+      parse' pObject "{ a: number; b: string, }" `shouldParse`
+        [Required ("a", TsTypeMisc "number"), Required ("b", TsTypeMisc "string")]
+
   describe "pTuple" $ do
     it "parses empty tuple" $ do
       parse' pTuple "[]" `shouldParse` []
