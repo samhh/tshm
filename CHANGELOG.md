@@ -20,7 +20,7 @@ f :: ∀ a. () -> a
 
 Aside from that, the CLI has been generally improved, now providing useful help text.
 
-In terms of parsing, trailing commas are now supported in tuples and object literal types.
+In terms of parsing, trailing commas are now supported in tuples, object literal types, and function parameter lists.
 
 ## 0.1.0 -- 2021-01-02
 

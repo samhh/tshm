@@ -123,7 +123,7 @@ pTypeArgs = between (char '<') (char '>') (NE.sepBy1 pTypeArg (char ',' <* space
         pDefault = optional $ hspace1 *> char '=' *> hspace1 *> pType
 
 pParams :: Parser [Partial Param]
-pParams = between (char '(') (char ')') $ space *> sepBy pParam (char ',' <* space) <* space
+pParams = between (char '(') (char ')') $ space *> sepEndBy pParam (char ',' <* space) <* space
   where pParam :: Parser (Partial Param)
         pParam = f <$> rest <*> (some alphaNumChar *> sep) <*> (optional (string "new" <* hspace1) *> pType)
 

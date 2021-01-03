@@ -304,6 +304,9 @@ spec = describe "TSHM.Parser" $ do
       parse' pParams (unlines' ["(", "x: A", ")"]) `shouldParse` [Required $ Normal $ TsTypeMisc "A"]
       parse' pParams (unlines' ["(", "x: A,", "y: B", ")"]) `shouldParse` [Required $ Normal $ TsTypeMisc "A", Required $ Normal $ TsTypeMisc "B"]
 
+    it "parses optional trailing comma in non-empty params" $ do
+      parse' pParams "(a: number,)" `shouldParse` [ Required $ Normal $ TsTypeMisc "number"]
+
   describe "pFunctionLiteralReturn" $ do
     it "parses value after the lambda" $ do
       parse' pFunctionLiteralReturn " => void" `shouldParse` TsTypeVoid
