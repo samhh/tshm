@@ -271,6 +271,11 @@ spec = describe "TSHM.Parser" $ do
     it "requires at least one type argument" $ do
       parse' pTypeArgs `shouldFailOn` "<>"
 
+    it "parses trailing comma in non-empty arguments list" $ do
+      parse' pTypeArgs "<A,>" `shouldParse`
+        typeArgs [ TsTypeMisc "A"
+        ]
+
   describe "pParams" $ do
     it "parses empty params" $ do
       parse' pParams "()" `shouldParse` []

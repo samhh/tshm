@@ -110,7 +110,7 @@ pObject =
         method n o g p r = (if o then Optional else Required) (n, TsTypeFunction $ Function g p r)
 
 pTypeArgs :: Parser (NonEmpty TypeArgument)
-pTypeArgs = between (char '<') (char '>') (NE.sepBy1 pTypeArg (char ',' <* space))
+pTypeArgs = between (char '<') (char '>') (NE.sepEndBy1 pTypeArg (char ',' <* space))
   where pTypeArg :: Parser TypeArgument
         pTypeArg = (,)
           <$> choice
