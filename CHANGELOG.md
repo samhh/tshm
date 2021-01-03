@@ -22,6 +22,8 @@ Aside from that, the CLI has been generally improved, now providing useful help 
 
 In terms of parsing, trailing commas are now supported in tuples, object literal types, function parameter lists, and generic type argument lists.
 
+Additionally, overloaded functions are now supported!
+
 ## 0.1.0 -- 2021-01-02
 
 This is tshm's initial release!

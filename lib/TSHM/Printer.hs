@@ -197,10 +197,15 @@ renderPrintState = do
 
 fSignature :: Printer'
 fSignature = f . signature =<< ask
-  where f (SignatureAlias x)               = fAlias x
-        f (SignatureInterface x)           = fInterface x
-        f (SignatureConstDeclaration x)    = fConstDeclaration x
-        f (SignatureFunctionDeclaration x) = fFunctionDeclaration x
+  where f (SignatureAlias x)                          = fAlias x
+        f (SignatureInterface x)                      = fInterface x
+        f (SignatureConstDeclaration x)               = fConstDeclaration x
+        f (SignatureFunctionDeclaration xs)            = intercalate "\n" <$> mapM (clean fFunctionDeclaration) (toList xs)
+
+        clean :: (a -> Printer') -> a -> Printer'
+        clean p x = do
+          modify $ \s -> s { implicitTypeArgs = [] }
+          p x
 
 data PrintState = PrintState
   { ambiguouslyNested :: Bool

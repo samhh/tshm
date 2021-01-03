@@ -90,6 +90,6 @@ data Signature
   = SignatureAlias Alias
   | SignatureInterface Interface
   | SignatureConstDeclaration ConstDeclaration
-  | SignatureFunctionDeclaration FunctionDeclaration
+  | SignatureFunctionDeclaration (NonEmpty FunctionDeclaration)
   deriving (Eq, Show)
 

@@ -181,7 +181,7 @@ pSignature = choice
   [ try $ SignatureAlias <$> pAlias
   , try $ SignatureInterface <$> pInterface
   , try $ SignatureConstDeclaration <$> pConstDeclaration
-  , SignatureFunctionDeclaration <$> pFunctionDeclaration
+  , SignatureFunctionDeclaration <$> NE.sepBy1 pFunctionDeclaration newline
   ] <* eof
 
 parseSignature :: String -> ParseOutput

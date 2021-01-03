@@ -389,6 +389,18 @@ spec = describe "TSHM.Parser" $ do
       parse' pSignature "export type X = void" `shouldParse` SignatureAlias (Alias "X" Nothing TsTypeVoid)
       parse' pSignature "interface X {}" `shouldParse` SignatureInterface (Interface "X" Nothing Nothing [])
       parse' pSignature "export interface X {}" `shouldParse` SignatureInterface (Interface "X" Nothing Nothing [])
+      parse' pSignature "declare function f(): void" `shouldParse` SignatureFunctionDeclaration (fromList [FunctionDeclaration "f" (Function Nothing [] TsTypeVoid)])
+      parse' pSignature "export declare function f(): void" `shouldParse` SignatureFunctionDeclaration (fromList [FunctionDeclaration "f" (Function Nothing [] TsTypeVoid)])
+      parse' pSignature (unlines' ["declare function f(): A", "declare function f(): B"]) `shouldParse`
+        SignatureFunctionDeclaration (fromList
+          [ FunctionDeclaration "f" (Function Nothing [] (TsTypeMisc "A"))
+          , FunctionDeclaration "f" (Function Nothing [] (TsTypeMisc "B"))
+          ])
+      parse' pSignature (unlines' ["export declare function f(): A", "export declare function f(): B"]) `shouldParse`
+        SignatureFunctionDeclaration (fromList
+          [ FunctionDeclaration "f" (Function Nothing [] (TsTypeMisc "A"))
+          , FunctionDeclaration "f" (Function Nothing [] (TsTypeMisc "B"))
+          ])
 
     it "parses real signatures" $ do
       parse' pSignature "export declare const empty: ''" `shouldParse` SignatureConstDeclaration (ConstDeclaration "empty" (TsTypeStringLiteral ""))

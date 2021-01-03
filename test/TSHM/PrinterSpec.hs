@@ -45,6 +45,15 @@ spec = describe "TSHM.Printer" $ do
     pp "declare function f(x: A): (y: B) => C" =*= "f :: A -> B -> C"
     pp "declare function f<A>(x: A): [A, A]" =*= "f :: forall a. a -> [a, a]"
 
+  it "prints overloaded function declarations" $ do
+    pp (unlines'
+      [ "export declare function f(x: A): A"
+      , "export declare function f(x: B): B"
+      ]) =*= unlines'
+      [ "f :: A -> A"
+      , "f :: B -> B"
+      ]
+
   it "prints universal quantification and subtypes" $ do
     pp "type X = <A>(x: A) => <B>(y: B) => <C, D extends A, E>(c: [C, D, E]) => Either<E, C & D>" =*=
       "type X = forall a b c d e. d extends a => a -> b -> [c, d, e] -> Either e (c & d)"
@@ -80,6 +89,40 @@ spec = describe "TSHM.Printer" $ do
         "type Json = boolean | number | string | null | JsonArray | JsonRecord"
       pp "export interface JsonArray extends ReadonlyArray<Json> {}" =*=
         "type JsonArray = {} & ReadonlyArray Json"
+
+    it "fp-ts/function" $ do
+      pp (unlines'
+        [ "export declare function pipe<A>(a: A): A"
+        , "export declare function pipe<A, B>(a: A, ab: (a: A) => B): B"
+        ]) =*= unlines'
+        [ "pipe :: forall a. a -> a"
+        , "pipe :: forall a b. (a, (a -> b)) -> b"
+        ]
+      -- -- requires: fixed function parentheses (replaces above)
+      -- -- the actual pipe function at time of writing goes on until T, but that
+      -- -- wouldn't prove anything extra
+      -- pp (unlines'
+      --   [ "export declare function pipe<A>(a: A): A"
+      --   , "export declare function pipe<A, B>(a: A, ab: (a: A) => B): B"
+      --   , "export declare function pipe<A, B, C>(a: A, ab: (a: A) => B, bc: (b: B) => C): C"
+      --   , "export declare function pipe<A, B, C, D>(a: A, ab: (a: A) => B, bc: (b: B) => C, cd: (c: C) => D): D"
+      --   , "export declare function pipe<A, B, C, D, E>(a: A, ab: (a: A) => B, bc: (b: B) => C, cd: (c: C) => D, de: (d: D) => E): E"
+      --   , "export declare function pipe<A, B, C, D, E, F>("
+      --   , "a: A,"
+      --   , "ab: (a: A) => B,"
+      --   , "bc: (b: B) => C,"
+      --   , "cd: (c: C) => D,"
+      --   , "de: (d: D) => E,"
+      --   , "ef: (e: E) => F"
+      --   , "): F"
+      --   ]) =*= unlines'
+      --   [ "pipe :: forall a. a -> a"
+      --   , "pipe :: forall a b. (a, (a -> b)) -> b"
+      --   , "pipe :: forall a b c. (a, (a -> b), (b -> c)) -> c"
+      --   , "pipe :: forall a b c d. (a, (a -> b), (b -> c), (c -> d)) -> d"
+      --   , "pipe :: forall a b c d e. (a, (a -> b), (b -> c), (c -> d), (d -> e)) -> e"
+      --   , "pipe :: forall a b c d e f. (a, (a -> b), (b -> c), (c -> d), (d -> e), (e -> f)) -> f"
+      --   ]
 
     it "fp-ts/Option" $ do
       pp "export type Option<A> = None | Some<A>" =*=
