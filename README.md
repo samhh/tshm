@@ -21,6 +21,9 @@ Example:
 $ tshm "export type Option<A> = None | Some<A>"
 type Option a = None | Some a
 
+$ tshm "export type Milliseconds = Newtype<{ readonly Milliseconds: unique symbol }, number>"
+newtype Milliseconds = number
+
 $ tshm "export declare const invertAll: <A>(f: (x: A) => string) => (x: Record<string, A>) => Record<string, string[]>"
 invertAll :: (a -> string) -> Record string a -> Record string (Array string)
 
