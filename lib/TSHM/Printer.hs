@@ -121,25 +121,25 @@ fTsType t = do
   res <- f t
   modify $ \s -> s { immediateFunctionArg = False }
   pure res
-  where f TsTypeAny                     = pure "any"
-        f TsTypeUnknown                 = pure "unknown"
-        f TsTypeVoid                    = pure "void"
-        f TsTypeUndefined               = pure "undefined"
-        f TsTypeNull                    = pure "null"
-        f TsTypeUniqueSymbol            = pure "unique symbol"
-        f (TsTypeBoolean x)             = pure $ if x then "true" else "false"
-        f (TsTypeMisc x)                = fMisc x
-        f (TsTypeStringLiteral x)       = pure $ "\"" <> x <> "\""
-        f (TsTypeNumberLiteral x)       = pure x
-        f (TsTypeTuple xs)              = surround "[" "]" . intercalate ", " <$> mapM fTsType xs
-        f (TsTypeGeneric x ys)          = fGeneric (x, ys)
-        f (TsTypeSubtype x y)           = fSubtype x y
-        f (TsTypeObject xs)             = fObject xs
-        f (TsTypeObjectReference tv tk) = (\v k -> v <> "[" <> k <> "]") <$> fAmbiguouslyNestedTsType tv <*> fTsType tk
-        f (TsTypeFunction x)            = fFunction x
-        f (TsTypeUnOp x y)              = fUnOp x y
-        f (TsTypeBinOp x y z)           = fBinOp x y z
-        f (TsTypeGrouped x)             = do
+  where f TsTypeAny                   = pure "any"
+        f TsTypeUnknown               = pure "unknown"
+        f TsTypeVoid                  = pure "void"
+        f TsTypeUndefined             = pure "undefined"
+        f TsTypeNull                  = pure "null"
+        f TsTypeUniqueSymbol          = pure "unique symbol"
+        f (TsTypeBoolean x)           = pure $ if x then "true" else "false"
+        f (TsTypeMisc x)              = fMisc x
+        f (TsTypeStringLiteral x)     = pure $ "\"" <> x <> "\""
+        f (TsTypeNumberLiteral x)     = pure x
+        f (TsTypeTuple xs)            = surround "[" "]" . intercalate ", " <$> mapM fTsType xs
+        f (TsTypeGeneric x ys)        = fGeneric (x, ys)
+        f (TsTypeSubtype x y)         = fSubtype x y
+        f (TsTypeObject xs)           = fObject xs
+        f (TsTypeIndexedAccess tv tk) = (\v k -> v <> "[" <> k <> "]") <$> fAmbiguouslyNestedTsType tv <*> fTsType tk
+        f (TsTypeFunction x)          = fFunction x
+        f (TsTypeUnOp x y)            = fUnOp x y
+        f (TsTypeBinOp x y z)         = fBinOp x y z
+        f (TsTypeGrouped x)           = do
           modify $ \s -> s { ambiguouslyNested = False }
           surround "(" ")" <$> fTsType x
 

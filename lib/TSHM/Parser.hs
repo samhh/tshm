@@ -17,7 +17,7 @@ operators :: [[Operator Parser TsType]]
 operators =
   [ [ Postfix (multi
       (   (TsTypeGeneric "Array" . pure . (, Nothing) <$ string "[]")
-      <|> (flip TsTypeObjectReference <$> between (char '[') (char ']') pType)
+      <|> (flip TsTypeIndexedAccess <$> between (char '[') (char ']') pType)
       )
     )]
   , [ unaryPrefix "typeof" (TsTypeUnOp UnOpReflection)
