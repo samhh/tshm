@@ -17,7 +17,7 @@ data Partial a
   | Optional a
   deriving (Eq, Show)
 
-type ObjectLiteral = [Partial (String, TsType)]
+type Object = [Partial (String, TsType)]
 
 type TypeArgument = (TsType, Maybe TsType)
 
@@ -30,13 +30,13 @@ data TsType
   | TsTypeUniqueSymbol
   | TsTypeBoolean Bool
   | TsTypeMisc String
-  | TsTypeStringLiteral String
+  | TsTypeString String
   -- This is represented as a string because numbers are hard and tend to
   -- differ a fair amount between languages. We don't actually need to do any
   -- arithmetic, so this keeps things simple!
-  | TsTypeNumberLiteral String
+  | TsTypeNumber String
   | TsTypeTuple [TsType]
-  | TsTypeObject ObjectLiteral
+  | TsTypeObject Object
   | TsTypeIndexedAccess TsType TsType
   | TsTypeGeneric String (NonEmpty TypeArgument)
   | TsTypeSubtype String TsType
@@ -80,7 +80,7 @@ data Interface = Interface
   { interfaceName     :: String
   , interfaceTypeArgs :: Maybe (NonEmpty TypeArgument)
   , interfaceExtends  :: Maybe TsType
-  , interfaceType     :: ObjectLiteral
+  , interfaceType     :: Object
   } deriving (Eq, Show)
 
 fromInterface :: Interface -> Alias

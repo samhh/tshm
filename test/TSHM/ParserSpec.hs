@@ -44,10 +44,10 @@ spec = describe "TSHM.Parser" $ do
       parse' pType "voidx" `shouldParse` TsTypeMisc "voidx"
 
     it "parses string literal" $ do
-      parse' pType "'abc'" `shouldParse` TsTypeStringLiteral "abc"
+      parse' pType "'abc'" `shouldParse` TsTypeString "abc"
 
     it "parses number literal" $ do
-      parse' pType "-.123" `shouldParse` TsTypeNumberLiteral "-.123"
+      parse' pType "-.123" `shouldParse` TsTypeNumber "-.123"
 
     it "parses special array syntax" $ do
       parse' pType "a[][]" `shouldParse`
@@ -58,15 +58,15 @@ spec = describe "TSHM.Parser" $ do
         TsTypeTuple [TsTypeMisc "A", TsTypeObject [Required ("x", TsTypeMisc "B")]]
 
     it "parses object reference" $ do
-      parse' pType "A['key']" `shouldParse` TsTypeIndexedAccess (TsTypeMisc "A") (TsTypeStringLiteral "key")
-      parse' pType "A[\"key\"]" `shouldParse` TsTypeIndexedAccess (TsTypeMisc "A") (TsTypeStringLiteral "key")
+      parse' pType "A['key']" `shouldParse` TsTypeIndexedAccess (TsTypeMisc "A") (TsTypeString "key")
+      parse' pType "A[\"key\"]" `shouldParse` TsTypeIndexedAccess (TsTypeMisc "A") (TsTypeString "key")
       parse' pType "true['k1']['k2']" `shouldParse`
-        TsTypeIndexedAccess (TsTypeIndexedAccess (TsTypeBoolean True) (TsTypeStringLiteral "k1")) (TsTypeStringLiteral "k2")
+        TsTypeIndexedAccess (TsTypeIndexedAccess (TsTypeBoolean True) (TsTypeString "k1")) (TsTypeString "k2")
       parse' pType "A[K]" `shouldParse` TsTypeIndexedAccess (TsTypeMisc "A") (TsTypeMisc "K")
 
     it "postfix operators play nicely together" $ do
       parse' pType "a['k1']['k2'][][]['k3'][]" `shouldParse`
-        TsTypeGeneric "Array" (typeArgs [TsTypeIndexedAccess (TsTypeGeneric "Array" (typeArgs [TsTypeGeneric "Array" (typeArgs [TsTypeIndexedAccess (TsTypeIndexedAccess (TsTypeMisc "a") (TsTypeStringLiteral "k1")) (TsTypeStringLiteral "k2")])])) (TsTypeStringLiteral "k3")])
+        TsTypeGeneric "Array" (typeArgs [TsTypeIndexedAccess (TsTypeGeneric "Array" (typeArgs [TsTypeGeneric "Array" (typeArgs [TsTypeIndexedAccess (TsTypeIndexedAccess (TsTypeMisc "a") (TsTypeString "k1")) (TsTypeString "k2")])])) (TsTypeString "k3")])
 
     it "parses function" $ do
       parse' pType "<A, B>(a: A) => B" `shouldParse`
@@ -87,26 +87,26 @@ spec = describe "TSHM.Parser" $ do
     it "parses parentheses and changes precedence accordingly" $ do
       parse' pType "(A & B) | C" `shouldParse` TsTypeBinOp BinOpUnion (TsTypeGrouped $ TsTypeBinOp BinOpIntersection (TsTypeMisc "A") (TsTypeMisc "B")) (TsTypeMisc "C")
 
-  describe "pFunctionLiteral" $ do
+  describe "pFunction" $ do
     it "parses minimal viable function" $ do
-      parse' pFunctionLiteral "() => void" `shouldParse` Function Nothing [] TsTypeVoid
+      parse' pFunction "() => void" `shouldParse` Function Nothing [] TsTypeVoid
 
     it "parses type arguments" $ do
-      parse' pFunctionLiteral "<A, Either<void, B>>() => void" `shouldParse`
+      parse' pFunction "<A, Either<void, B>>() => void" `shouldParse`
         Function (Just $ typeArgs [TsTypeMisc "A", TsTypeGeneric "Either" $ typeArgs [TsTypeVoid, TsTypeMisc "B"]]) [] TsTypeVoid
 
     it "parses params" $ do
-      parse' pFunctionLiteral "(x: number, y: string) => void" `shouldParse`
+      parse' pFunction "(x: number, y: string) => void" `shouldParse`
         Function Nothing [Required $ Normal $ TsTypeMisc "number", Required $ Normal $ TsTypeMisc "string"] TsTypeVoid
 
     it "parses return type" $ do
-      parse' pFunctionLiteral "() => number" `shouldParse` Function Nothing [] (TsTypeMisc "number")
+      parse' pFunction "() => number" `shouldParse` Function Nothing [] (TsTypeMisc "number")
 
     it "parses curried function" $ do
-      parse' pFunctionLiteral "() => () => void" `shouldParse` Function Nothing [] (TsTypeFunction (Function Nothing [] TsTypeVoid))
+      parse' pFunction "() => () => void" `shouldParse` Function Nothing [] (TsTypeFunction (Function Nothing [] TsTypeVoid))
 
     it "supports extends clause in function generics" $ do
-      parse' pFunctionLiteral "<B, A extends Array<B>>(f: <C extends number, D>(x: 'ciao') => string) => void" `shouldParse`
+      parse' pFunction "<B, A extends Array<B>>(f: <C extends number, D>(x: 'ciao') => string) => void" `shouldParse`
         Function
           ( Just $ typeArgs
             [ TsTypeMisc "B"
@@ -115,13 +115,13 @@ spec = describe "TSHM.Parser" $ do
           )
           [ Required $ Normal $ TsTypeFunction (Function
               (Just $ typeArgs [TsTypeSubtype "C" (TsTypeMisc "number"), TsTypeMisc "D"])
-              [Required $ Normal $ TsTypeStringLiteral "ciao"]
+              [Required $ Normal $ TsTypeString "ciao"]
               (TsTypeMisc "string"))
           ]
           TsTypeVoid
 
     it "parses complex function" $ do
-      parse' pFunctionLiteral "<A, Array<Option<B>>>(x: number, y: <C>(z: C) => () => C) => () => void" `shouldParse`
+      parse' pFunction "<A, Array<Option<B>>>(x: number, y: <C>(z: C) => () => C) => () => void" `shouldParse`
         Function
           ( Just $ typeArgs
             [ TsTypeMisc "A"
@@ -145,11 +145,11 @@ spec = describe "TSHM.Parser" $ do
       parse' pObject "{}" `shouldParse` []
 
     it "parses non-empty flat object" $ do
-      parse' pObject "{ a: 1, b: 'two' }" `shouldParse` [Required ("a", TsTypeNumberLiteral "1"), Required ("b", TsTypeStringLiteral "two")]
+      parse' pObject "{ a: 1, b: 'two' }" `shouldParse` [Required ("a", TsTypeNumber "1"), Required ("b", TsTypeString "two")]
 
     it "parses non-empty nested object" $ do
       parse' pObject "{ a: 1, b: { c: true }[] }" `shouldParse`
-        [Required ("a", TsTypeNumberLiteral "1"), Required ("b", TsTypeGeneric "Array" $ typeArgs [TsTypeObject [Required ("c", TsTypeBoolean True)]])]
+        [Required ("a", TsTypeNumber "1"), Required ("b", TsTypeGeneric "Array" $ typeArgs [TsTypeObject [Required ("c", TsTypeBoolean True)]])]
 
     it "supports mixed comma and semi-colon delimiters" $ do
       parse' pObject "{ a: number, b: string; c: boolean }" `shouldParse`
@@ -172,10 +172,10 @@ spec = describe "TSHM.Parser" $ do
       parse' pTuple "[]" `shouldParse` []
 
     it "parses non-empty flat tuple" $ do
-      parse' pTuple "[a, 'b']" `shouldParse` [TsTypeMisc "a", TsTypeStringLiteral "b"]
+      parse' pTuple "[a, 'b']" `shouldParse` [TsTypeMisc "a", TsTypeString "b"]
 
     it "parses non-empty nested tuple" $ do
-      parse' pTuple "[a, ['b', 3]]" `shouldParse` [TsTypeMisc "a", TsTypeTuple [TsTypeStringLiteral "b", TsTypeNumberLiteral "3"]]
+      parse' pTuple "[a, ['b', 3]]" `shouldParse` [TsTypeMisc "a", TsTypeTuple [TsTypeString "b", TsTypeNumber "3"]]
 
     it "parses non-empty tuple with trailing comma" $ do
       parse' pTuple "[a,]" `shouldParse` [TsTypeMisc "a"]
@@ -183,8 +183,8 @@ spec = describe "TSHM.Parser" $ do
       parse' pTuple "[a, b,]" `shouldParse` [TsTypeMisc "a", TsTypeMisc "b"]
       parse' pTuple "[a, b, ]" `shouldParse` [TsTypeMisc "a", TsTypeMisc "b"]
 
-  describe "pNumberLiteral" $ do
-    let p = pNumberLiteral <* eof
+  describe "pNumber" $ do
+    let p = pNumber <* eof
 
     it "parses int" $ do
       parse' p "123" `shouldParse` "123"
@@ -313,14 +313,14 @@ spec = describe "TSHM.Parser" $ do
     it "parses optional trailing comma in non-empty params" $ do
       parse' pParams "(a: number,)" `shouldParse` [ Required $ Normal $ TsTypeMisc "number"]
 
-  describe "pFunctionLiteralReturn" $ do
+  describe "pFunctionReturn" $ do
     it "parses value after the lambda" $ do
-      parse' pFunctionLiteralReturn " => void" `shouldParse` TsTypeVoid
-      parse' pFunctionLiteralReturn " => string" `shouldParse` TsTypeMisc "string"
-      parse' pFunctionLiteralReturn " => <A>(x: A) => A" `shouldParse` TsTypeFunction (Function (Just $ typeArgs [TsTypeMisc "A"]) [Required $ Normal $ TsTypeMisc "A"] (TsTypeMisc "A"))
+      parse' pFunctionReturn " => void" `shouldParse` TsTypeVoid
+      parse' pFunctionReturn " => string" `shouldParse` TsTypeMisc "string"
+      parse' pFunctionReturn " => <A>(x: A) => A" `shouldParse` TsTypeFunction (Function (Just $ typeArgs [TsTypeMisc "A"]) [Required $ Normal $ TsTypeMisc "A"] (TsTypeMisc "A"))
 
     it "requires a value after the lambda" $ do
-      parse' pFunctionLiteralReturn `shouldFailOn` " => "
+      parse' pFunctionReturn `shouldFailOn` " => "
 
   describe "pAlias" $ do
     let p = parse' $ pAlias <* eof
@@ -404,7 +404,7 @@ spec = describe "TSHM.Parser" $ do
           ])
 
     it "parses real signatures" $ do
-      parse' pSignature "export declare const empty: ''" `shouldParse` SignatureConstDeclaration (ConstDeclaration "empty" (TsTypeStringLiteral ""))
+      parse' pSignature "export declare const empty: ''" `shouldParse` SignatureConstDeclaration (ConstDeclaration "empty" (TsTypeString ""))
 
       parse' pSignature "export declare const aperture: (n: number) => <A>(xs: A[]) => A[][]" `shouldParse`
         SignatureConstDeclaration (ConstDeclaration "aperture" (TsTypeFunction (Function Nothing [Required $ Normal $ TsTypeMisc "number"] (TsTypeFunction (Function (Just $ typeArgs [TsTypeMisc "A"]) [Required $ Normal $ TsTypeGeneric "Array" $ typeArgs [TsTypeMisc "A"]] (TsTypeGeneric "Array" $ typeArgs [TsTypeGeneric "Array" $ typeArgs [TsTypeMisc "A"]]))))))
@@ -422,4 +422,4 @@ spec = describe "TSHM.Parser" $ do
         SignatureConstDeclaration (ConstDeclaration "unary" (TsTypeFunction (Function (Just $ typeArgs [TsTypeSubtype "A" (TsTypeGeneric "Array" $ typeArgs [TsTypeUnknown]), TsTypeMisc "B"]) [Required $ Normal $ TsTypeFunction (Function Nothing [Required $ Rest $ TsTypeMisc "A"] (TsTypeMisc "B"))] (TsTypeFunction (Function Nothing [Required $ Normal $ TsTypeMisc "A"] (TsTypeMisc "B"))))))
 
       parse' pSignature "export interface Some<A> { readonly _tag: 'Some', readonly value: A }" `shouldParse`
-        SignatureInterface (Interface "Some" (Just $ typeArgs [TsTypeMisc "A"]) Nothing [Required ("_tag", TsTypeStringLiteral "Some"), Required ("value", TsTypeMisc "A")])
+        SignatureInterface (Interface "Some" (Just $ typeArgs [TsTypeMisc "A"]) Nothing [Required ("_tag", TsTypeString "Some"), Required ("value", TsTypeMisc "A")])

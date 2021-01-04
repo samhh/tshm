@@ -66,16 +66,16 @@ fNewtype x y = (("newtype " <> x <> " = ") <>) <$> fTsType y
 
 isNewtype :: TsType -> Maybe TsType
 isNewtype (TsTypeGeneric "Newtype" xs) = fmap snd . guarded (isNewtypeObject . fst) =<< isNewtypeTypeArgs xs
-  where isNewtypeTypeArgs :: NonEmpty TypeArgument -> Maybe (ObjectLiteral, TsType)
+  where isNewtypeTypeArgs :: NonEmpty TypeArgument -> Maybe (Object, TsType)
         isNewtypeTypeArgs ys
-          | length ys == 2 = (, fst $ ys !! 1) <$> isObjectLiteral (head ys)
+          | length ys == 2 = (, fst $ ys !! 1) <$> isObject (head ys)
           | otherwise = Nothing
 
-        isObjectLiteral :: TypeArgument -> Maybe ObjectLiteral
-        isObjectLiteral (TsTypeObject x, Nothing) = Just x
-        isObjectLiteral _                         = Nothing
+        isObject :: TypeArgument -> Maybe Object
+        isObject (TsTypeObject x, Nothing) = Just x
+        isObject _                         = Nothing
 
-        isNewtypeObject :: ObjectLiteral -> Bool
+        isNewtypeObject :: Object -> Bool
         isNewtypeObject [Required (_, TsTypeUniqueSymbol)] = True
         isNewtypeObject _                                  = False
 isNewtype _ = Nothing
@@ -129,8 +129,8 @@ fTsType t = do
         f TsTypeUniqueSymbol          = pure "unique symbol"
         f (TsTypeBoolean x)           = pure $ if x then "true" else "false"
         f (TsTypeMisc x)              = fMisc x
-        f (TsTypeStringLiteral x)     = pure $ "\"" <> x <> "\""
-        f (TsTypeNumberLiteral x)     = pure x
+        f (TsTypeString x)     = pure $ "\"" <> x <> "\""
+        f (TsTypeNumber x)     = pure x
         f (TsTypeTuple xs)            = surround "[" "]" . intercalate ", " <$> mapM fTsType xs
         f (TsTypeGeneric x ys)        = fGeneric (x, ys)
         f (TsTypeSubtype x y)         = fSubtype x y
@@ -148,7 +148,7 @@ fAmbiguouslyNestedTsType t = do
   modify $ \s -> s { ambiguouslyNested = True }
   fTsType t
 
-fObject :: ObjectLiteral -> Printer'
+fObject :: Object -> Printer'
 fObject [] = pure "{}"
 fObject xs = surround "{ " " }" . intercalate ", " <$> mapM fObjectPair xs
 

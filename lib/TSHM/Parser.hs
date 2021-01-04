@@ -65,11 +65,11 @@ pType = (`makeExprParser` operators) $ optional (string "readonly" <* hspace1) *
   , TsTypeUndefined <$ pPreciseIdentifier "undefined"
   , TsTypeUniqueSymbol <$ string "unique symbol"
   , TsTypeBoolean <$> ((True <$ pPreciseIdentifier "true") <|> (False <$ pPreciseIdentifier "false"))
-  , TsTypeStringLiteral <$> pStringLiteral
-  , TsTypeNumberLiteral <$> pNumberLiteral
+  , TsTypeString <$> pString
+  , TsTypeNumber <$> pNumber
   , TsTypeTuple <$> pTuple
   , TsTypeObject <$> pObject
-  , TsTypeFunction <$> pFunctionLiteral
+  , TsTypeFunction <$> pFunction
   , try pGeneric
   , TsTypeMisc <$> pTypeMisc
   ]
@@ -77,15 +77,15 @@ pType = (`makeExprParser` operators) $ optional (string "readonly" <* hspace1) *
 pGeneric :: Parser TsType
 pGeneric = TsTypeGeneric <$> pTypeMisc <*> pTypeArgs
 
-pStringLiteral :: Parser String
-pStringLiteral = stringLiteral '\'' <|> stringLiteral '"'
-  where stringLiteral :: Char -> Parser String
-        stringLiteral c =
+pString :: Parser String
+pString = stringLit '\'' <|> stringLit '"'
+  where stringLit :: Char -> Parser String
+        stringLit c =
           let p = char c
            in p *> manyTill L.charLiteral p
 
-pNumberLiteral :: Parser String
-pNumberLiteral = (<>) . foldMap pure <$> optional (char '-') <*> choice
+pNumber :: Parser String
+pNumber = (<>) . foldMap pure <$> optional (char '-') <*> choice
   [ try $ (\x y z -> x <> pure y <> z) <$> some numberChar <*> char '.' <*> some numberChar
   , (:) <$> char '.' <*> some numberChar
   , some numberChar
@@ -94,7 +94,7 @@ pNumberLiteral = (<>) . foldMap pure <$> optional (char '-') <*> choice
 pTuple :: Parser [TsType]
 pTuple = between (char '[' <* space) (space *> char ']') $ sepEndBy pType (space *> char ',' <* space)
 
-pObject :: Parser ObjectLiteral
+pObject :: Parser Object
 pObject = between (char '{' <* space) (space *> char '}') $ sepEndBy pPair $
   (char ',' <|> char ';' <|> try (newline <* notFollowedBy (char '}'))) <* space
   where pPair :: Parser (Partial (String, TsType))
@@ -140,11 +140,11 @@ pParams = between (char '(') (char ')') $ space *> sepEndBy pParam (char ',' <* 
         f False True  = Required . Normal
         f False False = Optional . Normal
 
-pFunctionLiteralReturn :: Parser TsType
-pFunctionLiteralReturn = hspace1 *> string "=>" *> space1 *> pType
+pFunctionReturn :: Parser TsType
+pFunctionReturn = hspace1 *> string "=>" *> space1 *> pType
 
-pFunctionLiteral :: Parser Function
-pFunctionLiteral = Function <$> optional pTypeArgs <*> pParams <*> pFunctionLiteralReturn
+pFunction :: Parser Function
+pFunction = Function <$> optional pTypeArgs <*> pParams <*> pFunctionReturn
 
 pConstDeclarationName :: Parser String
 pConstDeclarationName = optional (string "export" <* hspace1) *> (string "declare const" <* hspace1) *> pIdentifier <* char ':' <* hspace
