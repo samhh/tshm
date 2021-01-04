@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.2.0 -- _Unreleased_
+## 0.2.0 -- 2021-01-04
 
 This release adds support for the `-f`/`--forall` flag, which can be used to specify how to express universal quantification. A breaking change here is that tshm no longer renders universal quantification by default (this can be enforced with the special input "none"). Examples:
 
@@ -20,7 +20,9 @@ f :: ∀ a. () -> a
 
 Aside from that, the CLI has been generally improved, now providing useful help text.
 
-Additionally, overloaded functions, non-literal object property accessors, and trailing commas are now supported, and various inconsistencies and ambiguities around the application of parentheses have been addressed.
+Overloaded functions, non-literal object property accessors, and trailing commas are now supported, and various inconsistencies and ambiguities around the application of parentheses have been addressed.
+
+Mapped types are now supported, hoever their utility is limited without support for conditional types, which is a priority for the next release.
 
 ## 0.1.0 -- 2021-01-02
 
