@@ -51,7 +51,11 @@ fMisc [x] = trans x . any (isViable . fst) . ((<>) <$> implicitTypeArgs <*> expl
 fMisc x   = pure x
 
 fSubtype :: String -> TsType -> Printer'
-fSubtype x y = surrounding " extends " <$> fMisc x <*> fTsType y
+fSubtype x y = surrounding " extends " <$> fMisc x <*> fAnnotatedTsType y
+  where fAnnotatedTsType :: TsType -> Printer'
+        fAnnotatedTsType t = do
+          modify $ \s -> s { ambiguouslyNested = True }
+          fTsType t
 
 fFunction :: Function -> Printer'
 fFunction x = do

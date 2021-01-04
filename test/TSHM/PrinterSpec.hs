@@ -29,7 +29,7 @@ spec = describe "TSHM.Printer" $ do
   it "prints type aliases" $ do
     pp "type X = string" =*= "type X = string"
     pp "type X<A> = string" =*= "type X a = string"
-    pp "type X<A, B extends Array<A>> = string" =*= "type X a (b extends Array a) = string"
+    pp "type X<A, B extends Array<A>> = string" =*= "type X a (b extends (Array a)) = string"
     pp "type X = () => string" =*= "type X = () -> string"
 
   it "prints interfaces" $ do
@@ -55,8 +55,8 @@ spec = describe "TSHM.Printer" $ do
       ]
 
   it "prints universal quantification and subtypes" $ do
-    pp "type X = <A>(x: A) => <B>(y: B) => <C, D extends A, E>(c: [C, D, E]) => Either<E, C & D>" =*=
-      "type X = forall a b c d e. d extends a => a -> b -> [c, d, e] -> Either e (c & d)"
+    pp "type X = <A>(x: A) => <B>(y: B) => <C, D extends A, E extends Partial<A>>(c: [C, D, E]) => Either<E, C & D>" =*=
+      "type X = forall a b c d e. d extends a, e extends (Partial a) => a -> b -> [c, d, e] -> Either e (c & d)"
 
   it "correctly wraps generics, expressions, and function arguments in parentheses" $ do
     pp "type X = <E, A>(x: Either<E, Option<A | E>>) => <B>(f: (x: A) => B) => (x: A | B) => Option<B>" =*=
@@ -194,7 +194,7 @@ spec = describe "TSHM.Printer" $ do
         "applyTo :: forall a b. a -> (a -> b) -> b"
 
       pp "export declare const construct: <A extends unknown[], B>(x: new (...xs: A) => B) => (xs: A) => B" =*=
-        "construct :: forall a b. a extends Array unknown => (...a -> b) -> a -> b"
+        "construct :: forall a b. a extends (Array unknown) => (...a -> b) -> a -> b"
 
       pp (unlines'
         [ "export declare const curry5: <A, B, C, D, E, F>("
@@ -215,7 +215,7 @@ spec = describe "TSHM.Printer" $ do
         , "  f: (...a: A) => (...b: B) => C"
         , ") => (...b: B) => (...a: A) => C"
         ]) =*=
-        "flip :: forall a b c. a extends Array unknown, b extends Array unknown => (...a -> ...b -> c) -> ...b -> ...a -> c"
+        "flip :: forall a b c. a extends (Array unknown), b extends (Array unknown) => (...a -> ...b -> c) -> ...b -> ...a -> c"
 
       pp (unlines'
         [ "export declare const guard: <A, B>("
@@ -254,7 +254,7 @@ spec = describe "TSHM.Printer" $ do
         , "  ks: K[]"
         , ") => <V, A extends Record<K, V>>(x: Partial<A>) => Pick<A, Exclude<keyof A, K>>"
         ]) =*=
-        "omit :: forall k v a. k extends string, a extends Record k v => Array k -> Partial a -> Pick a (Exclude keyof a k)"
+        "omit :: forall k v a. k extends string, a extends (Record k v) => Array k -> Partial a -> Pick a (Exclude keyof a k)"
 
       pp "export declare const pick: <A>() => <K extends keyof A>(ks: K[]) => (x: A) => Pick<A, K>" =*=
         "pick :: forall a k. k extends keyof a => () -> Array k -> a -> Pick a k"
