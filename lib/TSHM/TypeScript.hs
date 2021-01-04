@@ -17,10 +17,12 @@ data Partial a
   | Optional a
   deriving (Eq, Show)
 
-
 type ObjectPair = Partial (String, TsType)
 
-type Object = [ObjectPair]
+data Object
+  = ObjectLit [ObjectPair]
+  | ObjectMapped (Partial ((String, TsType), TsType))
+  deriving (Eq, Show)
 
 type TypeArgument = (TsType, Maybe TsType)
 

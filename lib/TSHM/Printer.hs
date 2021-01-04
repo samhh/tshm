@@ -76,8 +76,8 @@ isNewtype (TsTypeGeneric "Newtype" xs) = fmap snd . guarded (isNewtypeObject . f
         isObject _                         = Nothing
 
         isNewtypeObject :: Object -> Bool
-        isNewtypeObject [Required (_, TsTypeUniqueSymbol)] = True
-        isNewtypeObject _                                  = False
+        isNewtypeObject (ObjectLit [Required (_, TsTypeUniqueSymbol)]) = True
+        isNewtypeObject _                                              = False
 isNewtype _ = Nothing
 
 fGeneric :: (String, NonEmpty TypeArgument) -> Printer'
@@ -95,8 +95,8 @@ fGeneric (x, ys) = do
           pure res
 
 fObjectPair :: ObjectPair -> Printer'
-fObjectPair (Required (k, v)) = ((k <> ": ") <>) <$> fTsType v
-fObjectPair (Optional (k, v)) = ((k <> "?: ") <>) <$> fTsType v
+fObjectPair (Required (k, v)) = surrounding ": " k <$> fTsType v
+fObjectPair (Optional (k, v)) = surrounding "?: " k <$> fTsType v
 
 fUnOp :: UnOp -> TsType -> Printer'
 fUnOp o t = do
@@ -149,8 +149,14 @@ fAmbiguouslyNestedTsType t = do
   fTsType t
 
 fObject :: Object -> Printer'
-fObject [] = pure "{}"
-fObject xs = surround "{ " " }" . intercalate ", " <$> mapM fObjectPair xs
+fObject (ObjectLit []) = pure "{}"
+fObject (ObjectLit xs) = surround "{ " " }" . intercalate ", " <$> mapM fObjectPair xs
+fObject (ObjectMapped (Required ((k, xt), vt))) = fMappedObject True k <$> fTsType xt <*> fTsType vt
+fObject (ObjectMapped (Optional ((k, xt), vt))) = fMappedObject False k <$> fTsType xt <*> fTsType vt
+
+fMappedObject :: Bool -> String -> String -> String -> String
+fMappedObject req k x v = let delim = if req then "]: " else "]?: "
+                           in "{ [" <> k <> " in " <> x <> delim <> v <> " }"
 
 fConstDeclaration :: ConstDeclaration -> Printer'
 fConstDeclaration x = (\t ps -> constDeclarationName x <> " :: " <> renderedTypeArgs ps <> renderedSubtypes ps <> t)

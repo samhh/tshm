@@ -95,17 +95,36 @@ pTuple :: Parser [TsType]
 pTuple = between (char '[' <* space) (space *> char ']') $ sepEndBy pType (space *> char ',' <* space)
 
 pObject :: Parser Object
-pObject = between (char '{' <* space) (space *> char '}') $ sepEndBy pPair $
-  (char ',' <|> char ';' <|> try (newline <* notFollowedBy (char '}'))) <* space
-  where pPair :: Parser ObjectPair
+pObject = between (char '{' <* space) (space *> char '}') pInner
+  where pInner :: Parser Object
+        pInner = choice
+          [ mapped <$>
+                (char '[' *> space *> pIdentifier)
+            <*> (space1 *> string "in" *> space1 *> pType <* space <* char ']')
+            <*> stdPairDelim
+            <*> (pType <* optional (char ',' <|> char ';'))
+          , ObjectLit <$> sepEndBy pPair litDelim
+          ]
+
+        pPair :: Parser ObjectPair
         pPair = optional (string "readonly" <* hspace1) *> choice
-          [ try $ flip fn <$> pIdentifier <*> (True <$ (char ':' <* hspace) <|> False <$ (string "?:" <* hspace)) <*> pType
+          [ try $ flip norm <$> pIdentifier <*> stdPairDelim <*> pType
           , method <$> pIdentifier <*> (isJust <$> optional (char '?')) <*> optional pTypeArgs <*> pParams <*> (char ':' *> hspace *> pType)
           ]
 
-        fn :: Bool -> String -> TsType -> ObjectPair
-        fn True  = (Required .) . (,)
-        fn False = (Optional .) . (,)
+        litDelim :: Parser Char
+        litDelim = (char ',' <|> char ';' <|> try (newline <* notFollowedBy (char '}'))) <* space
+
+        stdPairDelim :: Parser Bool
+        stdPairDelim = True <$ (char ':' <* hspace) <|> False <$ (string "?:" <* hspace)
+
+        mapped :: String -> TsType -> Bool -> TsType -> Object
+        mapped k x req v = let f = if req then Required else Optional
+                            in ObjectMapped (f ((k, x), v))
+
+        norm :: Bool -> String -> TsType -> ObjectPair
+        norm True  = (Required .) . (,)
+        norm False = (Optional .) . (,)
 
         method :: String -> Bool -> Maybe (NonEmpty TypeArgument) -> [Partial Param] -> TsType -> ObjectPair
         method n o g p r = (if o then Optional else Required) (n, TsTypeFunction $ Function g p r)

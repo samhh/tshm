@@ -58,6 +58,9 @@ spec = describe "TSHM.Printer" $ do
     pp "type X = <A>(x: A) => <B>(y: B) => <C, D extends A, E extends Partial<A>>(c: [C, D, E]) => Either<E, C & D>" =*=
       "type X = forall a b c d e. d extends a, e extends (Partial a) => a -> b -> [c, d, e] -> Either e (c & d)"
 
+  it "prints mapped types" $ do
+    pp "type X<A> = { [K in A]: A[K] }" =*= "type X a = { [K in a]: a[K] }"
+
   it "correctly wraps generics, expressions, object references, and function arguments in parentheses" $ do
     pp "type X = <E, A>(x: Either<E, Option<A | E>>) => <B>(f: (x: A) => B) => (x: A | B) => (x: A['k'], y: F<A>['k']) => Option<B>" =*=
       "type X = forall e a b. Either e (Option (a | e)) -> (a -> b) -> a | b -> (a[\"k\"], (F a)[\"k\"]) -> Option b"
@@ -79,6 +82,8 @@ spec = describe "TSHM.Printer" $ do
         "mapWithIndex :: forall a b. ((number, a) -> b) -> Array a -> Array b"
       pp "export declare const chain: <A, B>(f: (a: A) => B[]) => (ma: A[]) => B[]" =*=
         "chain :: forall a b. (a -> Array b) -> Array a -> Array b"
+      pp "export declare const bindTo: <N extends string>(name: N) => <A>(fa: A[]) => { [K in N]: A }[]" =*=
+        "bindTo :: forall n a. n extends string => n -> Array a -> Array { [K in n]: a }"
 
     it "fp-ts/Either" $ do
       pp "export type Either<E, A> = Left<E> | Right<A>" =*=
@@ -144,7 +149,7 @@ spec = describe "TSHM.Printer" $ do
       pp "export declare function fromCompare<A>(compare: (x: A, y: A) => Ordering): Ord<A>" =*=
         "fromCompare :: forall a. ((a, a) -> Ordering) -> Ord a"
 
-      -- Requires: mapped types
+      -- Requires: conditional types
       -- pp (unlines'
       --   [ "export declare function getTupleOrd<T extends ReadonlyArray<Ord<any>>>("
       --   , "  ...ords: T"
