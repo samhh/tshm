@@ -94,7 +94,7 @@ fGeneric (x, ys) = do
           modify $ \s -> s { ambiguouslyNested = False }
           pure res
 
-fObjectPair :: Partial (String, TsType) -> Printer'
+fObjectPair :: ObjectPair -> Printer'
 fObjectPair (Required (k, v)) = ((k <> ": ") <>) <$> fTsType v
 fObjectPair (Optional (k, v)) = ((k <> "?: ") <>) <$> fTsType v
 

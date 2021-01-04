@@ -17,7 +17,10 @@ data Partial a
   | Optional a
   deriving (Eq, Show)
 
-type Object = [Partial (String, TsType)]
+
+type ObjectPair = Partial (String, TsType)
+
+type Object = [ObjectPair]
 
 type TypeArgument = (TsType, Maybe TsType)
 

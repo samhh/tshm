@@ -97,17 +97,17 @@ pTuple = between (char '[' <* space) (space *> char ']') $ sepEndBy pType (space
 pObject :: Parser Object
 pObject = between (char '{' <* space) (space *> char '}') $ sepEndBy pPair $
   (char ',' <|> char ';' <|> try (newline <* notFollowedBy (char '}'))) <* space
-  where pPair :: Parser (Partial (String, TsType))
+  where pPair :: Parser ObjectPair
         pPair = optional (string "readonly" <* hspace1) *> choice
           [ try $ flip fn <$> pIdentifier <*> (True <$ (char ':' <* hspace) <|> False <$ (string "?:" <* hspace)) <*> pType
           , method <$> pIdentifier <*> (isJust <$> optional (char '?')) <*> optional pTypeArgs <*> pParams <*> (char ':' *> hspace *> pType)
           ]
 
-        fn :: Bool -> String -> TsType -> Partial (String, TsType)
+        fn :: Bool -> String -> TsType -> ObjectPair
         fn True  = (Required .) . (,)
         fn False = (Optional .) . (,)
 
-        method :: String -> Bool -> Maybe (NonEmpty TypeArgument) -> [Partial Param] -> TsType -> Partial (String, TsType)
+        method :: String -> Bool -> Maybe (NonEmpty TypeArgument) -> [Partial Param] -> TsType -> ObjectPair
         method n o g p r = (if o then Optional else Required) (n, TsTypeFunction $ Function g p r)
 
 pTypeArgs :: Parser (NonEmpty TypeArgument)
