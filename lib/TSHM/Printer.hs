@@ -123,6 +123,7 @@ fTsType t = do
   pure res
   where f TsTypeAny                   = pure "any"
         f TsTypeUnknown               = pure "unknown"
+        f TsTypeNever                 = pure "never"
         f TsTypeVoid                  = pure "void"
         f TsTypeUndefined             = pure "undefined"
         f TsTypeNull                  = pure "null"

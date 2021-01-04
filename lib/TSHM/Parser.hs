@@ -60,6 +60,7 @@ pType = (`makeExprParser` operators) $ optional (string "readonly" <* hspace1) *
   [ try $ TsTypeGrouped <$> between (char '(') (char ')') pType
   , TsTypeAny <$ pPreciseIdentifier "any"
   , TsTypeUnknown <$ pPreciseIdentifier "unknown"
+  , TsTypeNever <$ pPreciseIdentifier "never"
   , TsTypeVoid <$ pPreciseIdentifier "void"
   , TsTypeNull <$ pPreciseIdentifier "null"
   , TsTypeUndefined <$ pPreciseIdentifier "undefined"

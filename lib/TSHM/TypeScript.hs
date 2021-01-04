@@ -29,6 +29,7 @@ type TypeArgument = (TsType, Maybe TsType)
 data TsType
   = TsTypeAny
   | TsTypeUnknown
+  | TsTypeNever
   | TsTypeVoid
   | TsTypeNull
   | TsTypeUndefined
