@@ -21,23 +21,21 @@ doIf f True  = f
 doIf _ False = id
 
 fParam :: Partial Param -> Printer'
-fParam (Required (Normal x)) = fTsType x
-fParam (Required (Rest x))   = ("..." <>) <$> fTsType x
-fParam (Optional (Normal x)) = (<> "?") <$> fTsType x
-fParam (Optional (Rest x))   = ("..." <>) . (<> "?") <$> fTsType x
+fParam = f
+  where f (Required (Normal x)) = fAnnotatedTsType x
+        f (Required (Rest x))   = ("..." <>) <$> fAnnotatedTsType x
+        f (Optional (Normal x)) = (<> "?") <$> fAnnotatedTsType x
+        f (Optional (Rest x))   = ("..." <>) . (<> "?") <$> fAnnotatedTsType x
+
+        fAnnotatedTsType :: TsType -> Printer'
+        fAnnotatedTsType x = do
+          modify $ \s -> s { immediateFunctionArg = True }
+          fTsType x
 
 fParams :: [Partial Param] -> Printer'
 fParams []  = pure "()"
-fParams [x] = do
-  modify $ \s -> s { inParams = True }
-  y <- fParam x
-  modify $ \s -> s { inParams = False }
-  pure y
-fParams xs  = do
-  modify $ \s -> s { inParams = True }
-  y <- surround "(" ")" . intercalate ", " <$> mapM fParam xs
-  modify $ \s -> s { inParams = False }
-  pure y
+fParams [x] = fParam x
+fParams xs  = surround "(" ")" . intercalate ", " <$> mapM fParam xs
 
 fMisc :: String -> Printer'
 -- If the type is a single character, and we know about it from a type argument
@@ -57,7 +55,7 @@ fSubtype x y = surrounding " extends " <$> fMisc x <*> fTsType y
 
 fFunction :: Function -> Printer'
 fFunction x = do
-  nested <- inParams <$> get
+  nested <- uncurry (||) . (immediateFunctionArg &&& ambiguouslyNested) <$> get
   let tas = foldMap toList (functionTypeArgs x)
   modify $ \s -> s { implicitTypeArgs = implicitTypeArgs s <> tas }
 
@@ -111,28 +109,32 @@ fExpression o l r = do
     <$> fTsType l <*> fTsType r
 
 fTsType :: TsType -> Printer'
-fTsType TsTypeAny                   = pure "any"
-fTsType TsTypeUnknown               = pure "unknown"
-fTsType TsTypeVoid                  = pure "void"
-fTsType TsTypeUndefined             = pure "undefined"
-fTsType TsTypeNull                  = pure "null"
-fTsType TsTypeUniqueSymbol          = pure "unique symbol"
-fTsType (TsTypeBoolean x)           = pure $ if x then "true" else "false"
-fTsType (TsTypeMisc x)              = fMisc x
-fTsType (TsTypeStringLiteral x)     = pure $ "\"" <> x <> "\""
-fTsType (TsTypeNumberLiteral x)     = pure x
-fTsType (TsTypeTuple xs)            = surround "[" "]" . intercalate ", " <$> mapM fTsType xs
-fTsType (TsTypeGeneric x ys)        = fGeneric (x, ys)
-fTsType (TsTypeSubtype x y)         = fSubtype x y
-fTsType (TsTypeKeysOf x)            = ("keyof " <>) <$> fTsType x
-fTsType (TsTypeReflection x)        = pure $ "typeof " <> x
-fTsType (TsTypeObject xs)           = fObject xs
-fTsType (TsTypeObjectReference x k) = (<> ("[\"" <> k <> "\"]")) <$> fTsType x
-fTsType (TsTypeFunction x)          = fFunction x
-fTsType (TsTypeExpression x y z)    = fExpression x y z
-fTsType (TsTypeGrouped x)           = do
-  modify $ \s -> s { ambiguouslyNested = False }
-  surround "(" ")" <$> fTsType x
+fTsType t = do
+  res <- f t
+  modify $ \s -> s { immediateFunctionArg = False }
+  pure res
+  where f TsTypeAny                   = pure "any"
+        f TsTypeUnknown               = pure "unknown"
+        f TsTypeVoid                  = pure "void"
+        f TsTypeUndefined             = pure "undefined"
+        f TsTypeNull                  = pure "null"
+        f TsTypeUniqueSymbol          = pure "unique symbol"
+        f (TsTypeBoolean x)           = pure $ if x then "true" else "false"
+        f (TsTypeMisc x)              = fMisc x
+        f (TsTypeStringLiteral x)     = pure $ "\"" <> x <> "\""
+        f (TsTypeNumberLiteral x)     = pure x
+        f (TsTypeTuple xs)            = surround "[" "]" . intercalate ", " <$> mapM fTsType xs
+        f (TsTypeGeneric x ys)        = fGeneric (x, ys)
+        f (TsTypeSubtype x y)         = fSubtype x y
+        f (TsTypeKeysOf x)            = ("keyof " <>) <$> fTsType x
+        f (TsTypeReflection x)        = pure $ "typeof " <> x
+        f (TsTypeObject xs)           = fObject xs
+        f (TsTypeObjectReference x k) = (<> ("[\"" <> k <> "\"]")) <$> fTsType x
+        f (TsTypeFunction x)          = fFunction x
+        f (TsTypeExpression x y z)    = fExpression x y z
+        f (TsTypeGrouped x)           = do
+          modify $ \s -> s { ambiguouslyNested = False }
+          surround "(" ")" <$> fTsType x
 
 fObject :: ObjectLiteral -> Printer'
 fObject [] = pure "{}"
@@ -208,10 +210,10 @@ fSignature = f . signature =<< ask
           p x
 
 data PrintState = PrintState
-  { ambiguouslyNested :: Bool
-  , inParams          :: Bool
-  , explicitTypeArgs  :: [TypeArgument]
-  , implicitTypeArgs  :: [TypeArgument]
+  { ambiguouslyNested    :: Bool
+  , immediateFunctionArg :: Bool
+  , explicitTypeArgs     :: [TypeArgument]
+  , implicitTypeArgs     :: [TypeArgument]
   }
 
 data PrintConfig = PrintConfig

@@ -91,38 +91,30 @@ spec = describe "TSHM.Printer" $ do
         "type JsonArray = {} & ReadonlyArray Json"
 
     it "fp-ts/function" $ do
+      -- the actual pipe function at time of writing goes on until T, but that
+      -- wouldn't prove anything extra
       pp (unlines'
         [ "export declare function pipe<A>(a: A): A"
         , "export declare function pipe<A, B>(a: A, ab: (a: A) => B): B"
+        , "export declare function pipe<A, B, C>(a: A, ab: (a: A) => B, bc: (b: B) => C): C"
+        , "export declare function pipe<A, B, C, D>(a: A, ab: (a: A) => B, bc: (b: B) => C, cd: (c: C) => D): D"
+        , "export declare function pipe<A, B, C, D, E>(a: A, ab: (a: A) => B, bc: (b: B) => C, cd: (c: C) => D, de: (d: D) => E): E"
+        , "export declare function pipe<A, B, C, D, E, F>("
+        , "a: A,"
+        , "ab: (a: A) => B,"
+        , "bc: (b: B) => C,"
+        , "cd: (c: C) => D,"
+        , "de: (d: D) => E,"
+        , "ef: (e: E) => F"
+        , "): F"
         ]) =*= unlines'
         [ "pipe :: forall a. a -> a"
         , "pipe :: forall a b. (a, (a -> b)) -> b"
+        , "pipe :: forall a b c. (a, (a -> b), (b -> c)) -> c"
+        , "pipe :: forall a b c d. (a, (a -> b), (b -> c), (c -> d)) -> d"
+        , "pipe :: forall a b c d e. (a, (a -> b), (b -> c), (c -> d), (d -> e)) -> e"
+        , "pipe :: forall a b c d e f. (a, (a -> b), (b -> c), (c -> d), (d -> e), (e -> f)) -> f"
         ]
-      -- -- requires: fixed function parentheses (replaces above)
-      -- -- the actual pipe function at time of writing goes on until T, but that
-      -- -- wouldn't prove anything extra
-      -- pp (unlines'
-      --   [ "export declare function pipe<A>(a: A): A"
-      --   , "export declare function pipe<A, B>(a: A, ab: (a: A) => B): B"
-      --   , "export declare function pipe<A, B, C>(a: A, ab: (a: A) => B, bc: (b: B) => C): C"
-      --   , "export declare function pipe<A, B, C, D>(a: A, ab: (a: A) => B, bc: (b: B) => C, cd: (c: C) => D): D"
-      --   , "export declare function pipe<A, B, C, D, E>(a: A, ab: (a: A) => B, bc: (b: B) => C, cd: (c: C) => D, de: (d: D) => E): E"
-      --   , "export declare function pipe<A, B, C, D, E, F>("
-      --   , "a: A,"
-      --   , "ab: (a: A) => B,"
-      --   , "bc: (b: B) => C,"
-      --   , "cd: (c: C) => D,"
-      --   , "de: (d: D) => E,"
-      --   , "ef: (e: E) => F"
-      --   , "): F"
-      --   ]) =*= unlines'
-      --   [ "pipe :: forall a. a -> a"
-      --   , "pipe :: forall a b. (a, (a -> b)) -> b"
-      --   , "pipe :: forall a b c. (a, (a -> b), (b -> c)) -> c"
-      --   , "pipe :: forall a b c d. (a, (a -> b), (b -> c), (c -> d)) -> d"
-      --   , "pipe :: forall a b c d e. (a, (a -> b), (b -> c), (c -> d), (d -> e)) -> e"
-      --   , "pipe :: forall a b c d e f. (a, (a -> b), (b -> c), (c -> d), (d -> e), (e -> f)) -> f"
-      --   ]
 
     it "fp-ts/Option" $ do
       pp "export type Option<A> = None | Some<A>" =*=
@@ -230,7 +222,7 @@ spec = describe "TSHM.Printer" $ do
         , "  branches: [Predicate<A>, (x: A) => B][]"
         , ") => (fallback: (x: A) => B) => (input: A) => B"
         ]) =*=
-        "guard :: forall a b. Array [(Predicate a), (a -> b)] -> (a -> b) -> a -> b"
+        "guard :: forall a b. Array [(Predicate a), a -> b] -> (a -> b) -> a -> b"
 
       pp (unlines'
         [ "export declare const withIndex: <A, B, C>("
