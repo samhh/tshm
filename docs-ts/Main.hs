@@ -15,12 +15,13 @@ data TsDoc
   | TsDocMisc String
   deriving (Eq, Show)
 
+pMdCode :: String -> Parser String
+pMdCode ft = string ("```" <> ft) *> eol *> someTill anySingle (try $ eol *> string "```")
+
 pTsDocSig :: Parser TsDoc
-pTsDocSig = TsDocSig <$>
-  (  string "**Signature**" *> eol *> eol
-  *> string "```ts" *> eol
-  *> someTill anySingle (try $ eol *> string "```")
-  )
+pTsDocSig = TsDocSig <$> (string "**Signature**" *> pMdCode' "ts" <* optional (try $ pMdCode' "hs"))
+  where pMdCode' :: String -> Parser String
+        pMdCode' ft = eol *> eol *> pMdCode ft
 
 -- Pretty confident there must be a better way to write this...
 pTsDoc :: Parser [TsDoc]
