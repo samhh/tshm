@@ -98,15 +98,21 @@ fObjectPair :: Partial (String, TsType) -> Printer'
 fObjectPair (Required (k, v)) = ((k <> ": ") <>) <$> fTsType v
 fObjectPair (Optional (k, v)) = ((k <> "?: ") <>) <$> fTsType v
 
-fOperator :: TsOperator -> String
-fOperator TsOperatorIntersection = "&"
-fOperator TsOperatorUnion        = "|"
+fUnOp :: UnOp -> TsType -> Printer'
+fUnOp o t = ((op o <> " ") <>) <$> fTsType t
+  where op :: UnOp -> String
+        op UnOpReflection = "typeof"
+        op UnOpKeys       = "keyof"
 
-fExpression :: TsOperator -> TsType -> TsType -> Printer'
-fExpression o l r = do
+fBinOp :: BinOp -> TsType -> TsType -> Printer'
+fBinOp o l r = do
   nested <- ambiguouslyNested <$> get
-  (doIf (surround "(" ")") nested .) . surrounding (" " <> fOperator o <> " ")
+  (doIf (surround "(" ")") nested .) . surrounding (" " <> op o <> " ")
     <$> fTsType l <*> fTsType r
+
+  where op :: BinOp -> String
+        op BinOpIntersection = "&"
+        op BinOpUnion        = "|"
 
 fTsType :: TsType -> Printer'
 fTsType t = do
@@ -126,12 +132,11 @@ fTsType t = do
         f (TsTypeTuple xs)            = surround "[" "]" . intercalate ", " <$> mapM fTsType xs
         f (TsTypeGeneric x ys)        = fGeneric (x, ys)
         f (TsTypeSubtype x y)         = fSubtype x y
-        f (TsTypeKeysOf x)            = ("keyof " <>) <$> fTsType x
-        f (TsTypeReflection x)        = pure $ "typeof " <> x
         f (TsTypeObject xs)           = fObject xs
         f (TsTypeObjectReference x k) = (<> ("[\"" <> k <> "\"]")) <$> fAmbiguouslyNestedTsType x
         f (TsTypeFunction x)          = fFunction x
-        f (TsTypeExpression x y z)    = fExpression x y z
+        f (TsTypeUnOp x y)            = fUnOp x y
+        f (TsTypeBinOp x y z)         = fBinOp x y z
         f (TsTypeGrouped x)           = do
           modify $ \s -> s { ambiguouslyNested = False }
           surround "(" ")" <$> fTsType x

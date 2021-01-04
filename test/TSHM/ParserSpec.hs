@@ -75,16 +75,16 @@ spec = describe "TSHM.Parser" $ do
          TsTypeFunction (Function Nothing [Required $ Normal $ TsTypeGeneric "F" $ typeArgs [TsTypeMisc "A", TsTypeMisc "B"]] (TsTypeGeneric "G" $ typeArgs [TsTypeMisc "C", TsTypeMisc "D"]))
 
     it "parses infix operators" $ do
-      parse' pType "A & B | C" `shouldParse` TsTypeExpression TsOperatorIntersection (TsTypeMisc "A") (TsTypeExpression TsOperatorUnion (TsTypeMisc "B") (TsTypeMisc "C"))
+      parse' pType "A & B | C" `shouldParse` TsTypeBinOp BinOpIntersection (TsTypeMisc "A") (TsTypeBinOp BinOpUnion (TsTypeMisc "B") (TsTypeMisc "C"))
 
     it "parses keyof" $ do
-      parse' pType "keyof A<B>" `shouldParse` TsTypeKeysOf (TsTypeGeneric "A" $ typeArgs [TsTypeMisc "B"])
+      parse' pType "keyof A<B>" `shouldParse` TsTypeUnOp UnOpKeys (TsTypeGeneric "A" $ typeArgs [TsTypeMisc "B"])
 
     it "parses typeof" $ do
-      parse' pType "typeof x & y" `shouldParse` TsTypeExpression TsOperatorIntersection (TsTypeReflection "x") (TsTypeMisc "y")
+      parse' pType "typeof x & y" `shouldParse` TsTypeBinOp BinOpIntersection (TsTypeUnOp UnOpReflection (TsTypeMisc "x")) (TsTypeMisc "y")
 
     it "parses parentheses and changes precedence accordingly" $ do
-      parse' pType "(A & B) | C" `shouldParse` TsTypeExpression TsOperatorUnion (TsTypeGrouped $ TsTypeExpression TsOperatorIntersection (TsTypeMisc "A") (TsTypeMisc "B")) (TsTypeMisc "C")
+      parse' pType "(A & B) | C" `shouldParse` TsTypeBinOp BinOpUnion (TsTypeGrouped $ TsTypeBinOp BinOpIntersection (TsTypeMisc "A") (TsTypeMisc "B")) (TsTypeMisc "C")
 
   describe "pFunctionLiteral" $ do
     it "parses minimal viable function" $ do
@@ -333,7 +333,7 @@ spec = describe "TSHM.Parser" $ do
         Alias
           "X"
           (Just $ typeArgs [TsTypeMisc "A", TsTypeSubtype "B" (TsTypeMisc "string")])
-          (TsTypeExpression TsOperatorUnion (TsTypeMisc "A") (TsTypeMisc "B"))
+          (TsTypeBinOp BinOpUnion (TsTypeMisc "A") (TsTypeMisc "B"))
 
   describe "pInterface" $ do
     let p = parse' $ pInterface <* eof
@@ -412,10 +412,10 @@ spec = describe "TSHM.Parser" $ do
         SignatureConstDeclaration (ConstDeclaration "anyPass" (TsTypeFunction (Function (Just $ typeArgs [TsTypeMisc "A"]) [Required $ Normal $ TsTypeGeneric "Array" $ typeArgs [TsTypeGeneric "Predicate" $ typeArgs [TsTypeMisc "A"]]] (TsTypeGeneric "Predicate" $ typeArgs [TsTypeMisc "A"]))))
 
       parse' pSignature "export declare const merge: <A>(x: A) => <B>(y: B) => A & B" `shouldParse`
-        SignatureConstDeclaration (ConstDeclaration "merge" (TsTypeFunction (Function (Just $ typeArgs [TsTypeMisc "A"]) [Required $ Normal $ TsTypeMisc "A"] (TsTypeFunction (Function (Just $ typeArgs [TsTypeMisc "B"]) [Required $ Normal $ TsTypeMisc "B"] (TsTypeExpression TsOperatorIntersection (TsTypeMisc "A") (TsTypeMisc "B")))))))
+        SignatureConstDeclaration (ConstDeclaration "merge" (TsTypeFunction (Function (Just $ typeArgs [TsTypeMisc "A"]) [Required $ Normal $ TsTypeMisc "A"] (TsTypeFunction (Function (Just $ typeArgs [TsTypeMisc "B"]) [Required $ Normal $ TsTypeMisc "B"] (TsTypeBinOp BinOpIntersection (TsTypeMisc "A") (TsTypeMisc "B")))))))
 
       parse' pSignature "export declare const omit: <K extends string>(ks: K[]) => <V, A extends Record<K, V>>(x: Partial<A>) => Pick<A, Exclude<keyof A, K>>" `shouldParse`
-        SignatureConstDeclaration (ConstDeclaration "omit" (TsTypeFunction (Function (Just $ typeArgs [TsTypeSubtype "K" (TsTypeMisc "string")]) [Required $ Normal $ TsTypeGeneric "Array" $ typeArgs [TsTypeMisc "K"]] (TsTypeFunction (Function (Just $ typeArgs [TsTypeMisc "V", TsTypeSubtype "A" (TsTypeGeneric "Record" $ typeArgs [TsTypeMisc "K", TsTypeMisc "V"])]) [Required $ Normal $ TsTypeGeneric "Partial" $ typeArgs [TsTypeMisc "A"]] (TsTypeGeneric "Pick" $ typeArgs [TsTypeMisc "A", TsTypeGeneric "Exclude" $ typeArgs [TsTypeKeysOf (TsTypeMisc "A"), TsTypeMisc "K"]]))))))
+        SignatureConstDeclaration (ConstDeclaration "omit" (TsTypeFunction (Function (Just $ typeArgs [TsTypeSubtype "K" (TsTypeMisc "string")]) [Required $ Normal $ TsTypeGeneric "Array" $ typeArgs [TsTypeMisc "K"]] (TsTypeFunction (Function (Just $ typeArgs [TsTypeMisc "V", TsTypeSubtype "A" (TsTypeGeneric "Record" $ typeArgs [TsTypeMisc "K", TsTypeMisc "V"])]) [Required $ Normal $ TsTypeGeneric "Partial" $ typeArgs [TsTypeMisc "A"]] (TsTypeGeneric "Pick" $ typeArgs [TsTypeMisc "A", TsTypeGeneric "Exclude" $ typeArgs [TsTypeUnOp UnOpKeys (TsTypeMisc "A"), TsTypeMisc "K"]]))))))
 
       parse' pSignature "export declare const unary: <A extends unknown[], B>(f: (...xs: A) => B) => (xs: A) => B" `shouldParse`
         SignatureConstDeclaration (ConstDeclaration "unary" (TsTypeFunction (Function (Just $ typeArgs [TsTypeSubtype "A" (TsTypeGeneric "Array" $ typeArgs [TsTypeUnknown]), TsTypeMisc "B"]) [Required $ Normal $ TsTypeFunction (Function Nothing [Required $ Rest $ TsTypeMisc "A"] (TsTypeMisc "B"))] (TsTypeFunction (Function Nothing [Required $ Normal $ TsTypeMisc "A"] (TsTypeMisc "B"))))))

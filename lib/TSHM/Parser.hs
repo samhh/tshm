@@ -20,17 +20,21 @@ operators =
       <|> (flip TsTypeObjectReference <$> between (char '[') (char ']') pStringLiteral)
       )
     )]
-  , [ Prefix (TsTypeKeysOf <$ string "keyof" <* hspace1)
+  , [ unaryPrefix "typeof" (TsTypeUnOp UnOpReflection)
+    , unaryPrefix "keyof" (TsTypeUnOp UnOpKeys)
     ]
-  , [ binary "&" (TsTypeExpression TsOperatorIntersection)
-    , binary "|" (TsTypeExpression TsOperatorUnion)
+  , [ binaryInfix "&" (TsTypeBinOp BinOpIntersection)
+    , binaryInfix "|" (TsTypeBinOp BinOpUnion)
     ]
   ]
     where multi :: Alternative f => f (a -> a) -> f (a -> a)
           multi f = foldr1 (flip (.)) <$> some f
 
-          binary :: String -> (TsType -> TsType -> TsType) -> Operator Parser TsType
-          binary x f = InfixR $ f <$ string (" " <> x <> " ")
+          unaryPrefix :: String -> (TsType -> TsType) -> Operator Parser TsType
+          unaryPrefix x f = Prefix $ f <$ string x <* hspace1
+
+          binaryInfix :: String -> (TsType -> TsType -> TsType) -> Operator Parser TsType
+          binaryInfix x f = InfixR $ f <$ string (" " <> x <> " ")
 
 pIdentifierHeadChar :: Parser Char
 pIdentifierHeadChar = letterChar <|> char '$' <|> char '_'
@@ -67,7 +71,6 @@ pType = (`makeExprParser` operators) $ optional (string "readonly" <* hspace1) *
   , TsTypeObject <$> pObject
   , TsTypeFunction <$> pFunctionLiteral
   , try pGeneric
-  , TsTypeReflection <$> (string "typeof" *> hspace1 *> some alphaNumChar)
   , TsTypeMisc <$> pTypeMisc
   ]
 

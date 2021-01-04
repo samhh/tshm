@@ -2,9 +2,14 @@ module TSHM.TypeScript where
 
 import           Prelude
 
-data TsOperator
-  = TsOperatorIntersection
-  | TsOperatorUnion
+data UnOp
+  = UnOpReflection
+  | UnOpKeys
+  deriving (Eq, Show)
+
+data BinOp
+  = BinOpIntersection
+  | BinOpUnion
   deriving (Eq, Show)
 
 data Partial a
@@ -35,10 +40,9 @@ data TsType
   | TsTypeObjectReference TsType String
   | TsTypeGeneric String (NonEmpty TypeArgument)
   | TsTypeSubtype String TsType
-  | TsTypeReflection String
-  | TsTypeKeysOf TsType
   | TsTypeFunction Function
-  | TsTypeExpression TsOperator TsType TsType
+  | TsTypeUnOp UnOp TsType
+  | TsTypeBinOp BinOp TsType TsType
   | TsTypeGrouped TsType
   deriving (Eq, Show)
 
@@ -84,7 +88,7 @@ fromInterface x = Alias (interfaceName x) (interfaceTypeArgs x) t
   where obj = TsTypeObject $ interfaceType x
         t = case interfaceExtends x of
           Nothing -> obj
-          Just st -> TsTypeExpression TsOperatorIntersection obj st
+          Just st -> TsTypeBinOp BinOpIntersection obj st
 
 data Signature
   = SignatureAlias Alias
