@@ -254,10 +254,10 @@ spec = describe "TSHM.Printer" $ do
         , "  ks: K[]"
         , ") => <V, A extends Record<K, V>>(x: Partial<A>) => Pick<A, Exclude<keyof A, K>>"
         ]) =*=
-        "omit :: forall k v a. k extends string, a extends (Record k v) => Array k -> Partial a -> Pick a (Exclude keyof a k)"
+        "omit :: forall k v a. k extends string, a extends (Record k v) => Array k -> Partial a -> Pick a (Exclude (keyof a) k)"
 
       pp "export declare const pick: <A>() => <K extends keyof A>(ks: K[]) => (x: A) => Pick<A, K>" =*=
-        "pick :: forall a k. k extends keyof a => () -> Array k -> a -> Pick a k"
+        "pick :: forall a k. k extends (keyof a) => () -> Array k -> a -> Pick a k"
 
     it "fp-ts-std/String" $ do
       pp "export declare const empty: ''" =*=

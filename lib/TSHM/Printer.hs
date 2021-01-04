@@ -99,7 +99,9 @@ fObjectPair (Required (k, v)) = ((k <> ": ") <>) <$> fTsType v
 fObjectPair (Optional (k, v)) = ((k <> "?: ") <>) <$> fTsType v
 
 fUnOp :: UnOp -> TsType -> Printer'
-fUnOp o t = ((op o <> " ") <>) <$> fTsType t
+fUnOp o t = do
+  nested <- ambiguouslyNested <$> get
+  doIf (surround "(" ")") nested . ((op o <> " ") <>) <$> fTsType t
   where op :: UnOp -> String
         op UnOpReflection = "typeof"
         op UnOpKeys       = "keyof"
