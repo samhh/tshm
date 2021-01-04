@@ -58,14 +58,15 @@ spec = describe "TSHM.Parser" $ do
         TsTypeTuple [TsTypeMisc "A", TsTypeObject [Required ("x", TsTypeMisc "B")]]
 
     it "parses object reference" $ do
-      parse' pType "A['key']" `shouldParse` TsTypeObjectReference (TsTypeMisc "A") "key"
-      parse' pType "A[\"key\"]" `shouldParse` TsTypeObjectReference (TsTypeMisc "A") "key"
+      parse' pType "A['key']" `shouldParse` TsTypeObjectReference (TsTypeMisc "A") (TsTypeStringLiteral "key")
+      parse' pType "A[\"key\"]" `shouldParse` TsTypeObjectReference (TsTypeMisc "A") (TsTypeStringLiteral "key")
       parse' pType "true['k1']['k2']" `shouldParse`
-        TsTypeObjectReference (TsTypeObjectReference (TsTypeBoolean True) "k1") "k2"
+        TsTypeObjectReference (TsTypeObjectReference (TsTypeBoolean True) (TsTypeStringLiteral "k1")) (TsTypeStringLiteral "k2")
+      parse' pType "A[K]" `shouldParse` TsTypeObjectReference (TsTypeMisc "A") (TsTypeMisc "K")
 
     it "postfix operators play nicely together" $ do
       parse' pType "a['k1']['k2'][][]['k3'][]" `shouldParse`
-        TsTypeGeneric "Array" (typeArgs [TsTypeObjectReference (TsTypeGeneric "Array" (typeArgs [TsTypeGeneric "Array" (typeArgs [TsTypeObjectReference (TsTypeObjectReference (TsTypeMisc "a") "k1") "k2"])])) "k3"])
+        TsTypeGeneric "Array" (typeArgs [TsTypeObjectReference (TsTypeGeneric "Array" (typeArgs [TsTypeGeneric "Array" (typeArgs [TsTypeObjectReference (TsTypeObjectReference (TsTypeMisc "a") (TsTypeStringLiteral "k1")) (TsTypeStringLiteral "k2")])])) (TsTypeStringLiteral "k3")])
 
     it "parses function" $ do
       parse' pType "<A, B>(a: A) => B" `shouldParse`

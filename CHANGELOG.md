@@ -20,7 +20,7 @@ f :: ∀ a. () -> a
 
 Aside from that, the CLI has been generally improved, now providing useful help text.
 
-Additionally, overloaded functions and trailing commas are now supported, and various inconsistencies and ambiguities around the application of parentheses have been addressed.
+Additionally, overloaded functions, non-literal object property accessors, and trailing commas are now supported, and various inconsistencies and ambiguities around the application of parentheses have been addressed.
 
 ## 0.1.0 -- 2021-01-02
 

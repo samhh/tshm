@@ -37,7 +37,7 @@ data TsType
   | TsTypeNumberLiteral String
   | TsTypeTuple [TsType]
   | TsTypeObject ObjectLiteral
-  | TsTypeObjectReference TsType String
+  | TsTypeObjectReference TsType TsType
   | TsTypeGeneric String (NonEmpty TypeArgument)
   | TsTypeSubtype String TsType
   | TsTypeFunction Function
