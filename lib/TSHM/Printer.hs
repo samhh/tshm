@@ -51,11 +51,7 @@ fMisc [x] = trans x . any (isViable . fst) . ((<>) <$> implicitTypeArgs <*> expl
 fMisc x   = pure x
 
 fSubtype :: String -> TsType -> Printer'
-fSubtype x y = surrounding " extends " <$> fMisc x <*> fAnnotatedTsType y
-  where fAnnotatedTsType :: TsType -> Printer'
-        fAnnotatedTsType t = do
-          modify $ \s -> s { ambiguouslyNested = True }
-          fTsType t
+fSubtype x y = surrounding " extends " <$> fMisc x <*> fAmbiguouslyNestedTsType y
 
 fFunction :: Function -> Printer'
 fFunction x = do
@@ -133,12 +129,17 @@ fTsType t = do
         f (TsTypeKeysOf x)            = ("keyof " <>) <$> fTsType x
         f (TsTypeReflection x)        = pure $ "typeof " <> x
         f (TsTypeObject xs)           = fObject xs
-        f (TsTypeObjectReference x k) = (<> ("[\"" <> k <> "\"]")) <$> fTsType x
+        f (TsTypeObjectReference x k) = (<> ("[\"" <> k <> "\"]")) <$> fAmbiguouslyNestedTsType x
         f (TsTypeFunction x)          = fFunction x
         f (TsTypeExpression x y z)    = fExpression x y z
         f (TsTypeGrouped x)           = do
           modify $ \s -> s { ambiguouslyNested = False }
           surround "(" ")" <$> fTsType x
+
+fAmbiguouslyNestedTsType :: TsType -> Printer'
+fAmbiguouslyNestedTsType t = do
+  modify $ \s -> s { ambiguouslyNested = True }
+  fTsType t
 
 fObject :: ObjectLiteral -> Printer'
 fObject [] = pure "{}"

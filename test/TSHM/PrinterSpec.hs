@@ -58,9 +58,9 @@ spec = describe "TSHM.Printer" $ do
     pp "type X = <A>(x: A) => <B>(y: B) => <C, D extends A, E extends Partial<A>>(c: [C, D, E]) => Either<E, C & D>" =*=
       "type X = forall a b c d e. d extends a, e extends (Partial a) => a -> b -> [c, d, e] -> Either e (c & d)"
 
-  it "correctly wraps generics, expressions, and function arguments in parentheses" $ do
-    pp "type X = <E, A>(x: Either<E, Option<A | E>>) => <B>(f: (x: A) => B) => (x: A | B) => Option<B>" =*=
-      "type X = forall e a b. Either e (Option (a | e)) -> (a -> b) -> a | b -> Option b"
+  it "correctly wraps generics, expressions, object references, and function arguments in parentheses" $ do
+    pp "type X = <E, A>(x: Either<E, Option<A | E>>) => <B>(f: (x: A) => B) => (x: A | B) => (x: A['k'], y: F<A>['k']) => Option<B>" =*=
+      "type X = forall e a b. Either e (Option (a | e)) -> (a -> b) -> a | b -> (a[\"k\"], (F a)[\"k\"]) -> Option b"
 
   it "prints stylised newtype-ts newtypes" $ do
     pp "export type X = Newtype<{ readonly Y: unique symbol }, Z>" =*=
