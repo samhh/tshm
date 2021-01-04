@@ -22,7 +22,7 @@ Aside from that, the CLI has been generally improved, now providing useful help 
 
 Overloaded functions, non-literal object property accessors, and trailing commas are now supported, and various inconsistencies and ambiguities around the application of parentheses have been addressed.
 
-Mapped types are now supported, hoever their utility is limited without support for conditional types, which is a priority for the next release.
+Mapped types are now supported, however their utility is limited without support for conditional types, which is a priority for the next release.
 
 ## 0.1.0 -- 2021-01-02
 
