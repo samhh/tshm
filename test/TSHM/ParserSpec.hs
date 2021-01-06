@@ -322,9 +322,9 @@ spec = describe "TSHM.Parser" $ do
 
   describe "pFunctionReturn" $ do
     it "parses value after the lambda" $ do
-      parse' pFunctionReturn " => void" `shouldParse` TsTypeVoid
-      parse' pFunctionReturn " => string" `shouldParse` TsTypeMisc "string"
-      parse' pFunctionReturn " => <A>(x: A) => A" `shouldParse` TsTypeFunction (Function (Just $ typeArgs [TsTypeMisc "A"]) [Required $ Normal $ TsTypeMisc "A"] (TsTypeMisc "A"))
+      parse' pFunctionReturn "=> void" `shouldParse` TsTypeVoid
+      parse' pFunctionReturn "=> string" `shouldParse` TsTypeMisc "string"
+      parse' pFunctionReturn "=> <A>(x: A) => A" `shouldParse` TsTypeFunction (Function (Just $ typeArgs [TsTypeMisc "A"]) [Required $ Normal $ TsTypeMisc "A"] (TsTypeMisc "A"))
 
     it "requires a value after the lambda" $ do
       parse' pFunctionReturn `shouldFailOn` " => "

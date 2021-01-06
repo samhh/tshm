@@ -1,3 +1,9 @@
+-- This module follows the following whitespace rules:
+--   * Consume all whitespace after tokens where possible.
+--   * Therefore, assume no whitespace before tokens.
+--   * Always handle newlines explicitly, because they can potentially act as
+--     delimiters in objects.
+
 module TSHM.Parser where
 
 import           Control.Monad.Combinators.Expr     (Operator (..),
@@ -7,11 +13,28 @@ import           Data.List                          (foldr1)
 import           Data.Void                          ()
 import           Prelude
 import           TSHM.TypeScript
-import           Text.Megaparsec                    hiding (some)
+import           Text.Megaparsec                    hiding (some, many)
 import           Text.Megaparsec.Char
 import qualified Text.Megaparsec.Char.Lexer         as L
 
 type Parser = Parsec Void String
+
+sc :: Parser ()
+sc = L.space hspace1 (L.skipLineComment "//") (L.skipBlockComment "/*" "*/")
+
+symbol :: String -> Parser String
+symbol = L.symbol sc
+
+-- This is literally just `p <* sc`, but it slightly formalises how we're
+-- trying to formally approach whitespace.
+lexeme :: Parser String -> Parser String
+lexeme = L.lexeme sc
+
+-- Optionally parse any amount of interspersed newlines and whitespace. Use
+-- this where whitespace is permitted and the usual space consumer is
+-- insufficient.
+nls :: Parser ()
+nls = space
 
 operators :: [[Operator Parser TsType]]
 operators =
@@ -31,10 +54,10 @@ operators =
           multi f = foldr1 (flip (.)) <$> some f
 
           unaryPrefix :: String -> (TsType -> TsType) -> Operator Parser TsType
-          unaryPrefix x f = Prefix $ f <$ string x <* hspace1
+          unaryPrefix x f = Prefix $ f <$ symbol x
 
           binaryInfix :: String -> (TsType -> TsType -> TsType) -> Operator Parser TsType
-          binaryInfix x f = InfixR $ f <$ string (" " <> x <> " ")
+          binaryInfix x f = InfixR $ f <$ symbol x
 
 pIdentifierHeadChar :: Parser Char
 pIdentifierHeadChar = letterChar <|> char '$' <|> char '_'
@@ -47,24 +70,24 @@ pIdentifierTailChar = pIdentifierHeadChar <|> numberChar
 -- the same rules for type-level identifiers as JavaScript does for runtime
 -- identifiers.
 pIdentifier :: Parser String
-pIdentifier = (:) <$> pIdentifierHeadChar <*> (maybeToMonoid <$> optional (some pIdentifierTailChar))
+pIdentifier = lexeme $ (:) <$> pIdentifierHeadChar <*> (maybeToMonoid <$> optional (some pIdentifierTailChar))
 
 pPreciseIdentifier :: String -> Parser String
-pPreciseIdentifier x = try $ string x <* notFollowedBy pIdentifierTailChar
+pPreciseIdentifier x = try $ lexeme $ string x <* notFollowedBy pIdentifierTailChar
 
 pTypeMisc :: Parser String
-pTypeMisc = some alphaNumChar
+pTypeMisc = lexeme $ some alphaNumChar
 
 pType :: Parser TsType
-pType = (`makeExprParser` operators) $ optional (string "readonly" <* hspace1) *> choice
-  [ try $ TsTypeGrouped <$> between (char '(') (char ')') pType
+pType = (`makeExprParser` operators) $ optional (symbol "readonly") *> choice
+  [ try $ TsTypeGrouped <$> between (symbol "(") (symbol ")") pType
   , TsTypeAny <$ pPreciseIdentifier "any"
   , TsTypeUnknown <$ pPreciseIdentifier "unknown"
   , TsTypeNever <$ pPreciseIdentifier "never"
   , TsTypeVoid <$ pPreciseIdentifier "void"
   , TsTypeNull <$ pPreciseIdentifier "null"
   , TsTypeUndefined <$ pPreciseIdentifier "undefined"
-  , TsTypeUniqueSymbol <$ string "unique symbol"
+  , TsTypeUniqueSymbol <$ symbol "unique symbol"
   , TsTypeBoolean <$> ((True <$ pPreciseIdentifier "true") <|> (False <$ pPreciseIdentifier "false"))
   , TsTypeString <$> pString
   , TsTypeNumber <$> pNumber
@@ -79,45 +102,45 @@ pGeneric :: Parser TsType
 pGeneric = TsTypeGeneric <$> pTypeMisc <*> pTypeArgs
 
 pString :: Parser String
-pString = stringLit '\'' <|> stringLit '"'
+pString = lexeme $ stringLit '\'' <|> stringLit '"'
   where stringLit :: Char -> Parser String
         stringLit c =
           let p = char c
            in p *> manyTill L.charLiteral p
 
 pNumber :: Parser String
-pNumber = (<>) . foldMap pure <$> optional (char '-') <*> choice
+pNumber = lexeme $ (<>) . foldMap pure <$> optional (char '-') <*> choice
   [ try $ (\x y z -> x <> pure y <> z) <$> some numberChar <*> char '.' <*> some numberChar
   , (:) <$> char '.' <*> some numberChar
   , some numberChar
   ]
 
 pTuple :: Parser [TsType]
-pTuple = between (char '[' <* space) (space *> char ']') $ sepEndBy pType (space *> char ',' <* space)
+pTuple = between (symbol "[") (symbol "]") $ sepEndBy pType (symbol ",")
 
 pObject :: Parser Object
-pObject = between (char '{' <* space) (space *> char '}') pInner
+pObject = between (symbol "{" <* nls) (nls *> symbol "}") pInner
   where pInner :: Parser Object
         pInner = choice
           [ mapped <$>
-                (char '[' *> space *> pIdentifier)
-            <*> (space1 *> string "in" *> space1 *> pType <* space <* char ']')
+                (symbol "[" *> pIdentifier)
+            <*> (symbol "in" *> pType <* symbol "]")
             <*> stdPairDelim
-            <*> (pType <* optional (char ',' <|> char ';'))
+            <*> (pType <* optional (symbol "," <|> symbol ";"))
           , ObjectLit <$> sepEndBy pPair litDelim
           ]
 
         pPair :: Parser ObjectPair
-        pPair = optional (string "readonly" <* hspace1) *> choice
+        pPair = optional (symbol "readonly") *> choice
           [ try $ flip norm <$> pIdentifier <*> stdPairDelim <*> pType
-          , method <$> pIdentifier <*> (isJust <$> optional (char '?')) <*> optional pTypeArgs <*> pParams <*> (char ':' *> hspace *> pType)
+          , method <$> pIdentifier <*> (isJust <$> optional (char '?')) <*> optional pTypeArgs <*> pParams <*> (symbol ":" *> pType)
           ]
 
-        litDelim :: Parser Char
-        litDelim = (char ',' <|> char ';' <|> try (newline <* notFollowedBy (char '}'))) <* space
+        litDelim :: Parser String
+        litDelim = lexeme $ pure <$> (char ',' <|> char ';' <|> try (newline <* notFollowedBy (char '}')))
 
         stdPairDelim :: Parser Bool
-        stdPairDelim = True <$ (char ':' <* hspace) <|> False <$ (string "?:" <* hspace)
+        stdPairDelim = True <$ symbol ":" <|> False <$ symbol "?:"
 
         mapped :: String -> TsType -> Bool -> TsType -> Object
         mapped k x req v = let f = if req then Required else Optional
@@ -131,28 +154,28 @@ pObject = between (char '{' <* space) (space *> char '}') pInner
         method n o g p r = (if o then Optional else Required) (n, TsTypeFunction $ Function g p r)
 
 pTypeArgs :: Parser (NonEmpty TypeArgument)
-pTypeArgs = between (char '<') (char '>') (NE.sepEndBy1 pTypeArg (char ',' <* space))
+pTypeArgs = between (symbol "<") (symbol ">") (NE.sepEndBy1 pTypeArg (symbol ","))
   where pTypeArg :: Parser TypeArgument
         pTypeArg = (,)
           <$> choice
-            [ try $ TsTypeSubtype <$> pTypeMisc <* hspace1 <* string "extends" <* hspace1 <*> pType
+            [ try $ TsTypeSubtype <$> pTypeMisc <* symbol "extends" <*> pType
             , pType
             ]
           <*> pDefault
 
         pDefault :: Parser (Maybe TsType)
-        pDefault = optional $ hspace1 *> char '=' *> hspace1 *> pType
+        pDefault = optional $ symbol "=" *> pType
 
 pParams :: Parser [Partial Param]
-pParams = between (char '(') (char ')') $ space *> sepEndBy pParam (char ',' <* space) <* space
+pParams = between (symbol "(" <* nls) (nls *> symbol ")") $ sepEndBy pParam (symbol "," <* nls)
   where pParam :: Parser (Partial Param)
-        pParam = f <$> rest <*> (some alphaNumChar *> sep) <*> (optional (string "new" <* hspace1) *> pType)
+        pParam = f <$> rest <*> (some alphaNumChar *> sep) <*> (optional (symbol "new") *> pType)
 
         rest :: Parser Bool
         rest = isJust <$> optional (string "...")
 
         sep :: Parser Bool
-        sep = True <$ (char ':' <* hspace) <|> False <$ (string "?:" <* hspace)
+        sep = True <$ symbol ":" <|> False <$ symbol "?:"
 
         f :: Bool -> Bool -> TsType -> Partial Param
         f True True   = Required . Rest
@@ -161,48 +184,53 @@ pParams = between (char '(') (char ')') $ space *> sepEndBy pParam (char ',' <* 
         f False False = Optional . Normal
 
 pFunctionReturn :: Parser TsType
-pFunctionReturn = hspace1 *> string "=>" *> space1 *> pType
+pFunctionReturn = symbol "=>" *> pType
 
 pFunction :: Parser Function
 pFunction = Function <$> optional pTypeArgs <*> pParams <*> pFunctionReturn
 
 pConstDeclarationName :: Parser String
-pConstDeclarationName = optional (string "export" <* hspace1) *> (string "declare const" <* hspace1) *> pIdentifier <* char ':' <* hspace
+pConstDeclarationName =
+     optional (symbol "export")
+  *> symbol "declare"
+  *> symbol "const"
+  *> pIdentifier
+  <* symbol ":"
 
 pConstDeclaration :: Parser ConstDeclaration
 pConstDeclaration = ConstDeclaration <$> pConstDeclarationName <*> pType <* optional (char ';')
 
 pFunctionDeclarationName :: Parser String
 pFunctionDeclarationName =
-      optional (string "export" <* hspace1)
-   *> (string "declare" <* hspace1)
-   *> (string "function" <* hspace1)
+      optional (symbol "export")
+   *> symbol "declare"
+   *> symbol "function"
    *> pIdentifier
 
 pFunctionDeclaration :: Parser FunctionDeclaration
 pFunctionDeclaration = FunctionDeclaration
   <$> pFunctionDeclarationName
-  <*> (Function <$> optional pTypeArgs <*> pParams <* char ':' <* space1 <*> pType)
+  <*> (Function <$> optional pTypeArgs <*> pParams <* symbol ":" <*> pType)
 
 pAlias :: Parser Alias
 pAlias = Alias
-  <$> (optional (string "export" <* hspace1) *> (string "type" <* hspace1) *> some alphaNumChar)
-  <*> (optional pTypeArgs <* (space1 *> char '=' <* space1))
+  <$> (optional (symbol "export") *> symbol "type" *> lexeme (some alphaNumChar))
+  <*> (optional pTypeArgs <* symbol "=")
   <*> pType <* optional (char ';')
 
 pInterface :: Parser Interface
 pInterface = Interface
-  <$> (optional (string "export" <* hspace1) *> (string "interface" <* hspace1) *> some alphaNumChar)
+  <$> (optional (symbol "export") *> symbol "interface" *> lexeme (some alphaNumChar))
   <*> optional pTypeArgs
-  <*> optional (try $ (hspace1 *> string "extends" <* hspace1) *> pType)
-  <*> (space1 *> pObject)
+  <*> optional (try $ symbol "extends" *> pType)
+  <*> pObject
 
 pSignature :: Parser Signature
 pSignature = choice
   [ try $ SignatureAlias <$> pAlias
   , try $ SignatureInterface <$> pInterface
   , try $ SignatureConstDeclaration <$> pConstDeclaration
-  , SignatureFunctionDeclaration <$> NE.sepBy1 pFunctionDeclaration newline
+  , SignatureFunctionDeclaration <$> NE.sepBy1 pFunctionDeclaration (some newline)
   ] <* eof
 
 parseSignature :: String -> ParseOutput
