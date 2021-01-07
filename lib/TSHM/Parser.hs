@@ -19,28 +19,51 @@ import qualified Text.Megaparsec.Char.Lexer         as L
 
 type Parser = Parsec Void String
 
-sc :: Parser ()
-sc = L.space hspace1 (L.skipLineComment "//") (L.skipBlockComment "/*" "*/")
+getSc :: Parser () -> Parser ()
+getSc x = L.space x (L.skipLineComment "//") (L.skipBlockComment "/*" "*/")
 
+-- The standard space consumer to be used in most circumstances, supporting
+-- comments. Note that it does not parse newlines.
+sc :: Parser ()
+sc = getSc hspace1
+
+-- An alternative space consumer that parses newlines.
+scN :: Parser ()
+scN = getSc space1
+
+-- This can be thought of as just `string x <* sc`.
 sym :: String -> Parser String
 sym = L.symbol sc
+
+-- An alternative symbol parser that parses newlines.
+symN :: String -> Parser String
+symN = L.symbol scN
 
 -- This is literally just `p <* sc`, but it slightly formalises how we're
 -- trying to formally approach whitespace.
 lex :: Parser String -> Parser String
 lex = L.lexeme sc
 
--- Optionally parse any amount of interspersed newlines and whitespace. Use
--- this where whitespace is permitted and the usual space consumer is
--- insufficient.
-nls :: Parser ()
-nls = space
+between' :: String -> String -> Parser a -> Parser a
+between' l r = between (symN l) (scN *> sym r)
+
+parens :: Parser a -> Parser a
+parens = between' "(" ")"
+
+braces :: Parser a -> Parser a
+braces = between' "{" "}"
+
+angles :: Parser a -> Parser a
+angles = between' "<" ">"
+
+bracks :: Parser a -> Parser a
+bracks = between' "[" "]"
 
 operators :: [[Operator Parser Expr]]
 operators =
   [ [ Postfix (multi
       (   (TGeneric "Array" . pure . (, Nothing) <$ sym "[]")
-      <|> (flip TIndexedAccess <$> between (sym "[") (sym "]") expr)
+      <|> (flip TIndexedAccess <$> bracks expr)
       )
     )]
   , [ unaryPrefix "typeof" (TUnOp UnOpReflection)
@@ -77,7 +100,7 @@ keyword x = try $ lex $ string x <* notFollowedBy identTailChar
 
 expr :: Parser Expr
 expr = (`makeExprParser` operators) $ optional (sym "readonly") *> choice
-  [ try $ TGrouped <$> between (sym "(") (sym ")") expr
+  [ try $ TGrouped <$> parens expr
   , TAny <$ keyword "any"
   , TUnknown <$ keyword "unknown"
   , TNever <$ keyword "never"
@@ -113,12 +136,12 @@ num = lex $ (<>) . foldMap pure <$> optional (char '-') <*> choice
   ]
 
 tuple :: Parser [Expr]
-tuple = between (sym "[") (sym "]") $ sepEndBy expr (sym ",")
+tuple = bracks $ sepEndBy expr (sym ",")
 
 object :: Parser Object
-object = between (sym "{" <* nls) (nls *> sym "}") pInner
-  where pInner :: Parser Object
-        pInner = choice
+object = braces inner
+  where inner :: Parser Object
+        inner = choice
           [ mapped <$>
                 (sym "[" *> ident)
             <*> (sym "in" *> expr <* sym "]")
@@ -151,7 +174,7 @@ object = between (sym "{" <* nls) (nls *> sym "}") pInner
         method n o g p r = (if o then Optional else Required) (n, TLambda $ Lambda g p r)
 
 typeArgs :: Parser (NonEmpty TypeArg)
-typeArgs = between (sym "<") (sym ">") (NE.sepEndBy1 typeArg (sym ","))
+typeArgs = angles (NE.sepEndBy1 typeArg (sym ","))
   where typeArg :: Parser TypeArg
         typeArg = (,)
           <$> choice
@@ -164,7 +187,7 @@ typeArgs = between (sym "<") (sym ">") (NE.sepEndBy1 typeArg (sym ","))
         pDefault = optional $ sym "=" *> expr
 
 params :: Parser [Partial Param]
-params = between (sym "(" <* nls) (nls *> sym ")") $ sepEndBy param (sym "," <* nls)
+params = parens $ sepEndBy param (symN ",")
   where param :: Parser (Partial Param)
         param = f <$> rest <*> (ident *> sep) <*> (optional (sym "new") *> expr)
 
