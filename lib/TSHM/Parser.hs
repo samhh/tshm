@@ -66,8 +66,8 @@ operators =
       <|> TGeneric "Array" . pure . (, Nothing) <$ symN "[" <* sym "]"
       )
     )]
-  , [ unaryPrefix "typeof" (TUnOp UnOpReflection)
-    , unaryPrefix "keyof" (TUnOp UnOpKeys)
+  , [ unaryPrefix "typeof " (TUnOp UnOpReflection)
+    , unaryPrefix "keyof "  (TUnOp UnOpKeys)
     ]
   , [ binaryInfix "&" (TBinOp BinOpIntersection)
     , binaryInfix "|" (TBinOp BinOpUnion)

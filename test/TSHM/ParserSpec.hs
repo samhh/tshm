@@ -80,9 +80,11 @@ spec = describe "TSHM.Parser" $ do
 
     it "parses keyof" $ do
       parse' expr "keyof A<B>" `shouldParse` TUnOp UnOpKeys (TGeneric "A" $ typeArgs' [TMisc "B"])
+      parse' expr "keyofx" `shouldParse` TMisc "keyofx"
 
     it "parses typeof" $ do
       parse' expr "typeof x & y" `shouldParse` TBinOp BinOpIntersection (TUnOp UnOpReflection (TMisc "x")) (TMisc "y")
+      parse' expr "typeofx" `shouldParse` TMisc "typeofx"
 
     it "parses parentheses and changes precedence accordingly" $ do
       parse' expr "(A & B) | C" `shouldParse` TBinOp BinOpUnion (TGrouped $ TBinOp BinOpIntersection (TMisc "A") (TMisc "B")) (TMisc "C")
