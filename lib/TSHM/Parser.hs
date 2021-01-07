@@ -75,9 +75,6 @@ pIdentifier = lexeme $ (:) <$> pIdentifierHeadChar <*> (maybeToMonoid <$> option
 pPreciseIdentifier :: String -> Parser String
 pPreciseIdentifier x = try $ lexeme $ string x <* notFollowedBy pIdentifierTailChar
 
-pTypeMisc :: Parser String
-pTypeMisc = lexeme $ some alphaNumChar
-
 pType :: Parser TsType
 pType = (`makeExprParser` operators) $ optional (symbol "readonly") *> choice
   [ try $ TsTypeGrouped <$> between (symbol "(") (symbol ")") pType
@@ -95,11 +92,11 @@ pType = (`makeExprParser` operators) $ optional (symbol "readonly") *> choice
   , TsTypeObject <$> pObject
   , TsTypeFunction <$> pFunction
   , try pGeneric
-  , TsTypeMisc <$> pTypeMisc
+  , TsTypeMisc <$> pIdentifier
   ]
 
 pGeneric :: Parser TsType
-pGeneric = TsTypeGeneric <$> pTypeMisc <*> pTypeArgs
+pGeneric = TsTypeGeneric <$> pIdentifier <*> pTypeArgs
 
 pString :: Parser String
 pString = lexeme $ stringLit '\'' <|> stringLit '"'
@@ -158,7 +155,7 @@ pTypeArgs = between (symbol "<") (symbol ">") (NE.sepEndBy1 pTypeArg (symbol ","
   where pTypeArg :: Parser TypeArgument
         pTypeArg = (,)
           <$> choice
-            [ try $ TsTypeSubtype <$> pTypeMisc <* symbol "extends" <*> pType
+            [ try $ TsTypeSubtype <$> pIdentifier <* symbol "extends" <*> pType
             , pType
             ]
           <*> pDefault
@@ -169,7 +166,7 @@ pTypeArgs = between (symbol "<") (symbol ">") (NE.sepEndBy1 pTypeArg (symbol ","
 pParams :: Parser [Partial Param]
 pParams = between (symbol "(" <* nls) (nls *> symbol ")") $ sepEndBy pParam (symbol "," <* nls)
   where pParam :: Parser (Partial Param)
-        pParam = f <$> rest <*> (some alphaNumChar *> sep) <*> (optional (symbol "new") *> pType)
+        pParam = f <$> rest <*> (pIdentifier *> sep) <*> (optional (symbol "new") *> pType)
 
         rest :: Parser Bool
         rest = isJust <$> optional (string "...")
@@ -214,13 +211,13 @@ pFunctionDeclaration = FunctionDeclaration
 
 pAlias :: Parser Alias
 pAlias = Alias
-  <$> (optional (symbol "export") *> symbol "type" *> lexeme (some alphaNumChar))
+  <$> (optional (symbol "export") *> symbol "type" *> pIdentifier)
   <*> (optional pTypeArgs <* symbol "=")
   <*> pType <* optional (char ';')
 
 pInterface :: Parser Interface
 pInterface = Interface
-  <$> (optional (symbol "export") *> symbol "interface" *> lexeme (some alphaNumChar))
+  <$> (optional (symbol "export") *> symbol "interface" *> pIdentifier)
   <*> optional pTypeArgs
   <*> optional (try $ symbol "extends" *> pType)
   <*> pObject
