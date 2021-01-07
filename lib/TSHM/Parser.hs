@@ -156,8 +156,15 @@ object = braces inner
           , method <$> ident <*> (isJust <$> optional (char '?')) <*> optional typeArgs <*> params <*> (sym ":" *> expr)
           ]
 
-        litDelim :: Parser String
-        litDelim = lex $ pure <$> (char ',' <|> char ';' <|> try (newline <* notFollowedBy (char '}')))
+        litDelim :: Parser ()
+        litDelim =
+              () <$ symN ","
+          <|> () <$ symN ";"
+          -- Consume any leading whitespace, then ensure there's at least one
+          -- newline, then consume all trailing whitespace including any
+          -- further newlines, then finally check the next character is the
+          -- closing brace.
+          <|> try (sc <* newline <* scN <* notFollowedBy (char '}'))
 
         stdPairDelim :: Parser Bool
         stdPairDelim = True <$ sym ":" <|> False <$ sym "?:"
