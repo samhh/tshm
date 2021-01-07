@@ -171,30 +171,34 @@ spec = describe "TSHM.Parser" $ do
 
     it "parses mapped type" $ do
       parse' object "{ [K in A]: B }" `shouldParse`
-        ObjectMapped Nothing Nothing ("K", TMisc "A") (TMisc "B")
+        ObjectMapped Nothing Nothing ("K", TMisc "A", Nothing) (TMisc "B")
 
       parse' object "{ [K in A]: B; }" `shouldParse`
-        ObjectMapped Nothing Nothing ("K", TMisc "A") (TMisc "B")
+        ObjectMapped Nothing Nothing ("K", TMisc "A", Nothing) (TMisc "B")
 
     it "parses readonly modifiers" $ do
       parse' object "{ readonly [K in A]: B }" `shouldParse`
-        ObjectMapped (Just AddMut) Nothing ("K", TMisc "A") (TMisc "B")
+        ObjectMapped (Just AddMut) Nothing ("K", TMisc "A", Nothing) (TMisc "B")
 
       parse' object "{ +readonly [K in A]: B }" `shouldParse`
-        ObjectMapped (Just AddMut) Nothing ("K", TMisc "A") (TMisc "B")
+        ObjectMapped (Just AddMut) Nothing ("K", TMisc "A", Nothing) (TMisc "B")
 
       parse' object "{ -readonly [K in A]: B }" `shouldParse`
-        ObjectMapped (Just RemMut) Nothing ("K", TMisc "A") (TMisc "B")
+        ObjectMapped (Just RemMut) Nothing ("K", TMisc "A", Nothing) (TMisc "B")
 
     it "parses optionality modifiers" $ do
       parse' object "{ [K in A]?: B }" `shouldParse`
-        ObjectMapped Nothing (Just AddOpt) ("K", TMisc "A") (TMisc "B")
+        ObjectMapped Nothing (Just AddOpt) ("K", TMisc "A", Nothing) (TMisc "B")
 
       parse' object "{ [K in A]+?: B }" `shouldParse`
-        ObjectMapped Nothing (Just AddOpt) ("K", TMisc "A") (TMisc "B")
+        ObjectMapped Nothing (Just AddOpt) ("K", TMisc "A", Nothing) (TMisc "B")
 
       parse' object "{ [K in A]-?: B }" `shouldParse`
-        ObjectMapped Nothing (Just RemOpt) ("K", TMisc "A") (TMisc "B")
+        ObjectMapped Nothing (Just RemOpt) ("K", TMisc "A", Nothing) (TMisc "B")
+
+    it "parses mapped type as clause" $ do
+      parse' object "{ [K in A as B]: C }" `shouldParse`
+        ObjectMapped Nothing Nothing ("K", TMisc "A", Just (TMisc "B")) (TMisc "C")
 
   describe "tuple" $ do
     it "parses empty tuple" $ do

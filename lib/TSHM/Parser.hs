@@ -146,8 +146,9 @@ object = braces inner
           [ try $ mapped <$>
                 roMod
             <*> (sym "[" *> ident)
-            <*> (sym "in" *> expr <* sym "]")
-            <*> mappedDelim
+            <*> (sym "in" *> expr)
+            <*> (optional $ sym "as" *> expr)
+            <*> (sym "]" *> mappedDelim)
             <*> (expr <* optional (sym "," <|> sym ";"))
           , ObjectLit <$> sepEndBy pair litDelim
           ]
@@ -176,8 +177,8 @@ object = braces inner
         mappedDelim :: Parser (Maybe ModOpt)
         mappedDelim = optional ((const RemOpt <$ sym "-" <|> const AddOpt <$ optional (sym "+")) <*> sym "?") <* sym ":"
 
-        mapped :: Maybe ModMut -> String -> Expr -> Maybe ModOpt -> Expr -> Object
-        mapped m k x req v = ObjectMapped m req (k, x) v
+        mapped :: Maybe ModMut -> String -> Expr -> Maybe Expr -> Maybe ModOpt -> Expr -> Object
+        mapped m k x a req v = ObjectMapped m req (k, x, a) v
 
         norm :: Mutant -> String -> Partial -> Expr -> ObjectPair
         norm m s p e = ObjectPair m p (s, e)

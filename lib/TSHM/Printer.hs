@@ -167,14 +167,17 @@ modOpt RemOpt = "-?:"
 object :: Object -> Printer'
 object (ObjectLit []) = pure "{}"
 object (ObjectLit xs) = surround "{ " " }" . intercalate ", " <$> mapM objectPair xs
-object (ObjectMapped m p (k, xt) vt) = do
+object (ObjectMapped m p (k, xt, asm) vt) = do
   cfgRO <- readonly <$> ask
   let ro = foldMap ((<> " ") . modMut) . mfilter (const cfgRO) $ m
   let sep = maybe ":" modOpt p
+  as <- case asm of
+    Nothing -> pure ""
+    Just x  -> (" as " <>) <$> expr x
 
   x <- expr xt
   v <- expr vt
-  pure $ "{ " <> ro <> "[" <> k <> " in " <> x <> "]" <> sep <> " " <> v <> " }"
+  pure $ "{ " <> ro <> "[" <> k <> " in " <> x <> as <> "]" <> sep <> " " <> v <> " }"
 
 constDec :: ConstDec -> Printer'
 constDec x = (\t ps -> constDecName x <> " :: " <> renderedTypeArgs ps <> renderedSubtypes ps <> t)

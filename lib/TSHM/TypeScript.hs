@@ -45,7 +45,7 @@ data ModOpt
 
 data Object
   = ObjectLit [ObjectPair]
-  | ObjectMapped (Maybe ModMut) (Maybe ModOpt) (String, Expr) Expr
+  | ObjectMapped (Maybe ModMut) (Maybe ModOpt) (String, Expr, Maybe Expr) Expr
   deriving (Eq, Show)
 
 type TypeArg = (Expr, Maybe Expr)

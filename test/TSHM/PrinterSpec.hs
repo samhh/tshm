@@ -53,6 +53,10 @@ spec = describe "TSHM.Printer" $ do
     pp "declare const x: { [K in A]+?: B }" =*= "x :: { [K in A]?: B }"
     pp "declare const x: { [K in A]-?: B }" =*= "x :: { [K in A]-?: B }"
 
+  it "prints mapped type as clause" $ do
+    pp "type Ageless<A> = { [K in keyof A as Exclude<K, 'age'>]: A[K] }" =*=
+      "type Ageless a = { [K in keyof a as Exclude K \"age\"]: a[K] }"
+
   it "prints type aliases" $ do
     pp "type X = string" =*= "type X = string"
     pp "type X<A> = string" =*= "type X a = string"
