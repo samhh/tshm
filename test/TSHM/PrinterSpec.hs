@@ -10,11 +10,11 @@ import           Text.Megaparsec     (ParseErrorBundle)
 unlines' :: [String] -> String
 unlines' = intercalate "\n"
 
-ppWith :: Maybe String -> String -> Either (ParseErrorBundle String Void) String
-ppWith x = fmap (printSignature . flip PrintConfig x) . parseSignature
+ppWith :: Maybe String -> Bool -> String -> Either (ParseErrorBundle String Void) String
+ppWith x y = fmap (printSignature . (\sig -> PrintConfig sig x y)) . parseSignature
 
 pp :: String -> Either (ParseErrorBundle String Void) String
-pp = ppWith $ Just "forall"
+pp = ppWith (Just "forall") True
 
 (=*=) :: (Eq a, Eq e, Show a, Show e) => Either e a -> a -> PropertyT IO ()
 a =*= b = a === Right b
@@ -22,9 +22,23 @@ a =*= b = a === Right b
 spec :: Spec
 spec = describe "TSHM.Printer" $ do
   it "prints specified universal quantification" $ do
-    ppWith Nothing "declare const f: <A>() => A" =*= "f :: () -> a"
-    ppWith (Just "forall") "declare const f: <A>() => A" =*= "f :: forall a. () -> a"
-    ppWith (Just "∀") "declare const f: <A>() => A" =*= "f :: ∀ a. () -> a"
+    ppWith Nothing True "declare const f: <A>() => A" =*= "f :: () -> a"
+    ppWith (Just "forall") True "declare const f: <A>() => A" =*= "f :: forall a. () -> a"
+    ppWith (Just "∀") True "declare const f: <A>() => A" =*= "f :: ∀ a. () -> a"
+
+
+  it "conditionally prints readonly modifier" $ do
+    ppWith Nothing True  "declare const x: { readonly k: v }" =*= "x :: { readonly k: v }"
+    ppWith Nothing False "declare const x: { readonly k: v }" =*= "x :: { k: v }"
+
+    ppWith Nothing True  "declare const x: { k: readonly v }" =*= "x :: { k: readonly v }"
+    ppWith Nothing False "declare const x: { k: readonly v }" =*= "x :: { k: v }"
+
+    ppWith Nothing True  "declare const x: { readonly [k in x]: v }" =*= "x :: { readonly [k in x]: v }"
+    ppWith Nothing False "declare const x: { readonly [k in x]: v }" =*= "x :: { [k in x]: v }"
+
+    ppWith Nothing True  "declare const x: { k: v }" =*= "x :: { k: v }"
+    ppWith Nothing False "declare const x: { k: v }" =*= "x :: { k: v }"
 
   it "prints type aliases" $ do
     pp "type X = string" =*= "type X = string"
@@ -130,7 +144,7 @@ spec = describe "TSHM.Printer" $ do
         , "  readonly value: A"
         , "}"
         ]) =*=
-        "type Some a = { _tag: \"Some\", value: a }"
+        "type Some a = { readonly _tag: \"Some\", readonly value: a }"
 
     it "fp-ts/Ord" $ do
       pp "export declare const Contravariant: Contravariant1<'Ord'>" =*=
@@ -141,7 +155,7 @@ spec = describe "TSHM.Printer" $ do
         , "  readonly compare: (x: A, y: A) => Ordering"
         , "}"
         ]) =*=
-        "type Ord a = { compare: (a, a) -> Ordering } & Eq a"
+        "type Ord a = { readonly compare: (a, a) -> Ordering } & Eq a"
 
       pp "export declare function getMonoid<A = never>(): Monoid<Ord<A>>" =*=
         "getMonoid :: forall a. () -> Monoid (Ord a)"

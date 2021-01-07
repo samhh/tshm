@@ -5,6 +5,7 @@ import           Prelude
 
 data Input = Input
   { forall      :: Maybe String
+  , readonly    :: Bool
   , declaration :: String
   }
 
@@ -17,6 +18,7 @@ parser = Input <$>
         <> A.metavar "string"
         <> A.help "Specify a string to be used to express universal quantification, for example \"forall\" or \"∀\". If set to \"none\" or omitted, no universal quantification will be displayed"
         ))
+  <*> A.switch (A.short 'r' <> A.long "readonly" <> A.help "Display readonly modifiers")
   <*> A.argument A.str (A.metavar "input")
 
 help :: A.Parser a -> A.ParserInfo a

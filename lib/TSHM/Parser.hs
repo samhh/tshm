@@ -68,6 +68,7 @@ operators =
     ]
   , [ Prefix $ TUnOp UnOpReflection <$ sym "typeof "
     , Prefix $ TUnOp UnOpKeys       <$ sym "keyof "
+    , Prefix $ TUnOp UnOpReadonly   <$ sym "readonly "
     ]
   , [ InfixR $ TBinOp BinOpIntersection <$ sym "&"
     , InfixR $ TBinOp BinOpUnion        <$ sym "|"
@@ -93,7 +94,7 @@ keyword :: String -> Parser String
 keyword x = try $ lex $ string x <* notFollowedBy identTailChar
 
 expr :: Parser Expr
-expr = (`makeExprParser` operators) $ optional (sym "readonly") *> choice
+expr = (`makeExprParser` operators) $ choice
   [ try $ TGrouped <$> parens expr
   , TAny <$ keyword "any"
   , TUnknown <$ keyword "unknown"
@@ -111,6 +112,9 @@ expr = (`makeExprParser` operators) $ optional (sym "readonly") *> choice
   , try generic
   , TMisc <$> ident
   ]
+
+ro :: Parser Mutant
+ro = bool Mut Immut . isJust <$> optional (sym "readonly ")
 
 generic :: Parser Expr
 generic = TGeneric <$> ident <*> typeArgs
@@ -136,8 +140,9 @@ object :: Parser Object
 object = braces inner
   where inner :: Parser Object
         inner = choice
-          [ mapped <$>
-                (sym "[" *> ident)
+          [ try $ mapped <$>
+                ro
+            <*> (sym "[" *> ident)
             <*> (sym "in" *> expr <* sym "]")
             <*> stdPairDelim
             <*> (expr <* optional (sym "," <|> sym ";"))
@@ -145,10 +150,12 @@ object = braces inner
           ]
 
         pair :: Parser ObjectPair
-        pair = optional (sym "readonly") *> choice
-          [ try $ flip norm <$> ident <*> stdPairDelim <*> expr
-          , method <$> ident <*> (isJust <$> optional (char '?')) <*> optional typeArgs <*> params <*> (sym ":" *> expr)
+        pair = choice
+          [ try $ norm <$> ro <*> ident <*> stdPairDelim <*> expr
+          , method <$> ro <*> ident <*> opt <*> optional typeArgs <*> params <*> (sym ":" *> expr)
           ]
+          where opt :: Parser Partial
+                opt = bool Required Optional . isJust <$> optional (char '?')
 
         litDelim :: Parser ()
         litDelim =
@@ -160,19 +167,17 @@ object = braces inner
           -- closing brace.
           <|> try (sc <* newline <* scN <* notFollowedBy (char '}'))
 
-        stdPairDelim :: Parser Bool
-        stdPairDelim = True <$ sym ":" <|> False <$ sym "?:"
+        stdPairDelim :: Parser Partial
+        stdPairDelim = Required <$ sym ":" <|> Optional <$ sym "?:"
 
-        mapped :: String -> Expr -> Bool -> Expr -> Object
-        mapped k x req v = let f = if req then Required else Optional
-                            in ObjectMapped (f ((k, x), v))
+        mapped :: Mutant -> String -> Expr -> Partial -> Expr -> Object
+        mapped m k x req v = ObjectMapped m req (k, x) v
 
-        norm :: Bool -> String -> Expr -> ObjectPair
-        norm True  = (Required .) . (,)
-        norm False = (Optional .) . (,)
+        norm :: Mutant -> String -> Partial -> Expr -> ObjectPair
+        norm m s p e = ObjectPair m p (s, e)
 
-        method :: String -> Bool -> Maybe (NonEmpty TypeArg) -> [Partial Param] -> Expr -> ObjectPair
-        method n o g p r = (if o then Optional else Required) (n, TLambda $ Lambda g p r)
+        method :: Mutant -> String -> Partial -> Maybe (NonEmpty TypeArg) -> [Param] -> Expr -> ObjectPair
+        method m n q g p r = ObjectPair m q (n, TLambda $ Lambda g p r)
 
 typeArgs :: Parser (NonEmpty TypeArg)
 typeArgs = angles (NE.sepEndBy1 typeArg (sym ","))
@@ -187,28 +192,22 @@ typeArgs = angles (NE.sepEndBy1 typeArg (sym ","))
         pDefault :: Parser (Maybe Expr)
         pDefault = optional $ sym "=" *> expr
 
-params :: Parser [Partial Param]
+params :: Parser [Param]
 params = parens $ sepEndBy param (symN ",")
-  where param :: Parser (Partial Param)
-        param = f <$> (isJust <$> optional rest) <*> (name *> sep) <*> (optional (sym "new") *> expr)
+  where param :: Parser Param
+        param = (\x y z -> (y, x, z)) <$> rest <*> (name *> sep) <*> (optional (sym "new") *> expr)
 
         name :: Parser ()
         name =
               () <$ ident
-          <|> () <$ bracks (sepEndBy (optional rest *> name) (symN ","))
-          <|> () <$ braces (sepEndBy (optional rest *> ident *> optional (sym ":" *> name)) (symN ","))
+          <|> () <$ bracks (sepEndBy (rest *> name)                                (symN ","))
+          <|> () <$ braces (sepEndBy (rest *> ident *> optional (sym ":" *> name)) (symN ","))
 
-        rest :: Parser String
-        rest = sym "..."
+        rest :: Parser ParamScope
+        rest = bool Normal Rest . isJust <$> optional (sym "...")
 
-        sep :: Parser Bool
-        sep = True <$ sym ":" <|> False <$ sym "?:"
-
-        f :: Bool -> Bool -> Expr -> Partial Param
-        f True True   = Required . Rest
-        f True False  = Optional . Rest
-        f False True  = Required . Normal
-        f False False = Optional . Normal
+        sep :: Parser Partial
+        sep = Required <$ sym ":" <|> Optional <$ sym "?:"
 
 lambda :: Parser Lambda
 lambda = Lambda <$> optional typeArgs <*> params <*> (sym "=>" *> expr)

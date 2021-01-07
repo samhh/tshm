@@ -53,9 +53,9 @@ spec = describe "TSHM.Parser" $ do
       parse' expr "a[][]" `shouldParse`
         TGeneric "Array" (typeArgs' [TGeneric "Array" $ typeArgs' [TMisc "a"]])
 
-    it "parses and discards readonly" $ do
+    it "parses readonly" $ do
       parse' expr "readonly [readonly A, { readonly x: readonly B }]" `shouldParse`
-        TTuple [TMisc "A", TObject (ObjectLit [Required ("x", TMisc "B")])]
+        TUnOp UnOpReadonly (TTuple [TUnOp UnOpReadonly (TMisc "A"), TObject (ObjectLit [ObjectPair Immut Required ("x", TUnOp UnOpReadonly (TMisc "B"))])])
 
     it "parses object reference" $ do
       parse' expr "A['key']" `shouldParse` TIndexedAccess (TMisc "A") (TString "key")
@@ -70,10 +70,10 @@ spec = describe "TSHM.Parser" $ do
 
     it "parses function" $ do
       parse' expr "<A, B>(a: A) => B" `shouldParse`
-         TLambda (Lambda (Just $ typeArgs' [TMisc "A", TMisc "B"]) [Required $ Normal $ TMisc "A"] (TMisc "B"))
+         TLambda (Lambda (Just $ typeArgs' [TMisc "A", TMisc "B"]) [(Required, Normal, TMisc "A")] (TMisc "B"))
 
       parse' expr "(x: F<A, B>) => G<C, D>" `shouldParse`
-         TLambda (Lambda Nothing [Required $ Normal $ TGeneric "F" $ typeArgs' [TMisc "A", TMisc "B"]] (TGeneric "G" $ typeArgs' [TMisc "C", TMisc "D"]))
+         TLambda (Lambda Nothing [(Required, Normal, TGeneric "F" $ typeArgs' [TMisc "A", TMisc "B"])] (TGeneric "G" $ typeArgs' [TMisc "C", TMisc "D"]))
 
     it "parses infix operators" $ do
       parse' expr "A & B | C" `shouldParse` TBinOp BinOpIntersection (TMisc "A") (TBinOp BinOpUnion (TMisc "B") (TMisc "C"))
@@ -99,7 +99,7 @@ spec = describe "TSHM.Parser" $ do
 
     it "parses params" $ do
       parse' lambda "(x: number, y: string) => void" `shouldParse`
-        Lambda Nothing [Required $ Normal $ TMisc "number", Required $ Normal $ TMisc "string"] TVoid
+        Lambda Nothing [(Required, Normal, TMisc "number"), (Required, Normal, TMisc "string")] TVoid
 
     it "parses return type" $ do
       parse' lambda "() => number" `shouldParse` Lambda Nothing [] (TMisc "number")
@@ -115,10 +115,10 @@ spec = describe "TSHM.Parser" $ do
             , TSubtype "A" (TGeneric "Array" $ typeArgs' [TMisc "B"])
             ]
           )
-          [ Required $ Normal $ TLambda (Lambda
-              (Just $ typeArgs' [TSubtype "C" (TMisc "number"), TMisc "D"])
-              [Required $ Normal $ TString "ciao"]
-              (TMisc "string"))
+          [ (Required, Normal, TLambda (Lambda
+            (Just $ typeArgs' [TSubtype "C" (TMisc "number"), TMisc "D"])
+            [(Required, Normal, TString "ciao")]
+            (TMisc "string")))
           ]
           TVoid
 
@@ -134,11 +134,11 @@ spec = describe "TSHM.Parser" $ do
               ]
             ]
           )
-          [ Required $ Normal $ TMisc "number"
-          , Required $ Normal $ TLambda (Lambda
+          [ (Required, Normal, TMisc "number")
+          , (Required, Normal, TLambda (Lambda
               (Just $ typeArgs' [TMisc "C"])
-              [Required $ Normal $ TMisc "C"]
-              (TLambda (Lambda Nothing [] (TMisc "C"))))
+              [(Required, Normal, TMisc "C")]
+              (TLambda (Lambda Nothing [] (TMisc "C")))))
           ]
           ( TLambda (Lambda Nothing [] TVoid))
 
@@ -147,34 +147,34 @@ spec = describe "TSHM.Parser" $ do
       parse' object "{}" `shouldParse` ObjectLit []
 
     it "parses non-empty flat object" $ do
-      parse' object "{ a: 1, b: 'two' }" `shouldParse` ObjectLit [Required ("a", TNumber "1"), Required ("b", TString "two")]
+      parse' object "{ a: 1, b: 'two' }" `shouldParse` ObjectLit [ObjectPair Mut Required ("a", TNumber "1"), ObjectPair Mut Required ("b", TString "two")]
 
     it "parses non-empty nested object" $ do
       parse' object "{ a: 1, b: { c: true }[] }" `shouldParse`
-        ObjectLit [Required ("a", TNumber "1"), Required ("b", TGeneric "Array" $ typeArgs' [TObject (ObjectLit [Required ("c", TBoolean True)])])]
+        ObjectLit [ObjectPair Mut Required ("a", TNumber "1"), ObjectPair Mut Required ("b", TGeneric "Array" $ typeArgs' [TObject (ObjectLit [ObjectPair Mut Required ("c", TBoolean True)])])]
 
     it "supports mixed comma and semi-colon delimiters" $ do
       parse' object "{ a: number, b: string; c: boolean }" `shouldParse`
-        ObjectLit [Required ("a", TMisc "number"), Required ("b", TMisc "string"), Required ("c", TMisc "boolean")]
+        ObjectLit [ObjectPair Mut Required ("a", TMisc "number"), ObjectPair Mut Required ("b", TMisc "string"), ObjectPair Mut Required ("c", TMisc "boolean")]
 
     it "parses optional and required properties" $ do
       parse' object "{ a: A, b?: B, c: C }" `shouldParse`
-        ObjectLit [Required ("a", TMisc "A"), Optional ("b", TMisc "B"), Required ("c", TMisc "C")]
+        ObjectLit [ObjectPair Mut Required ("a", TMisc "A"), ObjectPair Mut Optional ("b", TMisc "B"), ObjectPair Mut Required ("c", TMisc "C")]
 
     it "parses alternative method syntax" $ do
       parse' object "{ f?<A>(): void }" `shouldParse`
-        ObjectLit [Optional ("f", TLambda $ Lambda (Just $ typeArgs' [TMisc "A"]) [] TVoid)]
+        ObjectLit [ObjectPair Mut Optional ("f", TLambda $ Lambda (Just $ typeArgs' [TMisc "A"]) [] TVoid)]
 
     it "parses trailing delimiter in non-empty object" $ do
       parse' object "{ a: number; b: string, }" `shouldParse`
-        ObjectLit [Required ("a", TMisc "number"), Required ("b", TMisc "string")]
+        ObjectLit [ObjectPair Mut Required ("a", TMisc "number"), ObjectPair Mut Required ("b", TMisc "string")]
 
     it "parses mapped type" $ do
       parse' object "{ [K in A]: B }" `shouldParse`
-        ObjectMapped (Required (("K", TMisc "A"), TMisc "B"))
+        ObjectMapped Mut Required ("K", TMisc "A") (TMisc "B")
 
       parse' object "{ [K in A]?: B; }" `shouldParse`
-        ObjectMapped (Optional (("K", TMisc "A"), TMisc "B"))
+        ObjectMapped Mut Optional ("K", TMisc "A") (TMisc "B")
 
   describe "tuple" $ do
     it "parses empty tuple" $ do
@@ -291,40 +291,40 @@ spec = describe "TSHM.Parser" $ do
       parse' params "()" `shouldParse` []
 
     it "parses single param" $ do
-      parse' params "(a: number)" `shouldParse` [ Required $ Normal $ TMisc "number"]
+      parse' params "(a: number)" `shouldParse` [(Required, Normal, TMisc "number")]
 
     it "parses multiple params" $ do
       parse' params "(a: number, b: <A>(x: string) => void, c: Array<boolean>)" `shouldParse`
-        [ Required $ Normal $ TMisc "number"
-        , Required $ Normal $ TLambda (Lambda (Just $ typeArgs' [TMisc "A"]) [Required $ Normal $ TMisc "string"] TVoid)
-        , Required $ Normal $ TGeneric "Array" $ typeArgs' [TMisc "boolean"]
+        [ (Required, Normal, TMisc "number")
+        , (Required, Normal, TLambda (Lambda (Just $ typeArgs' [TMisc "A"]) [(Required, Normal, TMisc "string")] TVoid))
+        , (Required, Normal, TGeneric "Array" $ typeArgs' [TMisc "boolean"])
         ]
 
     it "parses rest params" $ do
       parse' params "(...a: number, b: string, ...c: boolean)" `shouldParse`
-        [ Required $ Rest $ TMisc "number"
-        , Required $ Normal $ TMisc "string"
-        , Required $ Rest $ TMisc "boolean"
+        [ (Required, Rest, TMisc "number")
+        , (Required, Normal, TMisc "string")
+        , (Required, Rest, TMisc "boolean")
         ]
 
     it "parses optional params" $ do
       parse' params "(a?: A, ...b?: B, c: C)" `shouldParse`
-        [ Optional $ Normal $ TMisc "A"
-        , Optional $ Rest $ TMisc "B"
-        , Required $ Normal $ TMisc "C"
+        [ (Optional, Normal, TMisc "A")
+        , (Optional, Rest, TMisc "B")
+        , (Required, Normal, TMisc "C")
         ]
 
     it "parses optional whitespace and newlines" $ do
       parse' params (unlines' ["(", ")"]) `shouldParse` []
-      parse' params (unlines' ["(", "x: A", ")"]) `shouldParse` [Required $ Normal $ TMisc "A"]
-      parse' params (unlines' ["(", "x: A,", "y: B", ")"]) `shouldParse` [Required $ Normal $ TMisc "A", Required $ Normal $ TMisc "B"]
+      parse' params (unlines' ["(", "x: A", ")"]) `shouldParse` [(Required, Normal, TMisc "A")]
+      parse' params (unlines' ["(", "x: A,", "y: B", ")"]) `shouldParse` [(Required, Normal, TMisc "A"), (Required, Normal, TMisc "B")]
 
     it "parses optional trailing comma in non-empty params" $ do
-      parse' params "(a: number,)" `shouldParse` [Required $ Normal $ TMisc "number"]
+      parse' params "(a: number,)" `shouldParse` [(Required, Normal, TMisc "number")]
 
     it "parses destructures" $ do
-      parse' params "({ a: [a, { a, ...a }, ...a], a: a, ...a }: x)" `shouldParse` [Required $ Normal $ TMisc "x"]
-      parse' params "([a, { a, ...a }, ...a]: x)" `shouldParse` [Required $ Normal $ TMisc "x"]
+      parse' params "({ a: [a, { a, ...a }, ...a], a: a, ...a }: x)" `shouldParse` [(Required, Normal, TMisc "x")]
+      parse' params "([a, { a, ...a }, ...a]: x)" `shouldParse` [(Required, Normal, TMisc "x")]
 
   describe "alias" $ do
     let p = parse' $ alias <* eof
@@ -349,14 +349,14 @@ spec = describe "TSHM.Parser" $ do
           "X"
           Nothing
           Nothing
-          (ObjectLit [Required ("a", TMisc "A")])
+          (ObjectLit [ObjectPair Mut Required ("a", TMisc "A")])
 
       p "interface X<A, B extends Array<A>> { a: A }" `shouldParse`
         Interface
           "X"
           (Just $ typeArgs' [TMisc "A", TSubtype "B" (TGeneric "Array" $ typeArgs' [TMisc "A"])])
           Nothing
-          (ObjectLit [Required ("a", TMisc "A")])
+          (ObjectLit [ObjectPair Mut Required ("a", TMisc "A")])
 
     it "parses with extends" $ do
       p "interface X extends B { a: A }" `shouldParse`
@@ -364,14 +364,14 @@ spec = describe "TSHM.Parser" $ do
           "X"
           Nothing
           (Just $ TMisc "B")
-          (ObjectLit [Required ("a", TMisc "A")])
+          (ObjectLit [ObjectPair Mut Required ("a", TMisc "A")])
 
       p "interface X<A, B extends Array<A>> extends C { a: A }" `shouldParse`
         Interface
           "X"
           (Just $ typeArgs' [TMisc "A", TSubtype "B" (TGeneric "Array" $ typeArgs' [TMisc "A"])])
           (Just $ TMisc "C")
-          (ObjectLit [Required ("a", TMisc "A")])
+          (ObjectLit [ObjectPair Mut Required ("a", TMisc "A")])
 
   describe "constDec" $ do
     let p = parse' $ constDec <* eof
@@ -383,8 +383,9 @@ spec = describe "TSHM.Parser" $ do
   describe "fnDec" $ do
     let p = parse' $ fnDec <* eof
 
+    -- type Param = (Partial, ParamScope, Expr)
     it "parses" $ do
-      p "declare function f<A>(x: A): <B extends A>(y: B) => C" `shouldParse` FunctionDec "f" (Lambda (Just $ typeArgs' [TMisc "A"]) [Required $ Normal $ TMisc "A"] (TLambda $ Lambda (Just $ typeArgs' [TSubtype "B" (TMisc "A")]) [Required $ Normal $ TMisc "B"] (TMisc "C")))
+      p "declare function f<A>(x: A): <B extends A>(y: B) => C" `shouldParse` FunctionDec "f" (Lambda (Just $ typeArgs' [TMisc "A"]) [(Required, Normal, TMisc "A")] (TLambda $ Lambda (Just $ typeArgs' [TSubtype "B" (TMisc "A")]) [(Required, Normal, TMisc "B")] (TMisc "C")))
 
   describe "signature" $ do
     it "parses and skips comments" $ do
@@ -414,19 +415,19 @@ spec = describe "TSHM.Parser" $ do
       parse' signature "export declare const empty: ''" `shouldParse` SignatureConstDec (ConstDec "empty" (TString ""))
 
       parse' signature "export declare const aperture: (n: number) => <A>(xs: A[]) => A[][]" `shouldParse`
-        SignatureConstDec (ConstDec "aperture" (TLambda (Lambda Nothing [Required $ Normal $ TMisc "number"] (TLambda (Lambda (Just $ typeArgs' [TMisc "A"]) [Required $ Normal $ TGeneric "Array" $ typeArgs' [TMisc "A"]] (TGeneric "Array" $ typeArgs' [TGeneric "Array" $ typeArgs' [TMisc "A"]]))))))
+        SignatureConstDec (ConstDec "aperture" (TLambda (Lambda Nothing [(Required, Normal, TMisc "number")] (TLambda (Lambda (Just $ typeArgs' [TMisc "A"]) [(Required, Normal, TGeneric "Array" $ typeArgs' [TMisc "A"])] (TGeneric "Array" $ typeArgs' [TGeneric "Array" $ typeArgs' [TMisc "A"]]))))))
 
       parse' signature "export declare const anyPass: <A>(fs: Predicate<A>[]) => Predicate<A>" `shouldParse`
-        SignatureConstDec (ConstDec "anyPass" (TLambda (Lambda (Just $ typeArgs' [TMisc "A"]) [Required $ Normal $ TGeneric "Array" $ typeArgs' [TGeneric "Predicate" $ typeArgs' [TMisc "A"]]] (TGeneric "Predicate" $ typeArgs' [TMisc "A"]))))
+        SignatureConstDec (ConstDec "anyPass" (TLambda (Lambda (Just $ typeArgs' [TMisc "A"]) [(Required, Normal, TGeneric "Array" $ typeArgs' [TGeneric "Predicate" $ typeArgs' [TMisc "A"]])] (TGeneric "Predicate" $ typeArgs' [TMisc "A"]))))
 
       parse' signature "export declare const merge: <A>(x: A) => <B>(y: B) => A & B" `shouldParse`
-        SignatureConstDec (ConstDec "merge" (TLambda (Lambda (Just $ typeArgs' [TMisc "A"]) [Required $ Normal $ TMisc "A"] (TLambda (Lambda (Just $ typeArgs' [TMisc "B"]) [Required $ Normal $ TMisc "B"] (TBinOp BinOpIntersection (TMisc "A") (TMisc "B")))))))
+        SignatureConstDec (ConstDec "merge" (TLambda (Lambda (Just $ typeArgs' [TMisc "A"]) [(Required, Normal, TMisc "A")] (TLambda (Lambda (Just $ typeArgs' [TMisc "B"]) [(Required, Normal, TMisc "B")] (TBinOp BinOpIntersection (TMisc "A") (TMisc "B")))))))
 
       parse' signature "export declare const omit: <K extends string>(ks: K[]) => <V, A extends Record<K, V>>(x: Partial<A>) => Pick<A, Exclude<keyof A, K>>" `shouldParse`
-        SignatureConstDec (ConstDec "omit" (TLambda (Lambda (Just $ typeArgs' [TSubtype "K" (TMisc "string")]) [Required $ Normal $ TGeneric "Array" $ typeArgs' [TMisc "K"]] (TLambda (Lambda (Just $ typeArgs' [TMisc "V", TSubtype "A" (TGeneric "Record" $ typeArgs' [TMisc "K", TMisc "V"])]) [Required $ Normal $ TGeneric "Partial" $ typeArgs' [TMisc "A"]] (TGeneric "Pick" $ typeArgs' [TMisc "A", TGeneric "Exclude" $ typeArgs' [TUnOp UnOpKeys (TMisc "A"), TMisc "K"]]))))))
+        SignatureConstDec (ConstDec "omit" (TLambda (Lambda (Just $ typeArgs' [TSubtype "K" (TMisc "string")]) [(Required, Normal, TGeneric "Array" $ typeArgs' [TMisc "K"])] (TLambda (Lambda (Just $ typeArgs' [TMisc "V", TSubtype "A" (TGeneric "Record" $ typeArgs' [TMisc "K", TMisc "V"])]) [(Required, Normal, TGeneric "Partial" $ typeArgs' [TMisc "A"])] (TGeneric "Pick" $ typeArgs' [TMisc "A", TGeneric "Exclude" $ typeArgs' [TUnOp UnOpKeys (TMisc "A"), TMisc "K"]]))))))
 
       parse' signature "export declare const unary: <A extends unknown[], B>(f: (...xs: A) => B) => (xs: A) => B" `shouldParse`
-        SignatureConstDec (ConstDec "unary" (TLambda (Lambda (Just $ typeArgs' [TSubtype "A" (TGeneric "Array" $ typeArgs' [TUnknown]), TMisc "B"]) [Required $ Normal $ TLambda (Lambda Nothing [Required $ Rest $ TMisc "A"] (TMisc "B"))] (TLambda (Lambda Nothing [Required $ Normal $ TMisc "A"] (TMisc "B"))))))
+        SignatureConstDec (ConstDec "unary" (TLambda (Lambda (Just $ typeArgs' [TSubtype "A" (TGeneric "Array" $ typeArgs' [TUnknown]), TMisc "B"]) [(Required, Normal, TLambda (Lambda Nothing [(Required, Rest, TMisc "A")] (TMisc "B")))] (TLambda (Lambda Nothing [(Required, Normal, TMisc "A")] (TMisc "B"))))))
 
       parse' signature "export interface Some<A> { readonly _tag: 'Some', readonly value: A }" `shouldParse`
-        SignatureInterface (Interface "Some" (Just $ typeArgs' [TMisc "A"]) Nothing (ObjectLit [Required ("_tag", TString "Some"), Required ("value", TMisc "A")]))
+        SignatureInterface (Interface "Some" (Just $ typeArgs' [TMisc "A"]) Nothing (ObjectLit [ObjectPair Immut Required ("_tag", TString "Some"), ObjectPair Immut Required ("value", TMisc "A")]))

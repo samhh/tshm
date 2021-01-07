@@ -5,6 +5,7 @@ import           Prelude
 data UnOp
   = UnOpReflection
   | UnOpKeys
+  | UnOpReadonly
   deriving (Eq, Show)
 
 data BinOp
@@ -12,16 +13,23 @@ data BinOp
   | BinOpUnion
   deriving (Eq, Show)
 
-data Partial a
-  = Required a
-  | Optional a
+data Mutant
+  = Immut
+  | Mut
   deriving (Eq, Show)
 
-type ObjectPair = Partial (String, Expr)
+data Partial
+  = Required
+  | Optional
+  deriving (Eq, Show)
+
+data ObjectPair
+  = ObjectPair Mutant Partial (String, Expr)
+  deriving (Eq, Show)
 
 data Object
   = ObjectLit [ObjectPair]
-  | ObjectMapped (Partial ((String, Expr), Expr))
+  | ObjectMapped Mutant Partial (String, Expr) Expr
   deriving (Eq, Show)
 
 type TypeArg = (Expr, Maybe Expr)
@@ -52,14 +60,16 @@ data Expr
   | TGrouped Expr
   deriving (Eq, Show)
 
-data Param
-  = Normal Expr
-  | Rest Expr
+data ParamScope
+  = Normal
+  | Rest
   deriving (Eq, Show)
+
+type Param = (Partial, ParamScope, Expr)
 
 data Lambda = Lambda
   { lambdaTypeArgs :: Maybe (NonEmpty TypeArg)
-  , lambdaParams   :: [Partial Param]
+  , lambdaParams   :: [Param]
   , lambdaReturn   :: Expr
   } deriving (Eq, Show)
 

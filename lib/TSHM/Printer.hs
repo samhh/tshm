@@ -20,19 +20,19 @@ doIf :: (a -> a) -> Bool -> a -> a
 doIf f True  = f
 doIf _ False = id
 
-param :: Partial Param -> Printer'
+param :: Param -> Printer'
 param = f
-  where f (Required (Normal x)) = annotatedExpr x
-        f (Required (Rest x))   = ("..." <>) <$> annotatedExpr x
-        f (Optional (Normal x)) = (<> "?") <$> annotatedExpr x
-        f (Optional (Rest x))   = ("..." <>) . (<> "?") <$> annotatedExpr x
+  where f (Required, Normal, x) = annotatedExpr x
+        f (Required, Rest, x)   = ("..." <>) <$> annotatedExpr x
+        f (Optional, Normal, x) = (<> "?") <$> annotatedExpr x
+        f (Optional, Rest, x)   = ("..." <>) . (<> "?") <$> annotatedExpr x
 
         annotatedExpr :: Expr -> Printer'
         annotatedExpr x = do
           modify $ \s -> s { immediateFunctionArg = True }
           expr x
 
-params :: [Partial Param] -> Printer'
+params :: [Param] -> Printer'
 params []  = pure "()"
 params [x] = param x
 params xs  = surround "(" ")" . intercalate ", " <$> mapM param xs
@@ -44,7 +44,7 @@ misc [x] = trans x . any (isViable . fst) . ((<>) <$> implicitTypeArgs <*> expli
   where isViable :: Expr -> Bool
         isViable (TMisc [y])      = y == x
         isViable (TSubtype [y] _) = y == x
-        isViable _                     = False
+        isViable _                = False
 
         trans :: Char -> Bool -> String
         trans c b = pure $ if b then toLower c else c
@@ -73,10 +73,10 @@ isNewtype (TGeneric "Newtype" xs) = fmap snd . guarded (isNewtypeObject . fst) =
 
         isObject :: TypeArg -> Maybe Object
         isObject (TObject x, Nothing) = Just x
-        isObject _                         = Nothing
+        isObject _                    = Nothing
 
         isNewtypeObject :: Object -> Bool
-        isNewtypeObject (ObjectLit [Required (_, TUniqueSymbol)]) = True
+        isNewtypeObject (ObjectLit [ObjectPair Immut Required (_, TUniqueSymbol)]) = True
         isNewtypeObject _                                              = False
 isNewtype _ = Nothing
 
@@ -95,16 +95,23 @@ generic (x, ys) = do
           pure res
 
 objectPair :: ObjectPair -> Printer'
-objectPair (Required (k, v)) = surrounding ": " k <$> expr v
-objectPair (Optional (k, v)) = surrounding "?: " k <$> expr v
+objectPair (ObjectPair m p (k, v)) = do
+  cfgRO <- readonly <$> ask
+  let ro = if cfgRO && m == Immut then "readonly " else ""
+  let delim = if p == Required then ": " else "?: "
+
+  surrounding delim (ro <> k) <$> expr v
 
 unOp :: UnOp -> Expr -> Printer'
 unOp o t = do
-  nested <- ambiguouslyNested <$> get
-  doIf (surround "(" ")") nested . ((op o <> " ") <>) <$> expr t
-  where op :: UnOp -> String
-        op UnOpReflection = "typeof"
-        op UnOpKeys       = "keyof"
+  cfgRO <- readonly <$> ask
+  if o == UnOpReadonly && not cfgRO then expr t else do
+    nested <- ambiguouslyNested <$> get
+    doIf (surround "(" ")") nested . ((op o <> " ") <>) <$> expr t
+    where op :: UnOp -> String
+          op UnOpReflection = "typeof"
+          op UnOpKeys       = "keyof"
+          op UnOpReadonly   = "readonly"
 
 binOp :: BinOp -> Expr -> Expr -> Printer'
 binOp o l r = do
@@ -130,8 +137,8 @@ expr t = do
         f TUniqueSymbol          = pure "unique symbol"
         f (TBoolean x)           = pure $ if x then "true" else "false"
         f (TMisc x)              = misc x
-        f (TString x)     = pure $ "\"" <> x <> "\""
-        f (TNumber x)     = pure x
+        f (TString x)            = pure $ "\"" <> x <> "\""
+        f (TNumber x)            = pure x
         f (TTuple xs)            = surround "[" "]" . intercalate ", " <$> mapM expr xs
         f (TGeneric x ys)        = generic (x, ys)
         f (TSubtype x y)         = subtype x y
@@ -152,12 +159,14 @@ ambiguouslyNestedExpr t = do
 object :: Object -> Printer'
 object (ObjectLit []) = pure "{}"
 object (ObjectLit xs) = surround "{ " " }" . intercalate ", " <$> mapM objectPair xs
-object (ObjectMapped (Required ((k, xt), vt))) = mappedObject True k <$> expr xt <*> expr vt
-object (ObjectMapped (Optional ((k, xt), vt))) = mappedObject False k <$> expr xt <*> expr vt
+object (ObjectMapped m p (k, xt) vt) = do
+  cfgRO <- readonly <$> ask
+  let ro = if cfgRO && m == Immut then "readonly " else ""
+  let sep = if p == Required then "]: " else "]?: "
 
-mappedObject :: Bool -> String -> String -> String -> String
-mappedObject req k x v = let delim = if req then "]: " else "]?: "
-                           in "{ [" <> k <> " in " <> x <> delim <> v <> " }"
+  x <- expr xt
+  v <- expr vt
+  pure $ "{ " <> ro <> "[" <> k <> " in " <> x <> sep <> v <> " }"
 
 constDec :: ConstDec -> Printer'
 constDec x = (\t ps -> constDecName x <> " :: " <> renderedTypeArgs ps <> renderedSubtypes ps <> t)
@@ -210,11 +219,11 @@ renderPrintState = do
   where printableTypeArg :: TypeArg -> Printer (Maybe String)
         printableTypeArg (TMisc y, _)      = Just <$> misc y
         printableTypeArg (TSubtype y _, _) = Just <$> misc y
-        printableTypeArg _                      = pure Nothing
+        printableTypeArg _                 = pure Nothing
 
         matchSubtype :: TypeArg -> Maybe (String, Expr)
         matchSubtype (TSubtype y z, _) = Just (y, z)
-        matchSubtype _                      = Nothing
+        matchSubtype _                 = Nothing
 
 fsignature :: Printer'
 fsignature = f . signature =<< ask
@@ -238,6 +247,7 @@ data PrintState = PrintState
 data PrintConfig = PrintConfig
   { signature :: Signature
   , forall    :: Maybe String
+  , readonly  :: Bool
   }
 
 printSignature :: PrintConfig -> String
