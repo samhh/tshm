@@ -116,6 +116,9 @@ expr = (`makeExprParser` operators) $ choice
 ro :: Parser Mutant
 ro = bool Mut Immut . isJust <$> optional (sym "readonly ")
 
+roMod :: Parser (Maybe ModMut)
+roMod = optional ((const RemMut <$ sym "-" <|> const AddMut <$ optional (sym "+")) <*> sym "readonly")
+
 generic :: Parser Expr
 generic = TGeneric <$> ident <*> typeArgs
 
@@ -141,10 +144,10 @@ object = braces inner
   where inner :: Parser Object
         inner = choice
           [ try $ mapped <$>
-                ro
+                roMod
             <*> (sym "[" *> ident)
             <*> (sym "in" *> expr <* sym "]")
-            <*> stdPairDelim
+            <*> mappedDelim
             <*> (expr <* optional (sym "," <|> sym ";"))
           , ObjectLit <$> sepEndBy pair litDelim
           ]
@@ -170,7 +173,10 @@ object = braces inner
         stdPairDelim :: Parser Partial
         stdPairDelim = Required <$ sym ":" <|> Optional <$ sym "?:"
 
-        mapped :: Mutant -> String -> Expr -> Partial -> Expr -> Object
+        mappedDelim :: Parser (Maybe ModOpt)
+        mappedDelim = optional ((const RemOpt <$ sym "-" <|> const AddOpt <$ optional (sym "+")) <*> sym "?") <* sym ":"
+
+        mapped :: Maybe ModMut -> String -> Expr -> Maybe ModOpt -> Expr -> Object
         mapped m k x req v = ObjectMapped m req (k, x) v
 
         norm :: Mutant -> String -> Partial -> Expr -> ObjectPair

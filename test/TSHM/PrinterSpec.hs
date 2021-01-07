@@ -34,11 +34,24 @@ spec = describe "TSHM.Printer" $ do
     ppWith Nothing True  "declare const x: { k: readonly v }" =*= "x :: { k: readonly v }"
     ppWith Nothing False "declare const x: { k: readonly v }" =*= "x :: { k: v }"
 
+    ppWith Nothing True  "declare const x: { k: v }" =*= "x :: { k: v }"
+    ppWith Nothing False "declare const x: { k: v }" =*= "x :: { k: v }"
+
+  it "conditionally prints readonly mapped type modifier" $ do
     ppWith Nothing True  "declare const x: { readonly [k in x]: v }" =*= "x :: { readonly [k in x]: v }"
     ppWith Nothing False "declare const x: { readonly [k in x]: v }" =*= "x :: { [k in x]: v }"
 
-    ppWith Nothing True  "declare const x: { k: v }" =*= "x :: { k: v }"
-    ppWith Nothing False "declare const x: { k: v }" =*= "x :: { k: v }"
+    ppWith Nothing True  "declare const x: { +readonly [k in x]: v }" =*= "x :: { readonly [k in x]: v }"
+    ppWith Nothing False "declare const x: { +readonly [k in x]: v }" =*= "x :: { [k in x]: v }"
+
+    ppWith Nothing True  "declare const x: { -readonly [k in x]: v }" =*= "x :: { -readonly [k in x]: v }"
+    ppWith Nothing False "declare const x: { -readonly [k in x]: v }" =*= "x :: { [k in x]: v }"
+
+  it "prints optionality mapped type modifier" $ do
+    pp "declare const x: { [K in A]: B }" =*= "x :: { [K in A]: B }"
+    pp "declare const x: { [K in A]?: B }" =*= "x :: { [K in A]?: B }"
+    pp "declare const x: { [K in A]+?: B }" =*= "x :: { [K in A]?: B }"
+    pp "declare const x: { [K in A]-?: B }" =*= "x :: { [K in A]-?: B }"
 
   it "prints type aliases" $ do
     pp "type X = string" =*= "type X = string"

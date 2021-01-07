@@ -27,9 +27,25 @@ data ObjectPair
   = ObjectPair Mutant Partial (String, Expr)
   deriving (Eq, Show)
 
+-- Represents the positive or negative nature of the readonly modifier in
+-- a mapped type. See:
+-- https://www.typescriptlang.org/docs/handbook/2/mapped-types.html#mapping-modifiers
+data ModMut
+  = AddMut
+  | RemMut
+  deriving (Eq, Show)
+
+-- Represents the positive or negative nature of the optionality modifier in
+-- a mapped type. See:
+-- https://www.typescriptlang.org/docs/handbook/2/mapped-types.html#mapping-modifiers
+data ModOpt
+  = AddOpt
+  | RemOpt
+  deriving (Eq, Show)
+
 data Object
   = ObjectLit [ObjectPair]
-  | ObjectMapped Mutant Partial (String, Expr) Expr
+  | ObjectMapped (Maybe ModMut) (Maybe ModOpt) (String, Expr) Expr
   deriving (Eq, Show)
 
 type TypeArg = (Expr, Maybe Expr)

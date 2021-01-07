@@ -156,17 +156,25 @@ ambiguouslyNestedExpr t = do
   modify $ \s -> s { ambiguouslyNested = True }
   expr t
 
+modMut :: ModMut -> String
+modMut AddMut = "readonly"
+modMut RemMut = "-readonly"
+
+modOpt :: ModOpt -> String
+modOpt AddOpt = "?:"
+modOpt RemOpt = "-?:"
+
 object :: Object -> Printer'
 object (ObjectLit []) = pure "{}"
 object (ObjectLit xs) = surround "{ " " }" . intercalate ", " <$> mapM objectPair xs
 object (ObjectMapped m p (k, xt) vt) = do
   cfgRO <- readonly <$> ask
-  let ro = if cfgRO && m == Immut then "readonly " else ""
-  let sep = if p == Required then "]: " else "]?: "
+  let ro = foldMap ((<> " ") . modMut) . mfilter (const cfgRO) $ m
+  let sep = maybe ":" modOpt p
 
   x <- expr xt
   v <- expr vt
-  pure $ "{ " <> ro <> "[" <> k <> " in " <> x <> sep <> v <> " }"
+  pure $ "{ " <> ro <> "[" <> k <> " in " <> x <> "]" <> sep <> " " <> v <> " }"
 
 constDec :: ConstDec -> Printer'
 constDec x = (\t ps -> constDecName x <> " :: " <> renderedTypeArgs ps <> renderedSubtypes ps <> t)

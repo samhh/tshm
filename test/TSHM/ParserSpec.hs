@@ -171,10 +171,30 @@ spec = describe "TSHM.Parser" $ do
 
     it "parses mapped type" $ do
       parse' object "{ [K in A]: B }" `shouldParse`
-        ObjectMapped Mut Required ("K", TMisc "A") (TMisc "B")
+        ObjectMapped Nothing Nothing ("K", TMisc "A") (TMisc "B")
 
-      parse' object "{ [K in A]?: B; }" `shouldParse`
-        ObjectMapped Mut Optional ("K", TMisc "A") (TMisc "B")
+      parse' object "{ [K in A]: B; }" `shouldParse`
+        ObjectMapped Nothing Nothing ("K", TMisc "A") (TMisc "B")
+
+    it "parses readonly modifiers" $ do
+      parse' object "{ readonly [K in A]: B }" `shouldParse`
+        ObjectMapped (Just AddMut) Nothing ("K", TMisc "A") (TMisc "B")
+
+      parse' object "{ +readonly [K in A]: B }" `shouldParse`
+        ObjectMapped (Just AddMut) Nothing ("K", TMisc "A") (TMisc "B")
+
+      parse' object "{ -readonly [K in A]: B }" `shouldParse`
+        ObjectMapped (Just RemMut) Nothing ("K", TMisc "A") (TMisc "B")
+
+    it "parses optionality modifiers" $ do
+      parse' object "{ [K in A]?: B }" `shouldParse`
+        ObjectMapped Nothing (Just AddOpt) ("K", TMisc "A") (TMisc "B")
+
+      parse' object "{ [K in A]+?: B }" `shouldParse`
+        ObjectMapped Nothing (Just AddOpt) ("K", TMisc "A") (TMisc "B")
+
+      parse' object "{ [K in A]-?: B }" `shouldParse`
+        ObjectMapped Nothing (Just RemOpt) ("K", TMisc "A") (TMisc "B")
 
   describe "tuple" $ do
     it "parses empty tuple" $ do
