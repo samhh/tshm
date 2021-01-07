@@ -62,8 +62,8 @@ bracks = between' "[" "]"
 operators :: [[Operator Parser Expr]]
 operators =
   [ [ Postfix (multi
-      (   (TGeneric "Array" . pure . (, Nothing) <$ sym "[]")
-      <|> (flip TIndexedAccess <$> bracks expr)
+      (   try (flip TIndexedAccess <$> bracks expr)
+      <|> TGeneric "Array" . pure . (, Nothing) <$ symN "[" <* sym "]"
       )
     )]
   , [ unaryPrefix "typeof" (TUnOp UnOpReflection)
