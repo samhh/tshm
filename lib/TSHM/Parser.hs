@@ -61,26 +61,20 @@ bracks = between' "[" "]"
 
 operators :: [[Operator Parser Expr]]
 operators =
-  [ [ Postfix (multi
+  [ [ Postfix $ multi
       (   try (flip TIndexedAccess <$> bracks expr)
       <|> TGeneric "Array" . pure . (, Nothing) <$ symN "[" <* sym "]"
       )
-    )]
-  , [ unaryPrefix "typeof " (TUnOp UnOpReflection)
-    , unaryPrefix "keyof "  (TUnOp UnOpKeys)
     ]
-  , [ binaryInfix "&" (TBinOp BinOpIntersection)
-    , binaryInfix "|" (TBinOp BinOpUnion)
+  , [ Prefix $ TUnOp UnOpReflection <$ sym "typeof "
+    , Prefix $ TUnOp UnOpKeys       <$ sym "keyof "
+    ]
+  , [ InfixR $ TBinOp BinOpIntersection <$ sym "&"
+    , InfixR $ TBinOp BinOpUnion        <$ sym "|"
     ]
   ]
     where multi :: Alternative f => f (a -> a) -> f (a -> a)
           multi f = foldr1 (flip (.)) <$> some f
-
-          unaryPrefix :: String -> (Expr -> Expr) -> Operator Parser Expr
-          unaryPrefix x f = Prefix $ f <$ sym x
-
-          binaryInfix :: String -> (Expr -> Expr -> Expr) -> Operator Parser Expr
-          binaryInfix x f = InfixR $ f <$ sym x
 
 identHeadChar :: Parser Char
 identHeadChar = letterChar <|> char '$' <|> char '_'
