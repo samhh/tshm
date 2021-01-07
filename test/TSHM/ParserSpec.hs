@@ -390,6 +390,9 @@ spec = describe "TSHM.Parser" $ do
       p "declare function f<A>(x: A): <B extends A>(y: B) => C" `shouldParse` FunctionDeclaration "f" (Function (Just $ typeArgs [TsTypeMisc "A"]) [Required $ Normal $ TsTypeMisc "A"] (TsTypeFunction $ Function (Just $ typeArgs [TsTypeSubtype "B" (TsTypeMisc "A")]) [Required $ Normal $ TsTypeMisc "B"] (TsTypeMisc "C")))
 
   describe "pSignature" $ do
+    it "parses and skips comments" $ do
+      parse' pSignature "declare /*x*/const/**/ x/* x xx xxx */: void/**///x" `shouldParse` SignatureConstDeclaration (ConstDeclaration "x" TsTypeVoid)
+
     it "parses all variants" $ do
       parse' pSignature "declare const f: void" `shouldParse` SignatureConstDeclaration (ConstDeclaration "f" TsTypeVoid)
       parse' pSignature "export declare const f: void" `shouldParse` SignatureConstDeclaration (ConstDeclaration "f" TsTypeVoid)
