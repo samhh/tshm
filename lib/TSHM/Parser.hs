@@ -169,7 +169,7 @@ params = between (sym "(" <* nls) (nls *> sym ")") $ sepEndBy param (sym "," <* 
         param = f <$> rest <*> (ident *> sep) <*> (optional (sym "new") *> expr)
 
         rest :: Parser Bool
-        rest = isJust <$> optional (string "...")
+        rest = isJust <$> optional (sym "...")
 
         sep :: Parser Bool
         sep = True <$ sym ":" <|> False <$ sym "?:"
