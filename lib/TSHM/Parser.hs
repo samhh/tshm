@@ -39,8 +39,8 @@ nls = space
 operators :: [[Operator Parser Expr]]
 operators =
   [ [ Postfix (multi
-      (   (TGeneric "Array" . pure . (, Nothing) <$ string "[]")
-      <|> (flip TIndexedAccess <$> between (char '[') (char ']') expr)
+      (   (TGeneric "Array" . pure . (, Nothing) <$ sym "[]")
+      <|> (flip TIndexedAccess <$> between (sym "[") (sym "]") expr)
       )
     )]
   , [ unaryPrefix "typeof" (TUnOp UnOpReflection)
