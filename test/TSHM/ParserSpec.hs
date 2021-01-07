@@ -391,7 +391,7 @@ spec = describe "TSHM.Parser" $ do
 
   describe "pSignature" $ do
     it "parses and skips comments" $ do
-      parse' pSignature "declare /*x*/const/**/ x/* x xx xxx */: void/**///x" `shouldParse` SignatureConstDeclaration (ConstDeclaration "x" TsTypeVoid)
+      parse' pSignature "/**/declare /*x*/const/**/ x/* x xx xxx */: void/**///x" `shouldParse` SignatureConstDeclaration (ConstDeclaration "x" TsTypeVoid)
 
     it "parses all variants" $ do
       parse' pSignature "declare const f: void" `shouldParse` SignatureConstDeclaration (ConstDeclaration "f" TsTypeVoid)

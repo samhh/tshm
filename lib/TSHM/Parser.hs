@@ -226,7 +226,7 @@ pInterface = Interface
   <*> pObject
 
 pSignature :: Parser Signature
-pSignature = choice
+pSignature = sc *> choice
   [ try $ SignatureAlias <$> pAlias
   , try $ SignatureInterface <$> pInterface
   , try $ SignatureConstDeclaration <$> pConstDeclaration
