@@ -215,7 +215,7 @@ constDecIdent =
   <* sym ":"
 
 constDec :: Parser ConstDec
-constDec = ConstDec <$> constDecIdent <*> expr <* optional (char ';')
+constDec = ConstDec <$> constDecIdent <*> expr <* optional (sym ";")
 
 fnDecName :: Parser String
 fnDecName =
@@ -233,7 +233,7 @@ alias :: Parser Alias
 alias = Alias
   <$> (optional (sym "export") *> sym "type" *> ident)
   <*> (optional typeArgs <* sym "=")
-  <*> expr <* optional (char ';')
+  <*> expr <* optional (sym ";")
 
 interface :: Parser Interface
 interface = Interface
