@@ -190,10 +190,16 @@ typeArgs = angles (NE.sepEndBy1 typeArg (sym ","))
 params :: Parser [Partial Param]
 params = parens $ sepEndBy param (symN ",")
   where param :: Parser (Partial Param)
-        param = f <$> rest <*> (ident *> sep) <*> (optional (sym "new") *> expr)
+        param = f <$> (isJust <$> optional rest) <*> (name *> sep) <*> (optional (sym "new") *> expr)
 
-        rest :: Parser Bool
-        rest = isJust <$> optional (sym "...")
+        name :: Parser ()
+        name =
+              () <$ ident
+          <|> () <$ bracks (sepEndBy (optional rest *> name) (symN ","))
+          <|> () <$ braces (sepEndBy (optional rest *> ident *> optional (sym ":" *> name)) (symN ","))
+
+        rest :: Parser String
+        rest = sym "..."
 
         sep :: Parser Bool
         sep = True <$ sym ":" <|> False <$ sym "?:"

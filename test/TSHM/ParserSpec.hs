@@ -320,7 +320,11 @@ spec = describe "TSHM.Parser" $ do
       parse' params (unlines' ["(", "x: A,", "y: B", ")"]) `shouldParse` [Required $ Normal $ TMisc "A", Required $ Normal $ TMisc "B"]
 
     it "parses optional trailing comma in non-empty params" $ do
-      parse' params "(a: number,)" `shouldParse` [ Required $ Normal $ TMisc "number"]
+      parse' params "(a: number,)" `shouldParse` [Required $ Normal $ TMisc "number"]
+
+    it "parses destructures" $ do
+      parse' params "({ a: [a, { a, ...a }, ...a], a: a, ...a }: x)" `shouldParse` [Required $ Normal $ TMisc "x"]
+      parse' params "([a, { a, ...a }, ...a]: x)" `shouldParse` [Required $ Normal $ TMisc "x"]
 
   describe "alias" $ do
     let p = parse' $ alias <* eof
