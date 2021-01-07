@@ -17,89 +17,89 @@ data Partial a
   | Optional a
   deriving (Eq, Show)
 
-type ObjectPair = Partial (String, TsType)
+type ObjectPair = Partial (String, Expr)
 
 data Object
   = ObjectLit [ObjectPair]
-  | ObjectMapped (Partial ((String, TsType), TsType))
+  | ObjectMapped (Partial ((String, Expr), Expr))
   deriving (Eq, Show)
 
-type TypeArgument = (TsType, Maybe TsType)
+type TypeArg = (Expr, Maybe Expr)
 
-data TsType
-  = TsTypeAny
-  | TsTypeUnknown
-  | TsTypeNever
-  | TsTypeVoid
-  | TsTypeNull
-  | TsTypeUndefined
-  | TsTypeUniqueSymbol
-  | TsTypeBoolean Bool
-  | TsTypeMisc String
-  | TsTypeString String
+data Expr
+  = TAny
+  | TUnknown
+  | TNever
+  | TVoid
+  | TNull
+  | TUndefined
+  | TUniqueSymbol
+  | TBoolean Bool
+  | TMisc String
+  | TString String
   -- This is represented as a string because numbers are hard and tend to
   -- differ a fair amount between languages. We don't actually need to do any
   -- arithmetic, so this keeps things simple!
-  | TsTypeNumber String
-  | TsTypeTuple [TsType]
-  | TsTypeObject Object
-  | TsTypeIndexedAccess TsType TsType
-  | TsTypeGeneric String (NonEmpty TypeArgument)
-  | TsTypeSubtype String TsType
-  | TsTypeFunction Function
-  | TsTypeUnOp UnOp TsType
-  | TsTypeBinOp BinOp TsType TsType
-  | TsTypeGrouped TsType
+  | TNumber String
+  | TTuple [Expr]
+  | TObject Object
+  | TIndexedAccess Expr Expr
+  | TGeneric String (NonEmpty TypeArg)
+  | TSubtype String Expr
+  | TLambda Lambda
+  | TUnOp UnOp Expr
+  | TBinOp BinOp Expr Expr
+  | TGrouped Expr
   deriving (Eq, Show)
 
 data Param
-  = Normal TsType
-  | Rest TsType
+  = Normal Expr
+  | Rest Expr
   deriving (Eq, Show)
 
-data Function = Function
-  { functionTypeArgs :: Maybe (NonEmpty TypeArgument)
-  , functionParams   :: [Partial Param]
-  , functionReturn   :: TsType
+data Lambda = Lambda
+  { lambdaTypeArgs :: Maybe (NonEmpty TypeArg)
+  , lambdaParams   :: [Partial Param]
+  , lambdaReturn   :: Expr
   } deriving (Eq, Show)
 
-data ConstDeclaration = ConstDeclaration
-  { constDeclarationName :: String
-  , constDeclarationType :: TsType
+data ConstDec = ConstDec
+  { constDecName :: String
+  , constDecType :: Expr
   } deriving (Eq, Show)
 
-data FunctionDeclaration = FunctionDeclaration
-  { functionDeclarationName :: String
-  , functionDeclarationType :: Function
+data FunctionDec = FunctionDec
+  { functionDecName :: String
+  , functionDecType :: Lambda
   } deriving (Eq, Show)
 
-fromFunctionDeclaration :: FunctionDeclaration -> ConstDeclaration
-fromFunctionDeclaration (FunctionDeclaration x y) = ConstDeclaration x (TsTypeFunction y)
+fromFunctionDec :: FunctionDec -> ConstDec
+fromFunctionDec (FunctionDec x y) = ConstDec x (TLambda y)
 
 data Alias = Alias
   { aliasName     :: String
-  , aliasTypeArgs :: Maybe (NonEmpty TypeArgument)
-  , aliasType     :: TsType
+  , aliasTypeArgs :: Maybe (NonEmpty TypeArg)
+  , aliasType     :: Expr
   } deriving (Eq, Show)
 
 data Interface = Interface
   { interfaceName     :: String
-  , interfaceTypeArgs :: Maybe (NonEmpty TypeArgument)
-  , interfaceExtends  :: Maybe TsType
+  , interfaceTypeArgs :: Maybe (NonEmpty TypeArg)
+  , interfaceExtends  :: Maybe Expr
   , interfaceType     :: Object
   } deriving (Eq, Show)
 
 fromInterface :: Interface -> Alias
 fromInterface x = Alias (interfaceName x) (interfaceTypeArgs x) t
-  where obj = TsTypeObject $ interfaceType x
+  where obj = TObject $ interfaceType x
         t = case interfaceExtends x of
           Nothing -> obj
-          Just st -> TsTypeBinOp BinOpIntersection obj st
+          Just st -> TBinOp BinOpIntersection obj st
 
 data Signature
   = SignatureAlias Alias
   | SignatureInterface Interface
-  | SignatureConstDeclaration ConstDeclaration
-  | SignatureFunctionDeclaration (NonEmpty FunctionDeclaration)
+  | SignatureConstDec ConstDec
+  | SignatureFunctionDec (NonEmpty FunctionDec)
   deriving (Eq, Show)
 

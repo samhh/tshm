@@ -22,176 +22,176 @@ f /=* a = first (const ()) (f a) === Left ()
 (=*=) :: (Eq a, Eq e, Show a, Show e) => Either e a -> a -> PropertyT IO ()
 a =*= b = a === Right b
 
-typeArgs :: [TsType] -> NonEmpty TypeArgument
-typeArgs = fmap (, Nothing) . fromList
+typeArgs' :: [Expr] -> NonEmpty TypeArg
+typeArgs' = fmap (, Nothing) . fromList
 
 spec :: Spec
 spec = describe "TSHM.Parser" $ do
-  describe "pType" $ do
+  describe "expr" $ do
     it "parses void" $ do
-      parse' pType "void" `shouldParse` TsTypeVoid
+      parse' expr "void" `shouldParse` TVoid
 
     it "parses boolean" $ do
-      parse' pType "true" `shouldParse` TsTypeBoolean True
-      parse' pType "false" `shouldParse` TsTypeBoolean False
+      parse' expr "true" `shouldParse` TBoolean True
+      parse' expr "false" `shouldParse` TBoolean False
 
     it "parses primitive" $ do
-      parse' pType "A" `shouldParse` TsTypeMisc "A"
-      parse' pType "string" `shouldParse` TsTypeMisc "string"
+      parse' expr "A" `shouldParse` TMisc "A"
+      parse' expr "string" `shouldParse` TMisc "string"
 
     it "parses primitive with identifier starting with a known identifier" $ do
-      parse' pType "void" `shouldParse` TsTypeVoid
-      parse' pType "voidx" `shouldParse` TsTypeMisc "voidx"
+      parse' expr "void" `shouldParse` TVoid
+      parse' expr "voidx" `shouldParse` TMisc "voidx"
 
     it "parses string literal" $ do
-      parse' pType "'abc'" `shouldParse` TsTypeString "abc"
+      parse' expr "'abc'" `shouldParse` TString "abc"
 
     it "parses number literal" $ do
-      parse' pType "-.123" `shouldParse` TsTypeNumber "-.123"
+      parse' expr "-.123" `shouldParse` TNumber "-.123"
 
     it "parses special array syntax" $ do
-      parse' pType "a[][]" `shouldParse`
-        TsTypeGeneric "Array" (typeArgs [TsTypeGeneric "Array" $ typeArgs [TsTypeMisc "a"]])
+      parse' expr "a[][]" `shouldParse`
+        TGeneric "Array" (typeArgs' [TGeneric "Array" $ typeArgs' [TMisc "a"]])
 
     it "parses and discards readonly" $ do
-      parse' pType "readonly [readonly A, { readonly x: readonly B }]" `shouldParse`
-        TsTypeTuple [TsTypeMisc "A", TsTypeObject (ObjectLit [Required ("x", TsTypeMisc "B")])]
+      parse' expr "readonly [readonly A, { readonly x: readonly B }]" `shouldParse`
+        TTuple [TMisc "A", TObject (ObjectLit [Required ("x", TMisc "B")])]
 
     it "parses object reference" $ do
-      parse' pType "A['key']" `shouldParse` TsTypeIndexedAccess (TsTypeMisc "A") (TsTypeString "key")
-      parse' pType "A[\"key\"]" `shouldParse` TsTypeIndexedAccess (TsTypeMisc "A") (TsTypeString "key")
-      parse' pType "true['k1']['k2']" `shouldParse`
-        TsTypeIndexedAccess (TsTypeIndexedAccess (TsTypeBoolean True) (TsTypeString "k1")) (TsTypeString "k2")
-      parse' pType "A[K]" `shouldParse` TsTypeIndexedAccess (TsTypeMisc "A") (TsTypeMisc "K")
+      parse' expr "A['key']" `shouldParse` TIndexedAccess (TMisc "A") (TString "key")
+      parse' expr "A[\"key\"]" `shouldParse` TIndexedAccess (TMisc "A") (TString "key")
+      parse' expr "true['k1']['k2']" `shouldParse`
+        TIndexedAccess (TIndexedAccess (TBoolean True) (TString "k1")) (TString "k2")
+      parse' expr "A[K]" `shouldParse` TIndexedAccess (TMisc "A") (TMisc "K")
 
     it "postfix operators play nicely together" $ do
-      parse' pType "a['k1']['k2'][][]['k3'][]" `shouldParse`
-        TsTypeGeneric "Array" (typeArgs [TsTypeIndexedAccess (TsTypeGeneric "Array" (typeArgs [TsTypeGeneric "Array" (typeArgs [TsTypeIndexedAccess (TsTypeIndexedAccess (TsTypeMisc "a") (TsTypeString "k1")) (TsTypeString "k2")])])) (TsTypeString "k3")])
+      parse' expr "a['k1']['k2'][][]['k3'][]" `shouldParse`
+        TGeneric "Array" (typeArgs' [TIndexedAccess (TGeneric "Array" (typeArgs' [TGeneric "Array" (typeArgs' [TIndexedAccess (TIndexedAccess (TMisc "a") (TString "k1")) (TString "k2")])])) (TString "k3")])
 
     it "parses function" $ do
-      parse' pType "<A, B>(a: A) => B" `shouldParse`
-         TsTypeFunction (Function (Just $ typeArgs [TsTypeMisc "A", TsTypeMisc "B"]) [Required $ Normal $ TsTypeMisc "A"] (TsTypeMisc "B"))
+      parse' expr "<A, B>(a: A) => B" `shouldParse`
+         TLambda (Lambda (Just $ typeArgs' [TMisc "A", TMisc "B"]) [Required $ Normal $ TMisc "A"] (TMisc "B"))
 
-      parse' pType "(x: F<A, B>) => G<C, D>" `shouldParse`
-         TsTypeFunction (Function Nothing [Required $ Normal $ TsTypeGeneric "F" $ typeArgs [TsTypeMisc "A", TsTypeMisc "B"]] (TsTypeGeneric "G" $ typeArgs [TsTypeMisc "C", TsTypeMisc "D"]))
+      parse' expr "(x: F<A, B>) => G<C, D>" `shouldParse`
+         TLambda (Lambda Nothing [Required $ Normal $ TGeneric "F" $ typeArgs' [TMisc "A", TMisc "B"]] (TGeneric "G" $ typeArgs' [TMisc "C", TMisc "D"]))
 
     it "parses infix operators" $ do
-      parse' pType "A & B | C" `shouldParse` TsTypeBinOp BinOpIntersection (TsTypeMisc "A") (TsTypeBinOp BinOpUnion (TsTypeMisc "B") (TsTypeMisc "C"))
+      parse' expr "A & B | C" `shouldParse` TBinOp BinOpIntersection (TMisc "A") (TBinOp BinOpUnion (TMisc "B") (TMisc "C"))
 
     it "parses keyof" $ do
-      parse' pType "keyof A<B>" `shouldParse` TsTypeUnOp UnOpKeys (TsTypeGeneric "A" $ typeArgs [TsTypeMisc "B"])
+      parse' expr "keyof A<B>" `shouldParse` TUnOp UnOpKeys (TGeneric "A" $ typeArgs' [TMisc "B"])
 
     it "parses typeof" $ do
-      parse' pType "typeof x & y" `shouldParse` TsTypeBinOp BinOpIntersection (TsTypeUnOp UnOpReflection (TsTypeMisc "x")) (TsTypeMisc "y")
+      parse' expr "typeof x & y" `shouldParse` TBinOp BinOpIntersection (TUnOp UnOpReflection (TMisc "x")) (TMisc "y")
 
     it "parses parentheses and changes precedence accordingly" $ do
-      parse' pType "(A & B) | C" `shouldParse` TsTypeBinOp BinOpUnion (TsTypeGrouped $ TsTypeBinOp BinOpIntersection (TsTypeMisc "A") (TsTypeMisc "B")) (TsTypeMisc "C")
+      parse' expr "(A & B) | C" `shouldParse` TBinOp BinOpUnion (TGrouped $ TBinOp BinOpIntersection (TMisc "A") (TMisc "B")) (TMisc "C")
 
-  describe "pFunction" $ do
+  describe "lambda" $ do
     it "parses minimal viable function" $ do
-      parse' pFunction "() => void" `shouldParse` Function Nothing [] TsTypeVoid
+      parse' lambda "() => void" `shouldParse` Lambda Nothing [] TVoid
 
     it "parses type arguments" $ do
-      parse' pFunction "<A, Either<void, B>>() => void" `shouldParse`
-        Function (Just $ typeArgs [TsTypeMisc "A", TsTypeGeneric "Either" $ typeArgs [TsTypeVoid, TsTypeMisc "B"]]) [] TsTypeVoid
+      parse' lambda "<A, Either<void, B>>() => void" `shouldParse`
+        Lambda (Just $ typeArgs' [TMisc "A", TGeneric "Either" $ typeArgs' [TVoid, TMisc "B"]]) [] TVoid
 
     it "parses params" $ do
-      parse' pFunction "(x: number, y: string) => void" `shouldParse`
-        Function Nothing [Required $ Normal $ TsTypeMisc "number", Required $ Normal $ TsTypeMisc "string"] TsTypeVoid
+      parse' lambda "(x: number, y: string) => void" `shouldParse`
+        Lambda Nothing [Required $ Normal $ TMisc "number", Required $ Normal $ TMisc "string"] TVoid
 
     it "parses return type" $ do
-      parse' pFunction "() => number" `shouldParse` Function Nothing [] (TsTypeMisc "number")
+      parse' lambda "() => number" `shouldParse` Lambda Nothing [] (TMisc "number")
 
     it "parses curried function" $ do
-      parse' pFunction "() => () => void" `shouldParse` Function Nothing [] (TsTypeFunction (Function Nothing [] TsTypeVoid))
+      parse' lambda "() => () => void" `shouldParse` Lambda Nothing [] (TLambda (Lambda Nothing [] TVoid))
 
     it "supports extends clause in function generics" $ do
-      parse' pFunction "<B, A extends Array<B>>(f: <C extends number, D>(x: 'ciao') => string) => void" `shouldParse`
-        Function
-          ( Just $ typeArgs
-            [ TsTypeMisc "B"
-            , TsTypeSubtype "A" (TsTypeGeneric "Array" $ typeArgs [TsTypeMisc "B"])
+      parse' lambda "<B, A extends Array<B>>(f: <C extends number, D>(x: 'ciao') => string) => void" `shouldParse`
+        Lambda
+          ( Just $ typeArgs'
+            [ TMisc "B"
+            , TSubtype "A" (TGeneric "Array" $ typeArgs' [TMisc "B"])
             ]
           )
-          [ Required $ Normal $ TsTypeFunction (Function
-              (Just $ typeArgs [TsTypeSubtype "C" (TsTypeMisc "number"), TsTypeMisc "D"])
-              [Required $ Normal $ TsTypeString "ciao"]
-              (TsTypeMisc "string"))
+          [ Required $ Normal $ TLambda (Lambda
+              (Just $ typeArgs' [TSubtype "C" (TMisc "number"), TMisc "D"])
+              [Required $ Normal $ TString "ciao"]
+              (TMisc "string"))
           ]
-          TsTypeVoid
+          TVoid
 
     it "parses complex function" $ do
-      parse' pFunction "<A, Array<Option<B>>>(x: number, y: <C>(z: C) => () => C) => () => void" `shouldParse`
-        Function
-          ( Just $ typeArgs
-            [ TsTypeMisc "A"
-            , TsTypeGeneric "Array" $ typeArgs
-              [ TsTypeGeneric "Option" $ typeArgs
-                [ TsTypeMisc "B"
+      parse' lambda "<A, Array<Option<B>>>(x: number, y: <C>(z: C) => () => C) => () => void" `shouldParse`
+        Lambda
+          ( Just $ typeArgs'
+            [ TMisc "A"
+            , TGeneric "Array" $ typeArgs'
+              [ TGeneric "Option" $ typeArgs'
+                [ TMisc "B"
                 ]
               ]
             ]
           )
-          [ Required $ Normal $ TsTypeMisc "number"
-          , Required $ Normal $ TsTypeFunction (Function
-              (Just $ typeArgs [TsTypeMisc "C"])
-              [Required $ Normal $ TsTypeMisc "C"]
-              (TsTypeFunction (Function Nothing [] (TsTypeMisc "C"))))
+          [ Required $ Normal $ TMisc "number"
+          , Required $ Normal $ TLambda (Lambda
+              (Just $ typeArgs' [TMisc "C"])
+              [Required $ Normal $ TMisc "C"]
+              (TLambda (Lambda Nothing [] (TMisc "C"))))
           ]
-          ( TsTypeFunction (Function Nothing [] TsTypeVoid))
+          ( TLambda (Lambda Nothing [] TVoid))
 
-  describe "pObject" $ do
+  describe "object" $ do
     it "parses empty object" $ do
-      parse' pObject "{}" `shouldParse` ObjectLit []
+      parse' object "{}" `shouldParse` ObjectLit []
 
     it "parses non-empty flat object" $ do
-      parse' pObject "{ a: 1, b: 'two' }" `shouldParse` ObjectLit [Required ("a", TsTypeNumber "1"), Required ("b", TsTypeString "two")]
+      parse' object "{ a: 1, b: 'two' }" `shouldParse` ObjectLit [Required ("a", TNumber "1"), Required ("b", TString "two")]
 
     it "parses non-empty nested object" $ do
-      parse' pObject "{ a: 1, b: { c: true }[] }" `shouldParse`
-        ObjectLit [Required ("a", TsTypeNumber "1"), Required ("b", TsTypeGeneric "Array" $ typeArgs [TsTypeObject (ObjectLit [Required ("c", TsTypeBoolean True)])])]
+      parse' object "{ a: 1, b: { c: true }[] }" `shouldParse`
+        ObjectLit [Required ("a", TNumber "1"), Required ("b", TGeneric "Array" $ typeArgs' [TObject (ObjectLit [Required ("c", TBoolean True)])])]
 
     it "supports mixed comma and semi-colon delimiters" $ do
-      parse' pObject "{ a: number, b: string; c: boolean }" `shouldParse`
-        ObjectLit [Required ("a", TsTypeMisc "number"), Required ("b", TsTypeMisc "string"), Required ("c", TsTypeMisc "boolean")]
+      parse' object "{ a: number, b: string; c: boolean }" `shouldParse`
+        ObjectLit [Required ("a", TMisc "number"), Required ("b", TMisc "string"), Required ("c", TMisc "boolean")]
 
     it "parses optional and required properties" $ do
-      parse' pObject "{ a: A, b?: B, c: C }" `shouldParse`
-        ObjectLit [Required ("a", TsTypeMisc "A"), Optional ("b", TsTypeMisc "B"), Required ("c", TsTypeMisc "C")]
+      parse' object "{ a: A, b?: B, c: C }" `shouldParse`
+        ObjectLit [Required ("a", TMisc "A"), Optional ("b", TMisc "B"), Required ("c", TMisc "C")]
 
     it "parses alternative method syntax" $ do
-      parse' pObject "{ f?<A>(): void }" `shouldParse`
-        ObjectLit [Optional ("f", TsTypeFunction $ Function (Just $ typeArgs [TsTypeMisc "A"]) [] TsTypeVoid)]
+      parse' object "{ f?<A>(): void }" `shouldParse`
+        ObjectLit [Optional ("f", TLambda $ Lambda (Just $ typeArgs' [TMisc "A"]) [] TVoid)]
 
     it "parses trailing delimiter in non-empty object" $ do
-      parse' pObject "{ a: number; b: string, }" `shouldParse`
-        ObjectLit [Required ("a", TsTypeMisc "number"), Required ("b", TsTypeMisc "string")]
+      parse' object "{ a: number; b: string, }" `shouldParse`
+        ObjectLit [Required ("a", TMisc "number"), Required ("b", TMisc "string")]
 
     it "parses mapped type" $ do
-      parse' pObject "{ [K in A]: B }" `shouldParse`
-        ObjectMapped (Required (("K", TsTypeMisc "A"), TsTypeMisc "B"))
+      parse' object "{ [K in A]: B }" `shouldParse`
+        ObjectMapped (Required (("K", TMisc "A"), TMisc "B"))
 
-      parse' pObject "{ [K in A]?: B; }" `shouldParse`
-        ObjectMapped (Optional (("K", TsTypeMisc "A"), TsTypeMisc "B"))
+      parse' object "{ [K in A]?: B; }" `shouldParse`
+        ObjectMapped (Optional (("K", TMisc "A"), TMisc "B"))
 
-  describe "pTuple" $ do
+  describe "tuple" $ do
     it "parses empty tuple" $ do
-      parse' pTuple "[]" `shouldParse` []
+      parse' tuple "[]" `shouldParse` []
 
     it "parses non-empty flat tuple" $ do
-      parse' pTuple "[a, 'b']" `shouldParse` [TsTypeMisc "a", TsTypeString "b"]
+      parse' tuple "[a, 'b']" `shouldParse` [TMisc "a", TString "b"]
 
     it "parses non-empty nested tuple" $ do
-      parse' pTuple "[a, ['b', 3]]" `shouldParse` [TsTypeMisc "a", TsTypeTuple [TsTypeString "b", TsTypeNumber "3"]]
+      parse' tuple "[a, ['b', 3]]" `shouldParse` [TMisc "a", TTuple [TString "b", TNumber "3"]]
 
     it "parses non-empty tuple with trailing comma" $ do
-      parse' pTuple "[a,]" `shouldParse` [TsTypeMisc "a"]
-      parse' pTuple "[a, ]" `shouldParse` [TsTypeMisc "a"]
-      parse' pTuple "[a, b,]" `shouldParse` [TsTypeMisc "a", TsTypeMisc "b"]
-      parse' pTuple "[a, b, ]" `shouldParse` [TsTypeMisc "a", TsTypeMisc "b"]
+      parse' tuple "[a,]" `shouldParse` [TMisc "a"]
+      parse' tuple "[a, ]" `shouldParse` [TMisc "a"]
+      parse' tuple "[a, b,]" `shouldParse` [TMisc "a", TMisc "b"]
+      parse' tuple "[a, b, ]" `shouldParse` [TMisc "a", TMisc "b"]
 
-  describe "pNumber" $ do
-    let p = pNumber <* eof
+  describe "num" $ do
+    let p = num <* eof
 
     it "parses int" $ do
       parse' p "123" `shouldParse` "123"
@@ -215,136 +215,127 @@ spec = describe "TSHM.Parser" $ do
       parse' p `shouldFailOn` ".1.2"
       parse' p `shouldFailOn` "1.2.3"
 
-  describe "pConstDeclarationName" $ do
-    let ident = Gen.list (Range.linear 1 99) Gen.alpha
+  describe "constDecIdent" $ do
+    let ident' = Gen.list (Range.linear 1 99) Gen.alpha
 
     it "parses const declaration" $ hedgehog $ do
-      x <- forAll ident
-      parse' pConstDeclarationName ("declare const " <> x <> ": ") =*= x
+      x <- forAll ident'
+      parse' constDecIdent ("declare const " <> x <> ": ") =*= x
 
     it "parses exported const declaration" $ hedgehog $ do
-      x <- forAll ident
-      parse' pConstDeclarationName ("export declare const " <> x <> ": ") =*= x
+      x <- forAll ident'
+      parse' constDecIdent ("export declare const " <> x <> ": ") =*= x
 
     it "requires declaration" $ hedgehog $ do
-      x <- forAll ident
-      parse' pConstDeclarationName /=* ("const " <> x <> ": ")
+      x <- forAll ident'
+      parse' constDecIdent /=* ("const " <> x <> ": ")
 
-  describe "pTypeArgs" $ do
+  describe "typeArgs'" $ do
     it "parses single flat type argument" $ do
-      parse' pTypeArgs "<A>" `shouldParse`
-        typeArgs [ TsTypeMisc "A"
+      parse' typeArgs "<A>" `shouldParse`
+        typeArgs' [ TMisc "A"
         ]
 
     it "parses multiple flat type arguments" $ do
-      parse' pTypeArgs "<A, B, C>" `shouldParse`
-        typeArgs [ TsTypeMisc "A"
-        , TsTypeMisc "B"
-        , TsTypeMisc "C"
+      parse' typeArgs "<A, B, C>" `shouldParse`
+        typeArgs' [ TMisc "A"
+        , TMisc "B"
+        , TMisc "C"
         ]
 
     it "parses single nested type argument" $ do
-      parse' pTypeArgs "<Array<Option<A>>>" `shouldParse`
-        typeArgs [ TsTypeGeneric "Array" $ typeArgs
-          [ TsTypeGeneric "Option" $ typeArgs
-            [ TsTypeMisc "A"
+      parse' typeArgs "<Array<Option<A>>>" `shouldParse`
+        typeArgs' [ TGeneric "Array" $ typeArgs'
+          [ TGeneric "Option" $ typeArgs'
+            [ TMisc "A"
             ]
           ]
         ]
 
     it "parses mixed type arguments" $ do
-      parse' pTypeArgs "<A, Array<Option<B>, C>, Either<E, A>>" `shouldParse`
-        typeArgs
-          [ TsTypeMisc "A"
-          , TsTypeGeneric "Array" $ typeArgs
-            [ TsTypeGeneric "Option" $ typeArgs
-              [ TsTypeMisc "B"
+      parse' typeArgs "<A, Array<Option<B>, C>, Either<E, A>>" `shouldParse`
+        typeArgs'
+          [ TMisc "A"
+          , TGeneric "Array" $ typeArgs'
+            [ TGeneric "Option" $ typeArgs'
+              [ TMisc "B"
               ]
-            , TsTypeMisc "C"
+            , TMisc "C"
             ]
-          , TsTypeGeneric "Either" $ typeArgs
-            [ TsTypeMisc "E"
-            , TsTypeMisc "A"
+          , TGeneric "Either" $ typeArgs'
+            [ TMisc "E"
+            , TMisc "A"
             ]
           ]
 
     it "parses default type arguments" $ do
-      parse' pTypeArgs "<A, B = C, D extends E = F<G>>" `shouldParse`
+      parse' typeArgs "<A, B = C, D extends E = F<G>>" `shouldParse`
         fromList
-          [ (TsTypeMisc "A", Nothing)
-          , (TsTypeMisc "B", Just $ TsTypeMisc "C")
-          , (TsTypeSubtype "D" (TsTypeMisc "E"), Just $ TsTypeGeneric "F" $ typeArgs [TsTypeMisc "G"])
+          [ (TMisc "A", Nothing)
+          , (TMisc "B", Just $ TMisc "C")
+          , (TSubtype "D" (TMisc "E"), Just $ TGeneric "F" $ typeArgs' [TMisc "G"])
           ]
 
     it "requires at least one type argument" $ do
-      parse' pTypeArgs `shouldFailOn` "<>"
+      parse' typeArgs `shouldFailOn` "<>"
 
     it "parses trailing comma in non-empty arguments list" $ do
-      parse' pTypeArgs "<A,>" `shouldParse`
-        typeArgs [ TsTypeMisc "A"
+      parse' typeArgs "<A,>" `shouldParse`
+        typeArgs' [ TMisc "A"
         ]
 
-  describe "pParams" $ do
+  describe "params" $ do
     it "parses empty params" $ do
-      parse' pParams "()" `shouldParse` []
+      parse' params "()" `shouldParse` []
 
     it "parses single param" $ do
-      parse' pParams "(a: number)" `shouldParse` [ Required $ Normal $ TsTypeMisc "number"]
+      parse' params "(a: number)" `shouldParse` [ Required $ Normal $ TMisc "number"]
 
     it "parses multiple params" $ do
-      parse' pParams "(a: number, b: <A>(x: string) => void, c: Array<boolean>)" `shouldParse`
-        [ Required $ Normal $ TsTypeMisc "number"
-        , Required $ Normal $ TsTypeFunction (Function (Just $ typeArgs [TsTypeMisc "A"]) [Required $ Normal $ TsTypeMisc "string"] TsTypeVoid)
-        , Required $ Normal $ TsTypeGeneric "Array" $ typeArgs [TsTypeMisc "boolean"]
+      parse' params "(a: number, b: <A>(x: string) => void, c: Array<boolean>)" `shouldParse`
+        [ Required $ Normal $ TMisc "number"
+        , Required $ Normal $ TLambda (Lambda (Just $ typeArgs' [TMisc "A"]) [Required $ Normal $ TMisc "string"] TVoid)
+        , Required $ Normal $ TGeneric "Array" $ typeArgs' [TMisc "boolean"]
         ]
 
     it "parses rest params" $ do
-      parse' pParams "(...a: number, b: string, ...c: boolean)" `shouldParse`
-        [ Required $ Rest $ TsTypeMisc "number"
-        , Required $ Normal $ TsTypeMisc "string"
-        , Required $ Rest $ TsTypeMisc "boolean"
+      parse' params "(...a: number, b: string, ...c: boolean)" `shouldParse`
+        [ Required $ Rest $ TMisc "number"
+        , Required $ Normal $ TMisc "string"
+        , Required $ Rest $ TMisc "boolean"
         ]
 
     it "parses optional params" $ do
-      parse' pParams "(a?: A, ...b?: B, c: C)" `shouldParse`
-        [ Optional $ Normal $ TsTypeMisc "A"
-        , Optional $ Rest $ TsTypeMisc "B"
-        , Required $ Normal $ TsTypeMisc "C"
+      parse' params "(a?: A, ...b?: B, c: C)" `shouldParse`
+        [ Optional $ Normal $ TMisc "A"
+        , Optional $ Rest $ TMisc "B"
+        , Required $ Normal $ TMisc "C"
         ]
 
     it "parses optional whitespace and newlines" $ do
-      parse' pParams (unlines' ["(", ")"]) `shouldParse` []
-      parse' pParams (unlines' ["(", "x: A", ")"]) `shouldParse` [Required $ Normal $ TsTypeMisc "A"]
-      parse' pParams (unlines' ["(", "x: A,", "y: B", ")"]) `shouldParse` [Required $ Normal $ TsTypeMisc "A", Required $ Normal $ TsTypeMisc "B"]
+      parse' params (unlines' ["(", ")"]) `shouldParse` []
+      parse' params (unlines' ["(", "x: A", ")"]) `shouldParse` [Required $ Normal $ TMisc "A"]
+      parse' params (unlines' ["(", "x: A,", "y: B", ")"]) `shouldParse` [Required $ Normal $ TMisc "A", Required $ Normal $ TMisc "B"]
 
     it "parses optional trailing comma in non-empty params" $ do
-      parse' pParams "(a: number,)" `shouldParse` [ Required $ Normal $ TsTypeMisc "number"]
+      parse' params "(a: number,)" `shouldParse` [ Required $ Normal $ TMisc "number"]
 
-  describe "pFunctionReturn" $ do
-    it "parses value after the lambda" $ do
-      parse' pFunctionReturn "=> void" `shouldParse` TsTypeVoid
-      parse' pFunctionReturn "=> string" `shouldParse` TsTypeMisc "string"
-      parse' pFunctionReturn "=> <A>(x: A) => A" `shouldParse` TsTypeFunction (Function (Just $ typeArgs [TsTypeMisc "A"]) [Required $ Normal $ TsTypeMisc "A"] (TsTypeMisc "A"))
-
-    it "requires a value after the lambda" $ do
-      parse' pFunctionReturn `shouldFailOn` " => "
-
-  describe "pAlias" $ do
-    let p = parse' $ pAlias <* eof
+  describe "alias" $ do
+    let p = parse' $ alias <* eof
 
     it "optionally supports semicolons" $ do
-      p "type X = Y" `shouldParse` Alias "X" Nothing (TsTypeMisc "Y")
-      p "type X = Y;" `shouldParse` Alias "X" Nothing (TsTypeMisc "Y")
+      p "type X = Y" `shouldParse` Alias "X" Nothing (TMisc "Y")
+      p "type X = Y;" `shouldParse` Alias "X" Nothing (TMisc "Y")
 
     it "parses type arguments" $ do
       p "type X<A, B extends string> = A | B" `shouldParse`
         Alias
           "X"
-          (Just $ typeArgs [TsTypeMisc "A", TsTypeSubtype "B" (TsTypeMisc "string")])
-          (TsTypeBinOp BinOpUnion (TsTypeMisc "A") (TsTypeMisc "B"))
+          (Just $ typeArgs' [TMisc "A", TSubtype "B" (TMisc "string")])
+          (TBinOp BinOpUnion (TMisc "A") (TMisc "B"))
 
-  describe "pInterface" $ do
-    let p = parse' $ pInterface <* eof
+  describe "interface" $ do
+    let p = parse' $ interface <* eof
 
     it "parses without extends" $ do
       p "interface X { a: A }" `shouldParse`
@@ -352,84 +343,84 @@ spec = describe "TSHM.Parser" $ do
           "X"
           Nothing
           Nothing
-          (ObjectLit [Required ("a", TsTypeMisc "A")])
+          (ObjectLit [Required ("a", TMisc "A")])
 
       p "interface X<A, B extends Array<A>> { a: A }" `shouldParse`
         Interface
           "X"
-          (Just $ typeArgs [TsTypeMisc "A", TsTypeSubtype "B" (TsTypeGeneric "Array" $ typeArgs [TsTypeMisc "A"])])
+          (Just $ typeArgs' [TMisc "A", TSubtype "B" (TGeneric "Array" $ typeArgs' [TMisc "A"])])
           Nothing
-          (ObjectLit [Required ("a", TsTypeMisc "A")])
+          (ObjectLit [Required ("a", TMisc "A")])
 
     it "parses with extends" $ do
       p "interface X extends B { a: A }" `shouldParse`
         Interface
           "X"
           Nothing
-          (Just $ TsTypeMisc "B")
-          (ObjectLit [Required ("a", TsTypeMisc "A")])
+          (Just $ TMisc "B")
+          (ObjectLit [Required ("a", TMisc "A")])
 
       p "interface X<A, B extends Array<A>> extends C { a: A }" `shouldParse`
         Interface
           "X"
-          (Just $ typeArgs [TsTypeMisc "A", TsTypeSubtype "B" (TsTypeGeneric "Array" $ typeArgs [TsTypeMisc "A"])])
-          (Just $ TsTypeMisc "C")
-          (ObjectLit [Required ("a", TsTypeMisc "A")])
+          (Just $ typeArgs' [TMisc "A", TSubtype "B" (TGeneric "Array" $ typeArgs' [TMisc "A"])])
+          (Just $ TMisc "C")
+          (ObjectLit [Required ("a", TMisc "A")])
 
-  describe "pConstDeclaration" $ do
-    let p = parse' $ pConstDeclaration <* eof
+  describe "constDec" $ do
+    let p = parse' $ constDec <* eof
 
     it "optionally supports semicolons" $ do
-      p "declare const x: string" `shouldParse` ConstDeclaration "x" (TsTypeMisc "string")
-      p "declare const x: string;" `shouldParse` ConstDeclaration "x" (TsTypeMisc "string")
+      p "declare const x: string" `shouldParse` ConstDec "x" (TMisc "string")
+      p "declare const x: string;" `shouldParse` ConstDec "x" (TMisc "string")
 
-  describe "pFunctionDeclaration" $ do
-    let p = parse' $ pFunctionDeclaration <* eof
+  describe "fnDec" $ do
+    let p = parse' $ fnDec <* eof
 
     it "parses" $ do
-      p "declare function f<A>(x: A): <B extends A>(y: B) => C" `shouldParse` FunctionDeclaration "f" (Function (Just $ typeArgs [TsTypeMisc "A"]) [Required $ Normal $ TsTypeMisc "A"] (TsTypeFunction $ Function (Just $ typeArgs [TsTypeSubtype "B" (TsTypeMisc "A")]) [Required $ Normal $ TsTypeMisc "B"] (TsTypeMisc "C")))
+      p "declare function f<A>(x: A): <B extends A>(y: B) => C" `shouldParse` FunctionDec "f" (Lambda (Just $ typeArgs' [TMisc "A"]) [Required $ Normal $ TMisc "A"] (TLambda $ Lambda (Just $ typeArgs' [TSubtype "B" (TMisc "A")]) [Required $ Normal $ TMisc "B"] (TMisc "C")))
 
-  describe "pSignature" $ do
+  describe "signature" $ do
     it "parses and skips comments" $ do
-      parse' pSignature "/**/declare /*x*/const/**/ x/* x xx xxx */: void/**///x" `shouldParse` SignatureConstDeclaration (ConstDeclaration "x" TsTypeVoid)
+      parse' signature "/**/declare /*x*/const/**/ x/* x xx xxx */: void/**///x" `shouldParse` SignatureConstDec (ConstDec "x" TVoid)
 
     it "parses all variants" $ do
-      parse' pSignature "declare const f: void" `shouldParse` SignatureConstDeclaration (ConstDeclaration "f" TsTypeVoid)
-      parse' pSignature "export declare const f: void" `shouldParse` SignatureConstDeclaration (ConstDeclaration "f" TsTypeVoid)
-      parse' pSignature "type X = void" `shouldParse` SignatureAlias (Alias "X" Nothing TsTypeVoid)
-      parse' pSignature "export type X = void" `shouldParse` SignatureAlias (Alias "X" Nothing TsTypeVoid)
-      parse' pSignature "interface X {}" `shouldParse` SignatureInterface (Interface "X" Nothing Nothing (ObjectLit []))
-      parse' pSignature "export interface X {}" `shouldParse` SignatureInterface (Interface "X" Nothing Nothing (ObjectLit []))
-      parse' pSignature "declare function f(): void" `shouldParse` SignatureFunctionDeclaration (fromList [FunctionDeclaration "f" (Function Nothing [] TsTypeVoid)])
-      parse' pSignature "export declare function f(): void" `shouldParse` SignatureFunctionDeclaration (fromList [FunctionDeclaration "f" (Function Nothing [] TsTypeVoid)])
-      parse' pSignature (unlines' ["declare function f(): A", "declare function f(): B"]) `shouldParse`
-        SignatureFunctionDeclaration (fromList
-          [ FunctionDeclaration "f" (Function Nothing [] (TsTypeMisc "A"))
-          , FunctionDeclaration "f" (Function Nothing [] (TsTypeMisc "B"))
+      parse' signature "declare const f: void" `shouldParse` SignatureConstDec (ConstDec "f" TVoid)
+      parse' signature "export declare const f: void" `shouldParse` SignatureConstDec (ConstDec "f" TVoid)
+      parse' signature "type X = void" `shouldParse` SignatureAlias (Alias "X" Nothing TVoid)
+      parse' signature "export type X = void" `shouldParse` SignatureAlias (Alias "X" Nothing TVoid)
+      parse' signature "interface X {}" `shouldParse` SignatureInterface (Interface "X" Nothing Nothing (ObjectLit []))
+      parse' signature "export interface X {}" `shouldParse` SignatureInterface (Interface "X" Nothing Nothing (ObjectLit []))
+      parse' signature "declare function f(): void" `shouldParse` SignatureFunctionDec (fromList [FunctionDec "f" (Lambda Nothing [] TVoid)])
+      parse' signature "export declare function f(): void" `shouldParse` SignatureFunctionDec (fromList [FunctionDec "f" (Lambda Nothing [] TVoid)])
+      parse' signature (unlines' ["declare function f(): A", "declare function f(): B"]) `shouldParse`
+        SignatureFunctionDec (fromList
+          [ FunctionDec "f" (Lambda Nothing [] (TMisc "A"))
+          , FunctionDec "f" (Lambda Nothing [] (TMisc "B"))
           ])
-      parse' pSignature (unlines' ["export declare function f(): A", "export declare function f(): B"]) `shouldParse`
-        SignatureFunctionDeclaration (fromList
-          [ FunctionDeclaration "f" (Function Nothing [] (TsTypeMisc "A"))
-          , FunctionDeclaration "f" (Function Nothing [] (TsTypeMisc "B"))
+      parse' signature (unlines' ["export declare function f(): A", "export declare function f(): B"]) `shouldParse`
+        SignatureFunctionDec (fromList
+          [ FunctionDec "f" (Lambda Nothing [] (TMisc "A"))
+          , FunctionDec "f" (Lambda Nothing [] (TMisc "B"))
           ])
 
     it "parses real signatures" $ do
-      parse' pSignature "export declare const empty: ''" `shouldParse` SignatureConstDeclaration (ConstDeclaration "empty" (TsTypeString ""))
+      parse' signature "export declare const empty: ''" `shouldParse` SignatureConstDec (ConstDec "empty" (TString ""))
 
-      parse' pSignature "export declare const aperture: (n: number) => <A>(xs: A[]) => A[][]" `shouldParse`
-        SignatureConstDeclaration (ConstDeclaration "aperture" (TsTypeFunction (Function Nothing [Required $ Normal $ TsTypeMisc "number"] (TsTypeFunction (Function (Just $ typeArgs [TsTypeMisc "A"]) [Required $ Normal $ TsTypeGeneric "Array" $ typeArgs [TsTypeMisc "A"]] (TsTypeGeneric "Array" $ typeArgs [TsTypeGeneric "Array" $ typeArgs [TsTypeMisc "A"]]))))))
+      parse' signature "export declare const aperture: (n: number) => <A>(xs: A[]) => A[][]" `shouldParse`
+        SignatureConstDec (ConstDec "aperture" (TLambda (Lambda Nothing [Required $ Normal $ TMisc "number"] (TLambda (Lambda (Just $ typeArgs' [TMisc "A"]) [Required $ Normal $ TGeneric "Array" $ typeArgs' [TMisc "A"]] (TGeneric "Array" $ typeArgs' [TGeneric "Array" $ typeArgs' [TMisc "A"]]))))))
 
-      parse' pSignature "export declare const anyPass: <A>(fs: Predicate<A>[]) => Predicate<A>" `shouldParse`
-        SignatureConstDeclaration (ConstDeclaration "anyPass" (TsTypeFunction (Function (Just $ typeArgs [TsTypeMisc "A"]) [Required $ Normal $ TsTypeGeneric "Array" $ typeArgs [TsTypeGeneric "Predicate" $ typeArgs [TsTypeMisc "A"]]] (TsTypeGeneric "Predicate" $ typeArgs [TsTypeMisc "A"]))))
+      parse' signature "export declare const anyPass: <A>(fs: Predicate<A>[]) => Predicate<A>" `shouldParse`
+        SignatureConstDec (ConstDec "anyPass" (TLambda (Lambda (Just $ typeArgs' [TMisc "A"]) [Required $ Normal $ TGeneric "Array" $ typeArgs' [TGeneric "Predicate" $ typeArgs' [TMisc "A"]]] (TGeneric "Predicate" $ typeArgs' [TMisc "A"]))))
 
-      parse' pSignature "export declare const merge: <A>(x: A) => <B>(y: B) => A & B" `shouldParse`
-        SignatureConstDeclaration (ConstDeclaration "merge" (TsTypeFunction (Function (Just $ typeArgs [TsTypeMisc "A"]) [Required $ Normal $ TsTypeMisc "A"] (TsTypeFunction (Function (Just $ typeArgs [TsTypeMisc "B"]) [Required $ Normal $ TsTypeMisc "B"] (TsTypeBinOp BinOpIntersection (TsTypeMisc "A") (TsTypeMisc "B")))))))
+      parse' signature "export declare const merge: <A>(x: A) => <B>(y: B) => A & B" `shouldParse`
+        SignatureConstDec (ConstDec "merge" (TLambda (Lambda (Just $ typeArgs' [TMisc "A"]) [Required $ Normal $ TMisc "A"] (TLambda (Lambda (Just $ typeArgs' [TMisc "B"]) [Required $ Normal $ TMisc "B"] (TBinOp BinOpIntersection (TMisc "A") (TMisc "B")))))))
 
-      parse' pSignature "export declare const omit: <K extends string>(ks: K[]) => <V, A extends Record<K, V>>(x: Partial<A>) => Pick<A, Exclude<keyof A, K>>" `shouldParse`
-        SignatureConstDeclaration (ConstDeclaration "omit" (TsTypeFunction (Function (Just $ typeArgs [TsTypeSubtype "K" (TsTypeMisc "string")]) [Required $ Normal $ TsTypeGeneric "Array" $ typeArgs [TsTypeMisc "K"]] (TsTypeFunction (Function (Just $ typeArgs [TsTypeMisc "V", TsTypeSubtype "A" (TsTypeGeneric "Record" $ typeArgs [TsTypeMisc "K", TsTypeMisc "V"])]) [Required $ Normal $ TsTypeGeneric "Partial" $ typeArgs [TsTypeMisc "A"]] (TsTypeGeneric "Pick" $ typeArgs [TsTypeMisc "A", TsTypeGeneric "Exclude" $ typeArgs [TsTypeUnOp UnOpKeys (TsTypeMisc "A"), TsTypeMisc "K"]]))))))
+      parse' signature "export declare const omit: <K extends string>(ks: K[]) => <V, A extends Record<K, V>>(x: Partial<A>) => Pick<A, Exclude<keyof A, K>>" `shouldParse`
+        SignatureConstDec (ConstDec "omit" (TLambda (Lambda (Just $ typeArgs' [TSubtype "K" (TMisc "string")]) [Required $ Normal $ TGeneric "Array" $ typeArgs' [TMisc "K"]] (TLambda (Lambda (Just $ typeArgs' [TMisc "V", TSubtype "A" (TGeneric "Record" $ typeArgs' [TMisc "K", TMisc "V"])]) [Required $ Normal $ TGeneric "Partial" $ typeArgs' [TMisc "A"]] (TGeneric "Pick" $ typeArgs' [TMisc "A", TGeneric "Exclude" $ typeArgs' [TUnOp UnOpKeys (TMisc "A"), TMisc "K"]]))))))
 
-      parse' pSignature "export declare const unary: <A extends unknown[], B>(f: (...xs: A) => B) => (xs: A) => B" `shouldParse`
-        SignatureConstDeclaration (ConstDeclaration "unary" (TsTypeFunction (Function (Just $ typeArgs [TsTypeSubtype "A" (TsTypeGeneric "Array" $ typeArgs [TsTypeUnknown]), TsTypeMisc "B"]) [Required $ Normal $ TsTypeFunction (Function Nothing [Required $ Rest $ TsTypeMisc "A"] (TsTypeMisc "B"))] (TsTypeFunction (Function Nothing [Required $ Normal $ TsTypeMisc "A"] (TsTypeMisc "B"))))))
+      parse' signature "export declare const unary: <A extends unknown[], B>(f: (...xs: A) => B) => (xs: A) => B" `shouldParse`
+        SignatureConstDec (ConstDec "unary" (TLambda (Lambda (Just $ typeArgs' [TSubtype "A" (TGeneric "Array" $ typeArgs' [TUnknown]), TMisc "B"]) [Required $ Normal $ TLambda (Lambda Nothing [Required $ Rest $ TMisc "A"] (TMisc "B"))] (TLambda (Lambda Nothing [Required $ Normal $ TMisc "A"] (TMisc "B"))))))
 
-      parse' pSignature "export interface Some<A> { readonly _tag: 'Some', readonly value: A }" `shouldParse`
-        SignatureInterface (Interface "Some" (Just $ typeArgs [TsTypeMisc "A"]) Nothing (ObjectLit [Required ("_tag", TsTypeString "Some"), Required ("value", TsTypeMisc "A")]))
+      parse' signature "export interface Some<A> { readonly _tag: 'Some', readonly value: A }" `shouldParse`
+        SignatureInterface (Interface "Some" (Just $ typeArgs' [TMisc "A"]) Nothing (ObjectLit [Required ("_tag", TString "Some"), Required ("value", TMisc "A")]))
