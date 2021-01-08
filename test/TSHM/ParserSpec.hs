@@ -176,13 +176,14 @@ spec = describe "TSHM.Parser" $ do
         ObjectLit [ObjectPair Mut Required (OKeyIdent "a", TMisc "number"), ObjectPair Mut Required (OKeyIdent "b", TMisc "string"), ObjectPair Mut Required (OKeyIdent "c", TMisc "boolean")]
 
     it "parses different key types" $ do
-      parse' object "{ a: a, 'b': b, 3.3: c, ['d']: d, [e]: e }" `shouldParse`
+      parse' object "{ a: a, 'b': b, 3.3: c, ['d']: d, [e]: e, [f: number]: f }" `shouldParse`
         ObjectLit
         [ ObjectPair Mut Required (OKeyIdent "a", TMisc "a")
         , ObjectPair Mut Required (OKeyStr "b", TMisc "b")
         , ObjectPair Mut Required (OKeyNum "3.3", TMisc "c")
         , ObjectPair Mut Required (OKeyComputed (TString "d"), TMisc "d")
         , ObjectPair Mut Required (OKeyComputed (TMisc "e"), TMisc "e")
+        , ObjectPair Mut Required (OKeyIndex (TMisc "number"), TMisc "f")
         ]
 
     it "parses optional and required properties" $ do

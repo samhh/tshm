@@ -98,6 +98,7 @@ objectKey :: ObjectKey -> Printer'
 objectKey (OKeyIdent x)    = pure x
 objectKey (OKeyStr x)      = pure $ "\"" <> x <> "\""
 objectKey (OKeyNum x)      = pure x
+objectKey (OKeyIndex x)    = surround "[index: " "]" <$> expr x
 objectKey (OKeyComputed x) = surround "[" "]" <$> expr x
 
 objectPair :: ObjectPair -> Printer'

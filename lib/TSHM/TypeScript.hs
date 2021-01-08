@@ -28,6 +28,7 @@ data ObjectKey
   | OKeyStr String
   | OKeyNum String
   | OKeyComputed Expr
+  | OKeyIndex Expr
   deriving (Eq, Show)
 
 data ObjectPair

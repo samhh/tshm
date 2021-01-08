@@ -169,6 +169,7 @@ objLitProps = ObjectLit <$> sepEndBy prop delim
           [ OKeyIdent <$> ident
           , OKeyStr <$> str
           , OKeyNum <$> num
+          , OKeyIndex <$> try (bracks (ident *> sym ":" *> expr))
           , OKeyComputed <$> bracks expr
           ]
 

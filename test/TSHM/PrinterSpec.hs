@@ -113,7 +113,8 @@ spec = describe "TSHM.Printer" $ do
     pp "type X<A> = { [K in A]: A[K] }" =*= "type X a = { [K in a]: a[K] }"
 
   it "prints different object key types" $ do
-    pp "type X = { a: a, 'b': b, 3.3: c, ['d']: d, [e]: e }" =*= "type X = { a: a, \"b\": b, 3.3: c, [\"d\"]: d, [e]: e }"
+    pp "type X = { a: a, 'b': b, 3.3: c, ['d']: d, [e]: e, [f: number]: f }" =*=
+      "type X = { a: a, \"b\": b, 3.3: c, [\"d\"]: d, [e]: e, [index: number]: f }"
 
   it "correctly wraps generics, expressions, object references, and function arguments in parentheses" $ do
     pp "type X = <E, A>(x: Either<E, Option<A | E>>) => <B>(f: (x: A) => B) => (x: A | B) => (x: A['k'], y: F<A>['k']) => Option<B>" =*=
