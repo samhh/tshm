@@ -166,23 +166,33 @@ object :: Parser Object
 object = braces inner
   where inner :: Parser Object
         inner = choice
-          [ try $ mapped <$>
+          [ try $ (\m k x a req v  -> ObjectMapped m req (k, x, a) v) <$>
                 roMod
             <*> (sym "[" *> ident)
             <*> (sym "in" *> expr)
             <*> optional (sym "as" *> expr)
             <*> (sym "]" *> mappedDelim)
             <*> (expr <* optional (sym "," <|> sym ";"))
-          , ObjectLit <$> sepEndBy pair litDelim
+          , ObjectLit <$> sepEndBy litPair litDelim
           ]
 
-        pair :: Parser ObjectPair
-        pair = choice
-          [ try $ norm <$> ro <*> ident <*> stdPairDelim <*> expr
-          , method <$> ro <*> ident <*> opt <*> optional typeArgs <*> params <*> (sym ":" *> expr)
+        litPair :: Parser ObjectPair
+        litPair = choice
+          [ try $ (\m s p e -> ObjectPair m p (s, e)) <$>
+            ro <*> litKey <*> (opt <* sym ":") <*> expr
+          , (\m n q g p r  -> ObjectPair m q (n, TLambda $ Lambda g p r)) <$>
+            ro <*> litKey <*> opt <*> optional typeArgs <*> params <*> (sym ":" *> expr)
           ]
           where opt :: Parser Partial
                 opt = bool Required Optional . isJust <$> optional (char '?')
+
+        litKey :: Parser ObjectKey
+        litKey = choice
+          [ OKeyIdent <$> ident
+          , OKeyStr <$> str
+          , OKeyNum <$> num
+          , OKeyComputed <$> bracks expr
+          ]
 
         litDelim :: Parser ()
         litDelim =
@@ -194,20 +204,8 @@ object = braces inner
           -- closing brace.
           <|> try (sc <* newline <* scN <* notFollowedBy (char '}'))
 
-        stdPairDelim :: Parser Partial
-        stdPairDelim = Required <$ sym ":" <|> Optional <$ sym "?:"
-
         mappedDelim :: Parser (Maybe ModOpt)
         mappedDelim = optional ((const RemOpt <$ sym "-" <|> const AddOpt <$ optional (sym "+")) <*> sym "?") <* sym ":"
-
-        mapped :: Maybe ModMut -> String -> Expr -> Maybe Expr -> Maybe ModOpt -> Expr -> Object
-        mapped m k x a req v = ObjectMapped m req (k, x, a) v
-
-        norm :: Mutant -> String -> Partial -> Expr -> ObjectPair
-        norm m s p e = ObjectPair m p (s, e)
-
-        method :: Mutant -> String -> Partial -> Maybe (NonEmpty TypeArg) -> [Param] -> Expr -> ObjectPair
-        method m n q g p r = ObjectPair m q (n, TLambda $ Lambda g p r)
 
 typeArgs :: Parser (NonEmpty TypeArg)
 typeArgs = angles (NE.sepEndBy1 typeArg (sym ","))

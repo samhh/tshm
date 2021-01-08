@@ -70,7 +70,7 @@ spec = describe "TSHM.Parser" $ do
 
     it "parses readonly" $ do
       parse' expr "readonly [readonly A, { readonly x: readonly B }]" `shouldParse`
-        TUnOp UnOpReadonly (TTuple [TUnOp UnOpReadonly (TMisc "A"), TObject (ObjectLit [ObjectPair Immut Required ("x", TUnOp UnOpReadonly (TMisc "B"))])])
+        TUnOp UnOpReadonly (TTuple [TUnOp UnOpReadonly (TMisc "A"), TObject (ObjectLit [ObjectPair Immut Required (OKeyIdent "x", TUnOp UnOpReadonly (TMisc "B"))])])
 
     it "parses object reference" $ do
       parse' expr "A['key']" `shouldParse` TIndexedAccess (TMisc "A") (TString "key")
@@ -165,27 +165,37 @@ spec = describe "TSHM.Parser" $ do
       parse' object "{}" `shouldParse` ObjectLit []
 
     it "parses non-empty flat object" $ do
-      parse' object "{ a: 1, b: 'two' }" `shouldParse` ObjectLit [ObjectPair Mut Required ("a", TNumber "1"), ObjectPair Mut Required ("b", TString "two")]
+      parse' object "{ a: 1, b: 'two' }" `shouldParse` ObjectLit [ObjectPair Mut Required (OKeyIdent "a", TNumber "1"), ObjectPair Mut Required (OKeyIdent "b", TString "two")]
 
     it "parses non-empty nested object" $ do
       parse' object "{ a: 1, b: { c: true }[] }" `shouldParse`
-        ObjectLit [ObjectPair Mut Required ("a", TNumber "1"), ObjectPair Mut Required ("b", TGeneric "Array" $ typeArgs' [TObject (ObjectLit [ObjectPair Mut Required ("c", TBoolean True)])])]
+        ObjectLit [ObjectPair Mut Required (OKeyIdent "a", TNumber "1"), ObjectPair Mut Required (OKeyIdent "b", TGeneric "Array" $ typeArgs' [TObject (ObjectLit [ObjectPair Mut Required (OKeyIdent "c", TBoolean True)])])]
 
-    it "supports mixed comma and semi-colon delimiters" $ do
+    it "parses mixed comma and semi-colon delimiters" $ do
       parse' object "{ a: number, b: string; c: boolean }" `shouldParse`
-        ObjectLit [ObjectPair Mut Required ("a", TMisc "number"), ObjectPair Mut Required ("b", TMisc "string"), ObjectPair Mut Required ("c", TMisc "boolean")]
+        ObjectLit [ObjectPair Mut Required (OKeyIdent "a", TMisc "number"), ObjectPair Mut Required (OKeyIdent "b", TMisc "string"), ObjectPair Mut Required (OKeyIdent "c", TMisc "boolean")]
+
+    it "parses different key types" $ do
+      parse' object "{ a: a, 'b': b, 3.3: c, ['d']: d, [e]: e }" `shouldParse`
+        ObjectLit
+        [ ObjectPair Mut Required (OKeyIdent "a", TMisc "a")
+        , ObjectPair Mut Required (OKeyStr "b", TMisc "b")
+        , ObjectPair Mut Required (OKeyNum "3.3", TMisc "c")
+        , ObjectPair Mut Required (OKeyComputed (TString "d"), TMisc "d")
+        , ObjectPair Mut Required (OKeyComputed (TMisc "e"), TMisc "e")
+        ]
 
     it "parses optional and required properties" $ do
       parse' object "{ a: A, b?: B, c: C }" `shouldParse`
-        ObjectLit [ObjectPair Mut Required ("a", TMisc "A"), ObjectPair Mut Optional ("b", TMisc "B"), ObjectPair Mut Required ("c", TMisc "C")]
+        ObjectLit [ObjectPair Mut Required (OKeyIdent "a", TMisc "A"), ObjectPair Mut Optional (OKeyIdent "b", TMisc "B"), ObjectPair Mut Required (OKeyIdent "c", TMisc "C")]
 
     it "parses alternative method syntax" $ do
       parse' object "{ f?<A>(): void }" `shouldParse`
-        ObjectLit [ObjectPair Mut Optional ("f", TLambda $ Lambda (Just $ typeArgs' [TMisc "A"]) [] TVoid)]
+        ObjectLit [ObjectPair Mut Optional (OKeyIdent "f", TLambda $ Lambda (Just $ typeArgs' [TMisc "A"]) [] TVoid)]
 
     it "parses trailing delimiter in non-empty object" $ do
       parse' object "{ a: number; b: string, }" `shouldParse`
-        ObjectLit [ObjectPair Mut Required ("a", TMisc "number"), ObjectPair Mut Required ("b", TMisc "string")]
+        ObjectLit [ObjectPair Mut Required (OKeyIdent "a", TMisc "number"), ObjectPair Mut Required (OKeyIdent "b", TMisc "string")]
 
     it "parses mapped type" $ do
       parse' object "{ [K in A]: B }" `shouldParse`
@@ -391,14 +401,14 @@ spec = describe "TSHM.Parser" $ do
           "X"
           Nothing
           Nothing
-          (ObjectLit [ObjectPair Mut Required ("a", TMisc "A")])
+          (ObjectLit [ObjectPair Mut Required (OKeyIdent "a", TMisc "A")])
 
       p "interface X<A, B extends Array<A>> { a: A }" `shouldParse`
         Interface
           "X"
           (Just $ typeArgs' [TMisc "A", TSubtype "B" (TGeneric "Array" $ typeArgs' [TMisc "A"])])
           Nothing
-          (ObjectLit [ObjectPair Mut Required ("a", TMisc "A")])
+          (ObjectLit [ObjectPair Mut Required (OKeyIdent "a", TMisc "A")])
 
     it "parses with extends" $ do
       p "interface X extends B { a: A }" `shouldParse`
@@ -406,14 +416,14 @@ spec = describe "TSHM.Parser" $ do
           "X"
           Nothing
           (Just $ TMisc "B")
-          (ObjectLit [ObjectPair Mut Required ("a", TMisc "A")])
+          (ObjectLit [ObjectPair Mut Required (OKeyIdent "a", TMisc "A")])
 
       p "interface X<A, B extends Array<A>> extends C { a: A }" `shouldParse`
         Interface
           "X"
           (Just $ typeArgs' [TMisc "A", TSubtype "B" (TGeneric "Array" $ typeArgs' [TMisc "A"])])
           (Just $ TMisc "C")
-          (ObjectLit [ObjectPair Mut Required ("a", TMisc "A")])
+          (ObjectLit [ObjectPair Mut Required (OKeyIdent "a", TMisc "A")])
 
   describe "constDec" $ do
     let p = parse' $ constDec <* eof
@@ -483,4 +493,4 @@ spec = describe "TSHM.Parser" $ do
         SignatureConstDec (ConstDec "unary" (TLambda (Lambda (Just $ typeArgs' [TSubtype "A" (TGeneric "Array" $ typeArgs' [TUnknown]), TMisc "B"]) [(Required, Normal, TLambda (Lambda Nothing [(Required, Rest, TMisc "A")] (TMisc "B")))] (TLambda (Lambda Nothing [(Required, Normal, TMisc "A")] (TMisc "B"))))))
 
       parse' signature "export interface Some<A> { readonly _tag: 'Some', readonly value: A }" `shouldParse`
-        SignatureInterface (Interface "Some" (Just $ typeArgs' [TMisc "A"]) Nothing (ObjectLit [ObjectPair Immut Required ("_tag", TString "Some"), ObjectPair Immut Required ("value", TMisc "A")]))
+        SignatureInterface (Interface "Some" (Just $ typeArgs' [TMisc "A"]) Nothing (ObjectLit [ObjectPair Immut Required (OKeyIdent "_tag", TString "Some"), ObjectPair Immut Required (OKeyIdent "value", TMisc "A")]))

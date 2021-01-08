@@ -23,8 +23,15 @@ data Partial
   | Optional
   deriving (Eq, Show)
 
+data ObjectKey
+  = OKeyIdent String
+  | OKeyStr String
+  | OKeyNum String
+  | OKeyComputed Expr
+  deriving (Eq, Show)
+
 data ObjectPair
-  = ObjectPair Mutant Partial (String, Expr)
+  = ObjectPair Mutant Partial (ObjectKey, Expr)
   deriving (Eq, Show)
 
 -- Represents the positive or negative nature of the readonly modifier in

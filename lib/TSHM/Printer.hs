@@ -94,13 +94,19 @@ generic (x, ys) = do
           modify $ \s -> s { ambiguouslyNested = False }
           pure res
 
+objectKey :: ObjectKey -> Printer'
+objectKey (OKeyIdent x)    = pure x
+objectKey (OKeyStr x)      = pure $ "\"" <> x <> "\""
+objectKey (OKeyNum x)      = pure x
+objectKey (OKeyComputed x) = surround "[" "]" <$> expr x
+
 objectPair :: ObjectPair -> Printer'
-objectPair (ObjectPair m p (k, v)) = do
+objectPair (ObjectPair m p (kt, vt)) = do
   cfgRO <- readonly <$> ask
   let ro = if cfgRO && m == Immut then "readonly " else ""
   let delim = if p == Required then ": " else "?: "
 
-  surrounding delim (ro <> k) <$> expr v
+  (\k v -> ro <> k <> delim <> v) <$> objectKey kt <*> expr vt
 
 unOp :: UnOp -> Expr -> Printer'
 unOp o t = do
