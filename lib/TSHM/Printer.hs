@@ -123,6 +123,10 @@ binOp o l r = do
         op BinOpIntersection = "&"
         op BinOpUnion        = "|"
 
+template :: TemplateToken -> Printer'
+template (TemplateStr x)  = pure x
+template (TemplateExpr x) = surround "${" "}" <$> expr x
+
 expr :: Expr -> Printer'
 expr t = do
   res <- f t
@@ -138,6 +142,7 @@ expr t = do
         f (TBoolean x)           = pure $ if x then "true" else "false"
         f (TMisc x)              = misc x
         f (TString x)            = pure $ "\"" <> x <> "\""
+        f (TTemplate xs)         = surround "`" "`" . intercalate "" <$> mapM template xs
         f (TNumber x)            = pure x
         f (TTuple xs)            = surround "[" "]" . intercalate ", " <$> mapM expr xs
         f (TGeneric x ys)        = generic (x, ys)

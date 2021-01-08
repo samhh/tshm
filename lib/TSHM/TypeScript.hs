@@ -50,6 +50,11 @@ data Object
 
 type TypeArg = (Expr, Maybe Expr)
 
+data TemplateToken
+  = TemplateStr String
+  | TemplateExpr Expr
+  deriving (Eq, Show)
+
 data Expr
   = TAny
   | TUnknown
@@ -61,6 +66,7 @@ data Expr
   | TBoolean Bool
   | TMisc String
   | TString String
+  | TTemplate [TemplateToken]
   -- This is represented as a string because numbers are hard and tend to
   -- differ a fair amount between languages. We don't actually need to do any
   -- arithmetic, so this keeps things simple!

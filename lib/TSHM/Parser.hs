@@ -105,6 +105,7 @@ expr = (`makeExprParser` operators) $ choice
   , TUniqueSymbol <$ sym "unique symbol"
   , TBoolean <$> ((True <$ keyword "true") <|> (False <$ keyword "false"))
   , TString <$> str
+  , TTemplate <$> template
   , TNumber <$> num
   , TTuple <$> tuple
   , TObject <$> object
@@ -129,6 +130,23 @@ str = lex $ strOf '\'' <|> strOf '"'
           let p = char c
            in p *> manyTill L.charLiteral p
 
+template :: Parser [TemplateToken]
+template = char '`' *> go <* sym "`"
+  where go :: Parser [TemplateToken]
+        go = do
+          s <- guard' <$> manyTill L.charLiteral (lookAhead $ string "${" <|> string "`")
+          isInterp <- True <$ lookAhead (string "${") <|> False <$ lookAhead (string "`")
+
+          if isInterp
+             then ((s <>) .) . (:) <$> interp <*> go
+             else pure s
+
+        interp :: Parser TemplateToken
+        interp = TemplateExpr <$> (sym "${" *> expr <* char '}')
+
+        guard' :: String -> [TemplateToken]
+        guard' = foldMap (pure . TemplateStr) . (guarded (not . null) :: String -> Maybe String)
+
 num :: Parser String
 num = lex $ (<>) . foldMap pure <$> optional (char '-') <*> choice
   [ try $ (\x y z -> x <> pure y <> z) <$> some numberChar <*> char '.' <*> some numberChar
@@ -147,7 +165,7 @@ object = braces inner
                 roMod
             <*> (sym "[" *> ident)
             <*> (sym "in" *> expr)
-            <*> (optional $ sym "as" *> expr)
+            <*> optional (sym "as" *> expr)
             <*> (sym "]" *> mappedDelim)
             <*> (expr <* optional (sym "," <|> sym ";"))
           , ObjectLit <$> sepEndBy pair litDelim

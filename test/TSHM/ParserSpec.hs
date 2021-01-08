@@ -46,6 +46,21 @@ spec = describe "TSHM.Parser" $ do
     it "parses string literal" $ do
       parse' expr "'abc'" `shouldParse` TString "abc"
 
+    it "parses template literal string" $ do
+      parse' expr "``" `shouldParse` TTemplate []
+      parse' expr "`abc`" `shouldParse` TTemplate [TemplateStr "abc"]
+      parse' expr "`${any}`" `shouldParse` TTemplate [TemplateExpr TAny]
+      parse' expr "`abc${any}xyz${void}${x}`" `shouldParse`
+        TTemplate [TemplateStr "abc", TemplateExpr TAny, TemplateStr "xyz", TemplateExpr TVoid, TemplateExpr (TMisc "x")]
+      parse' expr "`${Quantity | Color} fish`" `shouldParse`
+        TTemplate [TemplateExpr (TBinOp BinOpUnion (TMisc "Quantity") (TMisc "Color")), TemplateStr " fish"]
+      parse' expr "`${string & keyof T}Changed`" `shouldParse`
+        TTemplate [TemplateExpr (TBinOp BinOpIntersection (TMisc "string") (TUnOp UnOpKeys (TMisc "T"))), TemplateStr "Changed"]
+      parse' expr "`${string & keyof A}${`Changed`}`" `shouldParse`
+        TTemplate [TemplateExpr (TBinOp BinOpIntersection (TMisc "string") (TUnOp UnOpKeys (TMisc "A"))), TemplateExpr (TTemplate [TemplateStr "Changed"])]
+      parse' expr "`${string & keyof A}${`Ch${'ang'}ed`}`" `shouldParse`
+        TTemplate [TemplateExpr (TBinOp BinOpIntersection (TMisc "string") (TUnOp UnOpKeys (TMisc "A"))), TemplateExpr (TTemplate [TemplateStr "Ch", TemplateExpr (TString "ang"), TemplateStr "ed"])]
+
     it "parses number literal" $ do
       parse' expr "-.123" `shouldParse` TNumber "-.123"
 
@@ -407,7 +422,6 @@ spec = describe "TSHM.Parser" $ do
   describe "fnDec" $ do
     let p = parse' $ fnDec <* eof
 
-    -- type Param = (Partial, ParamScope, Expr)
     it "parses" $ do
       p "declare function f<A>(x: A): <B extends A>(y: B) => C" `shouldParse` FunctionDec "f" (Lambda (Just $ typeArgs' [TMisc "A"]) [(Required, Normal, TMisc "A")] (TLambda $ Lambda (Just $ typeArgs' [TSubtype "B" (TMisc "A")]) [(Required, Normal, TMisc "B")] (TMisc "C")))
 
