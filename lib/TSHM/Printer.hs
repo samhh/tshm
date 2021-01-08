@@ -217,8 +217,12 @@ enum :: SEnum -> Printer'
 enum x = (\ys -> "enum " <> enumName x <> " {" <> (if null ys then "" else " ") <> intercalate ", " ys <> " }") <$>
   mapM enumMember (enumMembers x)
   where enumMember :: EnumMember -> Printer'
-        enumMember (EnumMember k Nothing) = pure k
-        enumMember (EnumMember k (Just v)) = ((k <> " = ") <>) <$> expr v
+        enumMember (EnumMember k Nothing)  = pure $ enumKey k
+        enumMember (EnumMember k (Just v)) = ((enumKey k <> " = ") <>) <$> expr v
+
+        enumKey :: EnumKey -> String
+        enumKey (EKeyIdent k) = k
+        enumKey (EKeyStr k)   = "\"" <> k <> "\""
 
 data RenderedPrintState = RenderedPrintState
   { renderedTypeArgs :: String

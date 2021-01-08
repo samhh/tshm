@@ -122,7 +122,12 @@ data Interface = Interface
   , interfaceType     :: Object
   } deriving (Eq, Show)
 
-data EnumMember = EnumMember String (Maybe Expr)
+data EnumKey
+  = EKeyIdent String
+  | EKeyStr String
+  deriving (Eq, Show)
+
+data EnumMember = EnumMember EnumKey (Maybe Expr)
   deriving (Eq, Show)
 
 data SEnum = SEnum
