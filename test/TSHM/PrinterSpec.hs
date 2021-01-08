@@ -67,6 +67,9 @@ spec = describe "TSHM.Printer" $ do
       , "}"
       ]) =*= "type Evt a = { on: (`${string & keyof a}Changed`, (() -> void)) -> void }"
 
+  it "prints dot access" $ do
+    pp "type X = { k: MyEnum.Member }" =*= "type X = { k: MyEnum.Member }"
+
   it "prints type aliases" $ do
     pp "type X = string" =*= "type X = string"
     pp "type X<A> = string" =*= "type X a = string"

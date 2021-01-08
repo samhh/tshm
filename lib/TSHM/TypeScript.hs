@@ -74,6 +74,7 @@ data Expr
   | TTuple [Expr]
   | TObject Object
   | TIndexedAccess Expr Expr
+  | TDotAccess Expr String
   | TGeneric String (NonEmpty TypeArg)
   | TSubtype String Expr
   | TLambda Lambda

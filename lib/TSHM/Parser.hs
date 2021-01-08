@@ -64,6 +64,7 @@ operators =
   [ [ Postfix $ multi
       (   try (flip TIndexedAccess <$> bracks expr)
       <|> TGeneric "Array" . pure . (, Nothing) <$ symN "[" <* sym "]"
+      <|> flip TDotAccess <$> (sym "." *> ident)
       )
     ]
   , [ Prefix $ TUnOp UnOpReflection <$ sym "typeof "
@@ -87,6 +88,10 @@ identTailChar = identHeadChar <|> numberChar
 -- I can't find any documentation for this, but TypeScript appears to follow
 -- the same rules for type-level identifiers as JavaScript does for runtime
 -- identifiers.
+-- Note that JavaScript property names are technically a superset of ordinary
+-- identifiers, behaving the same except also allowing reserved words. There's
+-- currently no distinction in this module as we don't perform any manner of
+-- correctness checking, making them for our purposes identical.
 ident :: Parser String
 ident = lex $ (:) <$> identHeadChar <*> (maybeToMonoid <$> optional (some identTailChar))
 

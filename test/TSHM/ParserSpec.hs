@@ -79,9 +79,12 @@ spec = describe "TSHM.Parser" $ do
         TIndexedAccess (TIndexedAccess (TBoolean True) (TString "k1")) (TString "k2")
       parse' expr "A[K]" `shouldParse` TIndexedAccess (TMisc "A") (TMisc "K")
 
+    it "parses dot notation" $ do
+      parse' expr "a.b.c.d" `shouldParse` TDotAccess (TDotAccess (TDotAccess (TMisc "a") "b") "c") "d"
+
     it "postfix operators play nicely together" $ do
-      parse' expr "a['k1']['k2'][][]['k3'][]" `shouldParse`
-        TGeneric "Array" (typeArgs' [TIndexedAccess (TGeneric "Array" (typeArgs' [TGeneric "Array" (typeArgs' [TIndexedAccess (TIndexedAccess (TMisc "a") (TString "k1")) (TString "k2")])])) (TString "k3")])
+      parse' expr "a['k1']['k2'][][].x['k3'][]" `shouldParse`
+        TGeneric "Array" (typeArgs' [TIndexedAccess (TDotAccess (TGeneric "Array" (typeArgs' [TGeneric "Array" (typeArgs' [TIndexedAccess (TIndexedAccess (TMisc "a") (TString "k1")) (TString "k2")])])) "x") (TString "k3")])
 
     it "parses function" $ do
       parse' expr "<A, B>(a: A) => B" `shouldParse`

@@ -149,6 +149,7 @@ expr t = do
         f (TSubtype x y)         = subtype x y
         f (TObject xs)           = object xs
         f (TIndexedAccess tv tk) = (\v k -> v <> "[" <> k <> "]") <$> ambiguouslyNestedExpr tv <*> expr tk
+        f (TDotAccess x y)       = (<> "." <> y) <$> expr x
         f (TLambda x)            = lambda x
         f (TUnOp x y)            = unOp x y
         f (TBinOp x y z)         = binOp x y z
