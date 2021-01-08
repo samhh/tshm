@@ -86,6 +86,10 @@ spec = describe "TSHM.Parser" $ do
       parse' expr "a['k1']['k2'][][].x['k3'][]" `shouldParse`
         TGeneric "Array" (typeArgs' [TIndexedAccess (TDotAccess (TGeneric "Array" (typeArgs' [TGeneric "Array" (typeArgs' [TIndexedAccess (TIndexedAccess (TMisc "a") (TString "k1")) (TString "k2")])])) "x") (TString "k3")])
 
+    it "parses conditional types" $ do
+      parse' expr "a extends b ? c : d extends e ? f : g" `shouldParse`
+        TCond (TMisc "a") (TMisc "b") (TMisc "c") (TCond (TMisc "d") (TMisc "e") (TMisc "f") (TMisc "g"))
+
     it "parses function" $ do
       parse' expr "<A, B>(a: A) => B" `shouldParse`
          TLambda (Lambda (Just $ typeArgs' [TMisc "A", TMisc "B"]) [(Required, Normal, TMisc "A")] (TMisc "B"))

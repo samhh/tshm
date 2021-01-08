@@ -89,6 +89,7 @@ data Expr
   | TLambda Lambda
   | TUnOp UnOp Expr
   | TBinOp BinOp Expr Expr
+  | TCond Expr Expr Expr Expr
   | TGrouped Expr
   deriving (Eq, Show)
 

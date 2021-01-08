@@ -161,6 +161,7 @@ expr t = do
         f (TLambda x)            = lambda x
         f (TUnOp x y)            = unOp x y
         f (TBinOp x y z)         = binOp x y z
+        f (TCond l r t f)        = cond l r t f
         f (TGrouped x)           = do
           modify $ \s -> s { ambiguouslyNested = False }
           surround "(" ")" <$> expr x
@@ -169,6 +170,10 @@ ambiguouslyNestedExpr :: Expr -> Printer'
 ambiguouslyNestedExpr t = do
   modify $ \s -> s { ambiguouslyNested = True }
   expr t
+
+cond :: Expr -> Expr -> Expr -> Expr -> Printer'
+cond lt rt tt ft = (\l r t f -> l <> " extends " <> r <> " ? " <> t <> " : " <> f) <$>
+  expr lt <*> expr rt <*> expr tt <*> expr ft
 
 modMut :: ModMut -> String
 modMut AddMut = "readonly"

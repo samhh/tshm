@@ -75,6 +75,8 @@ operators =
   , [ InfixR $ TBinOp BinOpIntersection <$ sym "&"
     , InfixR $ TBinOp BinOpUnion        <$ sym "|"
     ]
+  , [ TernR $ (\x -> (`TCond` x) <$ sym ":") <$> (sym "extends" *> expr <* sym "?")
+    ]
   ]
     where multi :: Alternative f => f (a -> a) -> f (a -> a)
           multi f = foldr1 (flip (.)) <$> some f

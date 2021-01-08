@@ -204,13 +204,12 @@ spec = describe "TSHM.Printer" $ do
       pp "export declare function fromCompare<A>(compare: (x: A, y: A) => Ordering): Ord<A>" =*=
         "fromCompare :: forall a. ((a, a) -> Ordering) -> Ord a"
 
-      -- Requires: conditional types
-      -- pp (unlines'
-      --   [ "export declare function getTupleOrd<T extends ReadonlyArray<Ord<any>>>("
-      --   , "  ...ords: T"
-      --   , "): Ord<{ [K in keyof T]: T[K] extends Ord<infer A> ? A : never }>"
-      --   ]) =*=
-      --   "getTupleOrd :: forall t. t extends ReadonlyArray (Ord any) => ...t -> Ord [MAPPED]"
+      pp (unlines'
+        [ "export declare function getTupleOrd<T extends ReadonlyArray<Ord<any>>>("
+        , "  ...ords: T"
+        , "): Ord<{ [K in keyof T]: T[K] extends Ord<infer A> ? A : never }>"
+        ]) =*=
+        "getTupleOrd :: forall t. t extends (ReadonlyArray (Ord any)) => ...t -> Ord { [K in (keyof t)]: t[K] extends (Ord (infer A)) ? A : never }"
 
     it "fp-ts/TaskEither" $ do
       pp (unlines'
