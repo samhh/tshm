@@ -162,40 +162,18 @@ num = lex $ (<>) . foldMap pure <$> optional (char '-') <*> choice
 tuple :: Parser [Expr]
 tuple = bracks $ sepEndBy expr (sym ",")
 
-object :: Parser Object
-object = braces inner
-  where inner :: Parser Object
-        inner = choice
-          [ try $ (\m k x a req v  -> ObjectMapped m req (k, x, a) v) <$>
-                roMod
-            <*> (sym "[" *> ident)
-            <*> (sym "in" *> expr)
-            <*> optional (sym "as" *> expr)
-            <*> (sym "]" *> mappedDelim)
-            <*> (expr <* optional (sym "," <|> sym ";"))
-          , ObjectLit <$> sepEndBy litPair litDelim
-          ]
-
-        litPair :: Parser ObjectPair
-        litPair = choice
-          [ try $ (\m s p e -> ObjectPair m p (s, e)) <$>
-            ro <*> litKey <*> (opt <* sym ":") <*> expr
-          , (\m n q g p r  -> ObjectPair m q (n, TLambda $ Lambda g p r)) <$>
-            ro <*> litKey <*> opt <*> optional typeArgs <*> params <*> (sym ":" *> expr)
-          ]
-          where opt :: Parser Partial
-                opt = bool Required Optional . isJust <$> optional (char '?')
-
-        litKey :: Parser ObjectKey
-        litKey = choice
+objLitProps :: Parser Object
+objLitProps = ObjectLit <$> sepEndBy prop delim
+  where key :: Parser ObjectKey
+        key = choice
           [ OKeyIdent <$> ident
           , OKeyStr <$> str
           , OKeyNum <$> num
           , OKeyComputed <$> bracks expr
           ]
 
-        litDelim :: Parser ()
-        litDelim =
+        delim :: Parser ()
+        delim =
               () <$ symN ","
           <|> () <$ symN ";"
           -- Consume any leading whitespace, then ensure there's at least one
@@ -204,8 +182,29 @@ object = braces inner
           -- closing brace.
           <|> try (sc <* newline <* scN <* notFollowedBy (char '}'))
 
-        mappedDelim :: Parser (Maybe ModOpt)
-        mappedDelim = optional ((const RemOpt <$ sym "-" <|> const AddOpt <$ optional (sym "+")) <*> sym "?") <* sym ":"
+        prop :: Parser ObjectPair
+        prop = choice
+          [ try $ (\m s p e -> ObjectPair m p (s, e)) <$>
+            ro <*> key <*> (opt <* sym ":") <*> expr
+          , (\m n q g p r  -> ObjectPair m q (n, TLambda $ Lambda g p r)) <$>
+            ro <*> key <*> opt <*> optional typeArgs <*> params <*> (sym ":" *> expr)
+          ]
+          where opt :: Parser Partial
+                opt = bool Required Optional . isJust <$> optional (char '?')
+
+objMappedProps :: Parser Object
+objMappedProps = (\m k x a req v  -> ObjectMapped m req (k, x, a) v) <$>
+      roMod
+  <*> (sym "[" *> ident)
+  <*> (sym "in" *> expr)
+  <*> optional (sym "as" *> expr)
+  <*> (sym "]" *> delim)
+  <*> (expr <* optional (sym "," <|> sym ";"))
+  where delim :: Parser (Maybe ModOpt)
+        delim = optional ((const RemOpt <$ sym "-" <|> const AddOpt <$ optional (sym "+")) <*> sym "?") <* sym ":"
+
+object :: Parser Object
+object = braces $ try objMappedProps <|> objLitProps
 
 typeArgs :: Parser (NonEmpty TypeArg)
 typeArgs = angles (NE.sepEndBy1 typeArg (sym ","))
