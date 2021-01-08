@@ -70,6 +70,7 @@ operators =
   , [ Prefix $ TUnOp UnOpReflection <$ sym "typeof "
     , Prefix $ TUnOp UnOpKeys       <$ sym "keyof "
     , Prefix $ TUnOp UnOpReadonly   <$ sym "readonly "
+    , Prefix $ TUnOp UnOpInfer      <$ sym "infer "
     ]
   , [ InfixR $ TBinOp BinOpIntersection <$ sym "&"
     , InfixR $ TBinOp BinOpUnion        <$ sym "|"

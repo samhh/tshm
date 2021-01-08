@@ -6,6 +6,7 @@ data UnOp
   = UnOpReflection
   | UnOpKeys
   | UnOpReadonly
+  | UnOpInfer
   deriving (Eq, Show)
 
 data BinOp

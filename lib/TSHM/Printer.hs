@@ -119,6 +119,7 @@ unOp o t = do
           op UnOpReflection = "typeof"
           op UnOpKeys       = "keyof"
           op UnOpReadonly   = "readonly"
+          op UnOpInfer      = "infer"
 
 binOp :: BinOp -> Expr -> Expr -> Printer'
 binOp o l r = do
