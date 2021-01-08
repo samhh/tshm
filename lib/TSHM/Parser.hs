@@ -273,12 +273,20 @@ interface = Interface
   <*> optional (try $ sym "extends" *> expr)
   <*> object
 
+enum :: Parser SEnum
+enum = SEnum
+  <$> (optional (sym "export") *> optional (sym "declare") *> optional (sym "const") *> sym "enum" *> ident)
+  <*> braces (sepEndBy member (symN ","))
+  where member :: Parser EnumMember
+        member = EnumMember <$> ident <*> (sym "=" *> expr)
+
 signature :: Parser Signature
 signature = sc *> choice
   [ try $ SignatureAlias <$> alias
   , try $ SignatureInterface <$> interface
   , try $ SignatureConstDec <$> constDec
-  , SignatureFunctionDec <$> NE.sepBy1 fnDec (some newline)
+  , try $ SignatureFunctionDec <$> NE.sepBy1 fnDec (some newline)
+  , SignatureEnum <$> enum
   ] <* eof
 
 parseSignature :: String -> ParseOutput

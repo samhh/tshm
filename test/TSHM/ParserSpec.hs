@@ -425,6 +425,16 @@ spec = describe "TSHM.Parser" $ do
     it "parses" $ do
       p "declare function f<A>(x: A): <B extends A>(y: B) => C" `shouldParse` FunctionDec "f" (Lambda (Just $ typeArgs' [TMisc "A"]) [(Required, Normal, TMisc "A")] (TLambda $ Lambda (Just $ typeArgs' [TSubtype "B" (TMisc "A")]) [(Required, Normal, TMisc "B")] (TMisc "C")))
 
+  describe "enum" $ do
+    let p = parse' $ enum <* eof
+
+    it "parses" $ do
+      p "enum X {}" `shouldParse` SEnum "X" []
+      p "enum X { A = 0, B = '1' }" `shouldParse` SEnum "X"
+        [ EnumMember "A" (TNumber "0")
+        , EnumMember "B" (TString "1")
+        ]
+
   describe "signature" $ do
     it "parses and skips comments" $ do
       parse' signature "/**/declare /*x*/const/**/ x/* x xx xxx */: void/**///x" `shouldParse` SignatureConstDec (ConstDec "x" TVoid)

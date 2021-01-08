@@ -121,6 +121,14 @@ data Interface = Interface
   , interfaceType     :: Object
   } deriving (Eq, Show)
 
+data EnumMember = EnumMember String Expr
+  deriving (Eq, Show)
+
+data SEnum = SEnum
+  { enumName    :: String
+  , enumMembers :: [EnumMember]
+  } deriving (Eq, Show)
+
 fromInterface :: Interface -> Alias
 fromInterface x = Alias (interfaceName x) (interfaceTypeArgs x) t
   where obj = TObject $ interfaceType x
@@ -133,5 +141,6 @@ data Signature
   | SignatureInterface Interface
   | SignatureConstDec ConstDec
   | SignatureFunctionDec (NonEmpty FunctionDec)
+  | SignatureEnum SEnum
   deriving (Eq, Show)
 

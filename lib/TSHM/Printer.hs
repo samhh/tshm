@@ -212,6 +212,12 @@ interface x = case isNewtype =<< interfaceExtends x of
   Just y  -> fnewtype (interfaceName x) y
   Nothing -> alias $ fromInterface x
 
+enum :: SEnum -> Printer'
+enum x = (\ys -> "enum " <> enumName x <> " {" <> (if null ys then "" else " ") <> intercalate ", " ys <> " }") <$>
+  mapM enumMember (enumMembers x)
+  where enumMember :: EnumMember -> Printer'
+        enumMember (EnumMember k v) = ((k <> " = ") <>) <$> expr v
+
 data RenderedPrintState = RenderedPrintState
   { renderedTypeArgs :: String
   , renderedSubtypes :: String
@@ -243,10 +249,11 @@ renderPrintState = do
 
 fsignature :: Printer'
 fsignature = f . signature =<< ask
-  where f (SignatureAlias x)                          = alias x
-        f (SignatureInterface x)                      = interface x
-        f (SignatureConstDec x)               = constDec x
-        f (SignatureFunctionDec xs)            = intercalate "\n" <$> mapM (clean lambdaDec) (toList xs)
+  where f (SignatureAlias x)        = alias x
+        f (SignatureInterface x)    = interface x
+        f (SignatureConstDec x)     = constDec x
+        f (SignatureFunctionDec xs) = intercalate "\n" <$> mapM (clean lambdaDec) (toList xs)
+        f (SignatureEnum x)         = enum x
 
         clean :: (a -> Printer') -> a -> Printer'
         clean p x = do
