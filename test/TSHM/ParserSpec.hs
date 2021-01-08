@@ -433,9 +433,11 @@ spec = describe "TSHM.Parser" $ do
 
     it "parses" $ do
       p "enum X {}" `shouldParse` SEnum "X" []
-      p "enum X { A = 0, B = '1' }" `shouldParse` SEnum "X"
-        [ EnumMember "A" (TNumber "0")
-        , EnumMember "B" (TString "1")
+      p "enum X { A, B }" `shouldParse` SEnum "X" [EnumMember "A" Nothing, EnumMember "B" Nothing]
+      p "enum X { A = 0, B, C = '1' }" `shouldParse` SEnum "X"
+        [ EnumMember "A" (Just $ TNumber "0")
+        , EnumMember "B" Nothing
+        , EnumMember "C" (Just $ TString "1")
         ]
 
   describe "signature" $ do

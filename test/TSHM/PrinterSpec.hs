@@ -100,10 +100,10 @@ spec = describe "TSHM.Printer" $ do
 
   it "prints enums" $ do
     pp "enum X {}" =*= "enum X { }"
-    pp "enum X { A = 0, B = '1' }" =*= "enum X { A = 0, B = \"1\" }"
-    pp "const enum X { A = 0, B = '1' }" =*= "enum X { A = 0, B = \"1\" }"
-    pp "declare enum X { A = 0, B = '1' }" =*= "enum X { A = 0, B = \"1\" }"
-    pp "declare const enum X { A = 0, B = '1' }" =*= "enum X { A = 0, B = \"1\" }"
+    pp "enum X { A = 0, B, C = '1' }" =*= "enum X { A = 0, B, C = \"1\" }"
+    pp "const enum X { A = 0, B, C = '1' }" =*= "enum X { A = 0, B, C = \"1\" }"
+    pp "declare enum X { A = 0, B, C = '1' }" =*= "enum X { A = 0, B, C = \"1\" }"
+    pp "declare const enum X { A = 0, B, C = '1' }" =*= "enum X { A = 0, B, C = \"1\" }"
 
   it "prints universal quantification and subtypes" $ do
     pp "type X = <A>(x: A) => <B>(y: B) => <C, D extends A, E extends Partial<A>>(c: [C, D, E]) => Either<E, C & D>" =*=

@@ -283,7 +283,7 @@ enum = SEnum
   <$> (optional (sym "export") *> optional (sym "declare") *> optional (sym "const") *> sym "enum" *> ident)
   <*> braces (sepEndBy member (symN ","))
   where member :: Parser EnumMember
-        member = EnumMember <$> ident <*> (sym "=" *> expr)
+        member = EnumMember <$> ident <*> optional (sym "=" *> expr)
 
 signature :: Parser Signature
 signature = sc *> choice
