@@ -44,5 +44,5 @@ Messages are always printed upon failure. Should the failure be due to a parser 
 
 At present, the parser can reliably parse a single input declaration. Within this declaration, subjectively speaking, the most common forms of TypeScript syntax are supported. Long-term, the intention is that all syntax deemed valid by the language proper will be supported.
 
-The parser does not perform any sort of correctness checking beyond its ability to understand the syntax. It may be a little strict about whitespace in some areas; if any specific cases can be identified, please feel free to raise an issue or a PR fixing it.
+The parser does not perform any sort of correctness checking beyond its ability to understand the syntax.
 

@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.3.0 -- 2021-01-09
+
+This release includes a couple of breaking changes to the CLI interface.
+
+What was previously the default argument (code input) is now intended to be passed to the `-e`/`--eval` flag. The default argument is now a filepath.
+
+The other is that the `-r`/`--readonly` switch has been added to allow you to toggle the display of readonly modifiers. The breaking change is that this defaults to false, whereas they were always printed previously.
+
+Onto the parser, the following syntax is now supported:
+
+- Enums
+- String literal, number literal, computed, and index signature object literal keys
+- Mapped types
+- Inferred types
+- Conditional types
+- Template literal types
+- Function parameter name destructuring
+
+Additionally, the parser is now much, much less strict about whitespace. In some places it's more permissive than TypeScript itself!
+
+Finally, some inconsistencies in the identifier parser have been addressed.
+
 ## 0.2.0 -- 2021-01-04
 
 This release adds support for the `-f`/`--forall` flag, which can be used to specify how to express universal quantification. A breaking change here is that tshm no longer renders universal quantification by default (this can be enforced with the special input "none"). Examples:
