@@ -3,7 +3,7 @@ module Main (main) where
 import qualified Control.Exception    as E
 import           Prelude
 import           System.Environment   (getArgs)
-import           TSHM.Parser          (parseSignature)
+import           TSHM.Parser          (parseDeclaration)
 import           TSHM.Printer         (PrintConfig (PrintConfig), printSignature)
 import           Text.Megaparsec      hiding (many, some)
 import           Text.Megaparsec.Char
@@ -59,7 +59,7 @@ reconstruct = foldMap f
           <> "```ts\n"
           <> x
           <> "\n```"
-          <> (either (const "") (surround "\n\n```hs\n" "\n```" . printSignature . flip PrintConfig Nothing) . parseSignature $ x)
+          <> (either (const "") (surround "\n\n```hs\n" "\n```" . printSignature . (\y -> PrintConfig y Nothing False)) . parseDeclaration $ x)
 
 surround :: Semigroup a => a -> a -> a -> a
 surround l r x = l <> x <> r
