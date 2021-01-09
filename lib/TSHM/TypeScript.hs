@@ -6,7 +6,6 @@ data UnOp
   = UnOpReflection
   | UnOpKeys
   | UnOpReadonly
-  | UnOpInfer
   deriving (Eq, Show)
 
 data BinOp
@@ -90,6 +89,9 @@ data Expr
   | TUnOp UnOp Expr
   | TBinOp BinOp Expr Expr
   | TCond Expr Expr Expr Expr
+  -- This is defined here as opposed to with the other unary operators as it
+  -- can only precede a new identifier.
+  | TInfer String
   | TGrouped Expr
   deriving (Eq, Show)
 

@@ -209,7 +209,7 @@ spec = describe "TSHM.Printer" $ do
         , "  ...ords: T"
         , "): Ord<{ [K in keyof T]: T[K] extends Ord<infer A> ? A : never }>"
         ]) =*=
-        "getTupleOrd :: forall t. t extends (ReadonlyArray (Ord any)) => ...t -> Ord { [k in (keyof t)]: t[k] extends (Ord (infer A)) ? A : never }"
+        "getTupleOrd :: forall t. t extends (ReadonlyArray (Ord any)) => ...t -> Ord { [k in (keyof t)]: t[k] extends (Ord (infer a)) ? a : never }"
 
     it "fp-ts/TaskEither" $ do
       pp (unlines'

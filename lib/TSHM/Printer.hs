@@ -42,8 +42,8 @@ misc :: String -> Printer'
 -- or mapped type, then lowercase it
 misc [x] = do
   tas <- ((<>) <$> implicitTypeArgs <*> explicitTypeArgs) <$> get
-  ks <- mappedTypeKeys <$> get
-  pure . pure $ if elem (pure x) ks || any (isViable . fst) tas then toLower x else x
+  ys <- ((<>) <$> mappedTypeKeys <*> inferredTypes) <$> get
+  pure . pure $ if elem (pure x) ys || any (isViable . fst) tas then toLower x else x
   where isViable :: Expr -> Bool
         isViable (TMisc [y])      = y == x
         isViable (TSubtype [y] _) = y == x
@@ -109,6 +109,12 @@ objectPair (ObjectPair m p (kt, vt)) = do
 
   (\k v -> ro <> k <> delim <> v) <$> objectKey kt <*> expr vt
 
+infer :: String -> Printer'
+infer x = do
+  modify (\s -> s { inferredTypes = x : inferredTypes s })
+  nested <- ambiguouslyNested <$> get
+  doIf (surround "(" ")") nested . ("infer " <>) <$> misc x
+
 unOp :: UnOp -> Expr -> Printer'
 unOp o t = do
   cfgRO <- readonly <$> ask
@@ -119,7 +125,6 @@ unOp o t = do
           op UnOpReflection = "typeof"
           op UnOpKeys       = "keyof"
           op UnOpReadonly   = "readonly"
-          op UnOpInfer      = "infer"
 
 binOp :: BinOp -> Expr -> Expr -> Printer'
 binOp o l r = do
@@ -159,9 +164,10 @@ expr t = do
         f (TIndexedAccess tv tk) = (\v k -> v <> "[" <> k <> "]") <$> ambiguouslyNestedExpr tv <*> expr tk
         f (TDotAccess x y)       = (<> "." <> y) <$> expr x
         f (TLambda x)            = lambda x
+        f (TInfer x)             = infer x
         f (TUnOp x y)            = unOp x y
         f (TBinOp x y z)         = binOp x y z
-        f (TCond l r t f)        = cond l r t f
+        f (TCond l r tt ff)      = cond l r tt ff
         f (TGrouped x)           = do
           modify $ \s -> s { ambiguouslyNested = False }
           surround "(" ")" <$> expr x
@@ -287,6 +293,7 @@ data PrintState = PrintState
   , explicitTypeArgs     :: [TypeArg]
   , implicitTypeArgs     :: [TypeArg]
   , mappedTypeKeys       :: [String]
+  , inferredTypes        :: [String]
   }
 
 data PrintConfig = PrintConfig
@@ -296,4 +303,4 @@ data PrintConfig = PrintConfig
   }
 
 printSignature :: PrintConfig -> String
-printSignature x = fst $ evalRWS fsignature x (PrintState False False [] [] [])
+printSignature x = fst $ evalRWS fsignature x (PrintState False False [] [] [] [])

@@ -70,7 +70,6 @@ operators =
   , [ Prefix $ TUnOp UnOpReflection <$ sym "typeof "
     , Prefix $ TUnOp UnOpKeys       <$ sym "keyof "
     , Prefix $ TUnOp UnOpReadonly   <$ sym "readonly "
-    , Prefix $ TUnOp UnOpInfer      <$ sym "infer "
     ]
   , [ InfixR $ TBinOp BinOpIntersection <$ sym "&"
     , InfixR $ TBinOp BinOpUnion        <$ sym "|"
@@ -118,6 +117,7 @@ expr = (`makeExprParser` operators) $ choice
   , TTuple <$> tuple
   , TObject <$> object
   , TLambda <$> lambda
+  , TInfer <$> (sym "infer" *> ident)
   , try generic
   , TMisc <$> ident
   ]
