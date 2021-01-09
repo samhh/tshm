@@ -274,18 +274,19 @@ renderPrintState = do
         matchSubtype (TSubtype y z, _) = Just (y, z)
         matchSubtype _                 = Nothing
 
-fsignature :: Printer'
-fsignature = f . signature =<< ask
-  where f (SignatureAlias x)        = alias x
-        f (SignatureInterface x)    = interface x
-        f (SignatureConstDec x)     = constDec x
-        f (SignatureFunctionDec xs) = intercalate "\n" <$> mapM (clean lambdaDec) (toList xs)
-        f (SignatureEnum x)         = enum x
-
-        clean :: (a -> Printer') -> a -> Printer'
+fsignature :: Signature -> Printer'
+fsignature (SignatureAlias x)        = alias x
+fsignature (SignatureInterface x)    = interface x
+fsignature (SignatureEnum x)         = enum x
+fsignature (SignatureConstDec x)     = constDec x
+fsignature (SignatureFunctionDec xs) = intercalate "\n" <$> mapM (clean lambdaDec) (toList xs)
+  where clean :: (a -> Printer') -> a -> Printer'
         clean p x = do
           modify $ \s -> s { implicitTypeArgs = [] }
           p x
+
+declaration :: Printer'
+declaration = fmap (intercalate "\n\n" . toList) . mapM fsignature . signatures =<< ask
 
 data PrintState = PrintState
   { ambiguouslyNested    :: Bool
@@ -309,10 +310,10 @@ instance Monoid PrintState where
   mempty = PrintState False False mempty mempty mempty mempty
 
 data PrintConfig = PrintConfig
-  { signature :: Signature
-  , forall    :: Maybe String
-  , readonly  :: Bool
+  { signatures :: NonEmpty Signature
+  , forall     :: Maybe String
+  , readonly   :: Bool
   }
 
 printSignature :: PrintConfig -> String
-printSignature x = fst $ evalRWS fsignature x mempty
+printSignature x = fst $ evalRWS declaration x mempty

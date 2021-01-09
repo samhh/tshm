@@ -3,31 +3,34 @@
 A parser and formatter for TypeScript declarations that outputs HM-style type signatures.
 
 ```
-Usage: tshm [-f|--forall string] input
+Usage: tshm (filepath | (-e|--eval code)) [-f|--forall string] [-r|--readonly]
   A parser and formatter for TypeScript declarations that outputs HM-style type
   signatures.
 
 Available options:
   -h,--help                Show this help text
+  filepath                 Read and evaluate the file at the provided path
+  -e,--eval code           Evaluate input code directly
   -f,--forall string       Specify a string to be used to express universal
                            quantification, for example "forall" or "∀". If set
                            to "none" or omitted, no universal quantification
                            will be displayed
+  -r,--readonly            Display readonly modifiers
 ```
 
 Example:
 
 ```
-$ tshm "export type Option<A> = None | Some<A>"
+$ tshm -e "export type Option<A> = None | Some<A>"
 type Option a = None | Some a
 
-$ tshm "export type Milliseconds = Newtype<{ readonly Milliseconds: unique symbol }, number>"
+$ tshm -e "export type Milliseconds = Newtype<{ readonly Milliseconds: unique symbol }, number>"
 newtype Milliseconds = number
 
-$ tshm "export declare const invertAll: <A>(f: (x: A) => string) => (x: Record<string, A>) => Record<string, string[]>"
+$ tshm -e "export declare const invertAll: <A>(f: (x: A) => string) => (x: Record<string, A>) => Record<string, string[]>"
 invertAll :: (a -> string) -> Record string a -> Record string (Array string)
 
-$ tshm --forall ∀ "export declare const withIndex: <A, B, C>(
+$ tshm --forall ∀ -e "export declare const withIndex: <A, B, C>(
     f: (g: (x: A) => B) => (ys: A[]) => C[]
   ) => (g: (i: number) => (x: A) => B) => (ys: A[]) => C[]"
 withIndex :: ∀ a b c. ((a -> b) -> Array a -> Array c) -> (number -> a -> b) -> Array a -> Array c

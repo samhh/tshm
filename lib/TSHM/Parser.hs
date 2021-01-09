@@ -290,16 +290,19 @@ enum = SEnum
         key = (EKeyStr <$> str) <|> (EKeyIdent <$> ident)
 
 signature :: Parser Signature
-signature = sc *> choice
+signature = choice
   [ try $ SignatureAlias <$> alias
   , try $ SignatureInterface <$> interface
   , try $ SignatureConstDec <$> constDec
   , try $ SignatureFunctionDec <$> NE.sepBy1 fnDec (some newline)
   , SignatureEnum <$> enum
-  ] <* eof
+  ]
 
-parseSignature :: String -> ParseOutput
-parseSignature = parse signature "input"
+declaration :: Parser (NonEmpty Signature)
+declaration = scN *> NE.some signature <* scN <* eof
 
-type ParseOutput = Either (ParseErrorBundle String Void) Signature
+parseDeclaration :: String -> ParseOutput
+parseDeclaration = parse declaration "input"
+
+type ParseOutput = Either (ParseErrorBundle String Void) (NonEmpty Signature)
 
