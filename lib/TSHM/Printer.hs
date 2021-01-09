@@ -296,6 +296,18 @@ data PrintState = PrintState
   , inferredTypes        :: [String]
   }
 
+instance Semigroup PrintState where
+  a <> b = PrintState
+    (ambiguouslyNested a || ambiguouslyNested b)
+    (immediateFunctionArg a || immediateFunctionArg b)
+    (explicitTypeArgs a <> explicitTypeArgs b)
+    (implicitTypeArgs a <> implicitTypeArgs b)
+    (mappedTypeKeys a <> mappedTypeKeys b)
+    (inferredTypes a <> inferredTypes b)
+
+instance Monoid PrintState where
+  mempty = PrintState False False mempty mempty mempty mempty
+
 data PrintConfig = PrintConfig
   { signature :: Signature
   , forall    :: Maybe String
@@ -303,4 +315,4 @@ data PrintConfig = PrintConfig
   }
 
 printSignature :: PrintConfig -> String
-printSignature x = fst $ evalRWS fsignature x (PrintState False False [] [] [] [])
+printSignature x = fst $ evalRWS fsignature x mempty
