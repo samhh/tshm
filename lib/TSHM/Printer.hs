@@ -39,15 +39,15 @@ params xs  = surround "(" ")" . intercalate ", " <$> mapM param xs
 
 misc :: String -> Printer'
 -- If the type is a single character, and we know about it from a type argument
--- somewhere, then lowercase it
-misc [x] = trans x . any (isViable . fst) . ((<>) <$> implicitTypeArgs <*> explicitTypeArgs) <$> get
+-- or mapped type, then lowercase it
+misc [x] = do
+  tas <- ((<>) <$> implicitTypeArgs <*> explicitTypeArgs) <$> get
+  ks <- mappedTypeKeys <$> get
+  pure . pure $ if elem (pure x) ks || any (isViable . fst) tas then toLower x else x
   where isViable :: Expr -> Bool
         isViable (TMisc [y])      = y == x
         isViable (TSubtype [y] _) = y == x
         isViable _                = False
-
-        trans :: Char -> Bool -> String
-        trans c b = pure $ if b then toLower c else c
 misc x   = pure x
 
 subtype :: String -> Expr -> Printer'
@@ -186,7 +186,8 @@ modOpt RemOpt = "-?:"
 object :: Object -> Printer'
 object (ObjectLit []) = pure "{}"
 object (ObjectLit xs) = surround "{ " " }" . intercalate ", " <$> mapM objectPair xs
-object (ObjectMapped m p (k, xt, asm) vt) = do
+object (ObjectMapped m p (kt, xt, asm) vt) = do
+  modify $ \s -> s { mappedTypeKeys = kt : mappedTypeKeys s }
   cfgRO <- readonly <$> ask
   let ro = foldMap ((<> " ") . modMut) . mfilter (const cfgRO) $ m
   let sep = maybe ":" modOpt p
@@ -194,6 +195,7 @@ object (ObjectMapped m p (k, xt, asm) vt) = do
     Nothing -> pure ""
     Just x  -> (" as " <>) <$> expr x
 
+  k <- misc kt
   x <- expr xt
   v <- expr vt
   pure $ "{ " <> ro <> "[" <> k <> " in " <> x <> as <> "]" <> sep <> " " <> v <> " }"
@@ -284,6 +286,7 @@ data PrintState = PrintState
   , immediateFunctionArg :: Bool
   , explicitTypeArgs     :: [TypeArg]
   , implicitTypeArgs     :: [TypeArg]
+  , mappedTypeKeys       :: [String]
   }
 
 data PrintConfig = PrintConfig
@@ -293,4 +296,4 @@ data PrintConfig = PrintConfig
   }
 
 printSignature :: PrintConfig -> String
-printSignature x = fst $ evalRWS fsignature x (PrintState False False [] [])
+printSignature x = fst $ evalRWS fsignature x (PrintState False False [] [] [])

@@ -48,14 +48,14 @@ spec = describe "TSHM.Printer" $ do
     ppWith Nothing False "declare const x: { -readonly [k in x]: v }" =*= "x :: { [k in x]: v }"
 
   it "prints optionality mapped type modifier" $ do
-    pp "declare const x: { [K in A]: B }" =*= "x :: { [K in A]: B }"
-    pp "declare const x: { [K in A]?: B }" =*= "x :: { [K in A]?: B }"
-    pp "declare const x: { [K in A]+?: B }" =*= "x :: { [K in A]?: B }"
-    pp "declare const x: { [K in A]-?: B }" =*= "x :: { [K in A]-?: B }"
+    pp "declare const x: { [K in A]: B }" =*= "x :: { [k in A]: B }"
+    pp "declare const x: { [K in A]?: B }" =*= "x :: { [k in A]?: B }"
+    pp "declare const x: { [K in A]+?: B }" =*= "x :: { [k in A]?: B }"
+    pp "declare const x: { [K in A]-?: B }" =*= "x :: { [k in A]-?: B }"
 
   it "prints mapped type as clause" $ do
     pp "type Ageless<A> = { [K in keyof A as Exclude<K, 'age'>]: A[K] }" =*=
-      "type Ageless a = { [K in keyof a as Exclude K \"age\"]: a[K] }"
+      "type Ageless a = { [k in keyof a as Exclude k \"age\"]: a[k] }"
 
   it "prints template literals" $ do
     pp "type X = `${Quantity | Color} fish`" =*=
@@ -110,7 +110,7 @@ spec = describe "TSHM.Printer" $ do
       "type X = forall a b c d e. d extends a, e extends (Partial a) => a -> b -> [c, d, e] -> Either e (c & d)"
 
   it "prints mapped types" $ do
-    pp "type X<A> = { [K in A]: A[K] }" =*= "type X a = { [K in a]: a[K] }"
+    pp "type X<A> = { [K in A]: A[K] }" =*= "type X a = { [k in a]: a[k] }"
 
   it "prints different object key types" $ do
     pp "type X = { a: a, 'b': b, 3.3: c, ['d']: d, [e]: e, [f: number]: f }" =*=
@@ -138,7 +138,7 @@ spec = describe "TSHM.Printer" $ do
       pp "export declare const chain: <A, B>(f: (a: A) => B[]) => (ma: A[]) => B[]" =*=
         "chain :: forall a b. (a -> Array b) -> Array a -> Array b"
       pp "export declare const bindTo: <N extends string>(name: N) => <A>(fa: A[]) => { [K in N]: A }[]" =*=
-        "bindTo :: forall n a. n extends string => n -> Array a -> Array { [K in n]: a }"
+        "bindTo :: forall n a. n extends string => n -> Array a -> Array { [k in n]: a }"
 
     it "fp-ts/Either" $ do
       pp "export type Either<E, A> = Left<E> | Right<A>" =*=
@@ -209,7 +209,7 @@ spec = describe "TSHM.Printer" $ do
         , "  ...ords: T"
         , "): Ord<{ [K in keyof T]: T[K] extends Ord<infer A> ? A : never }>"
         ]) =*=
-        "getTupleOrd :: forall t. t extends (ReadonlyArray (Ord any)) => ...t -> Ord { [K in (keyof t)]: t[K] extends (Ord (infer A)) ? A : never }"
+        "getTupleOrd :: forall t. t extends (ReadonlyArray (Ord any)) => ...t -> Ord { [k in (keyof t)]: t[k] extends (Ord (infer A)) ? A : never }"
 
     it "fp-ts/TaskEither" $ do
       pp (unlines'
