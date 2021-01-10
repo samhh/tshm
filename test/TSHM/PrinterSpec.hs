@@ -2,7 +2,7 @@ module TSHM.PrinterSpec (spec) where
 
 import           Prelude
 import           TSHM.Parser         (parseDeclaration)
-import           TSHM.Printer        (PrintConfig (PrintConfig), printSignature)
+import           TSHM.Printer        (PrintConfig (PrintConfig), printDeclaration)
 import           Test.Hspec
 import           Test.Hspec.Hedgehog (PropertyT, (===))
 import           Text.Megaparsec     (ParseErrorBundle)
@@ -11,7 +11,7 @@ unlines' :: [String] -> String
 unlines' = intercalate "\n"
 
 ppWith :: Maybe String -> Bool -> String -> Either (ParseErrorBundle String Void) String
-ppWith x y = fmap (printSignature . (\sig -> PrintConfig sig x y)) . parseDeclaration
+ppWith x y = fmap (printDeclaration . (\sig -> PrintConfig sig x y)) . parseDeclaration
 
 pp :: String -> Either (ParseErrorBundle String Void) String
 pp = ppWith (Just "forall") True

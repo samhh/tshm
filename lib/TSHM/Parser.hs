@@ -17,7 +17,24 @@ import           Text.Megaparsec                    hiding (many, some)
 import           Text.Megaparsec.Char
 import qualified Text.Megaparsec.Char.Lexer         as L
 
+type ParseOutput = Either (ParseErrorBundle String Void) (NonEmpty Signature)
+
+parseDeclaration :: String -> ParseOutput
+parseDeclaration = parse declaration "input"
+
 type Parser = Parsec Void String
+
+declaration :: Parser (NonEmpty Signature)
+declaration = scN *> NE.some signature <* scN <* eof
+
+signature :: Parser Signature
+signature = choice
+  [ try $ SignatureAlias <$> alias
+  , try $ SignatureInterface <$> interface
+  , try $ SignatureConstDec <$> constDec
+  , try $ SignatureFunctionDec <$> NE.sepBy1 fnDec (some newline)
+  , SignatureEnum <$> enum
+  ]
 
 getSc :: Parser () -> Parser ()
 getSc x = L.space x (L.skipLineComment "//") (L.skipBlockComment "/*" "*/")
@@ -80,26 +97,6 @@ operators =
     where multi :: Alternative f => f (a -> a) -> f (a -> a)
           multi f = foldr1 (flip (.)) <$> some f
 
-identHeadChar :: Parser Char
-identHeadChar = letterChar <|> char '$' <|> char '_'
-
-identTailChar :: Parser Char
-identTailChar = identHeadChar <|> numberChar
-
--- https://developer.mozilla.org/en-US/docs/Glossary/identifier
--- I can't find any documentation for this, but TypeScript appears to follow
--- the same rules for type-level identifiers as JavaScript does for runtime
--- identifiers.
--- Note that JavaScript property names are technically a superset of ordinary
--- identifiers, behaving the same except also allowing reserved words. There's
--- currently no distinction in this module as we don't perform any manner of
--- correctness checking, making them for our purposes identical.
-ident :: Parser String
-ident = lex $ (:) <$> identHeadChar <*> (maybeToMonoid <$> optional (some identTailChar))
-
-keyword :: String -> Parser String
-keyword x = try $ lex $ string x <* notFollowedBy identTailChar
-
 expr :: Parser Expr
 expr = (`makeExprParser` operators) $ choice
   [ try $ TGrouped <$> parens expr
@@ -121,6 +118,26 @@ expr = (`makeExprParser` operators) $ choice
   , try generic
   , TMisc <$> ident
   ]
+
+identHeadChar :: Parser Char
+identHeadChar = letterChar <|> char '$' <|> char '_'
+
+identTailChar :: Parser Char
+identTailChar = identHeadChar <|> numberChar
+
+-- https://developer.mozilla.org/en-US/docs/Glossary/identifier
+-- I can't find any documentation for this, but TypeScript appears to follow
+-- the same rules for type-level identifiers as JavaScript does for runtime
+-- identifiers.
+-- Note that JavaScript property names are technically a superset of ordinary
+-- identifiers, behaving the same except also allowing reserved words. There's
+-- currently no distinction in this module as we don't perform any manner of
+-- correctness checking, making them for our purposes identical.
+ident :: Parser String
+ident = lex $ (:) <$> identHeadChar <*> (maybeToMonoid <$> optional (some identTailChar))
+
+keyword :: String -> Parser String
+keyword x = try $ lex $ string x <* notFollowedBy identTailChar
 
 ro :: Parser Mutant
 ro = bool Mut Immut . isJust <$> optional (sym "readonly ")
@@ -288,21 +305,3 @@ enum = SEnum
 
         key :: Parser EnumKey
         key = (EKeyStr <$> str) <|> (EKeyIdent <$> ident)
-
-signature :: Parser Signature
-signature = choice
-  [ try $ SignatureAlias <$> alias
-  , try $ SignatureInterface <$> interface
-  , try $ SignatureConstDec <$> constDec
-  , try $ SignatureFunctionDec <$> NE.sepBy1 fnDec (some newline)
-  , SignatureEnum <$> enum
-  ]
-
-declaration :: Parser (NonEmpty Signature)
-declaration = scN *> NE.some signature <* scN <* eof
-
-parseDeclaration :: String -> ParseOutput
-parseDeclaration = parse declaration "input"
-
-type ParseOutput = Either (ParseErrorBundle String Void) (NonEmpty Signature)
-

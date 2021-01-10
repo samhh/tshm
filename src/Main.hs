@@ -3,7 +3,7 @@ module Main (main) where
 import           CLI          (Input (..), Opts (..), parse)
 import           Prelude
 import           TSHM.Parser  (parseDeclaration)
-import           TSHM.Printer (PrintConfig (PrintConfig), printSignature)
+import           TSHM.Printer (PrintConfig (PrintConfig), printDeclaration)
 
 main :: IO ()
 main = do
@@ -13,5 +13,5 @@ main = do
     FilePath x -> readFile x
   case parseDeclaration code of
     Left e  -> print e *> exitFailure
-    Right x -> putStrLn . printSignature $ PrintConfig x (forall opts) (readonly opts)
+    Right x -> putStrLn . printDeclaration $ PrintConfig x (forall opts) (readonly opts)
 
