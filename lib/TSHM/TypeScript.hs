@@ -108,6 +108,17 @@ data Lambda = Lambda
   , lambdaReturn   :: Expr
   } deriving (Eq, Show)
 
+data Import
+  = ImportDef String
+  | ImportNamed (NonEmpty String)
+  | ImportBoth String (NonEmpty String)
+  deriving (Eq, Show)
+
+data ImportDec = ImportDec
+  { importDecFrom     :: String
+  , importDecContents :: Import
+  } deriving (Eq, Show)
+
 data ConstDec = ConstDec
   { constDecName :: String
   , constDecType :: Expr
@@ -155,7 +166,8 @@ fromInterface x = Alias (interfaceName x) (interfaceTypeArgs x) t
           Just st -> TBinOp BinOpIntersection obj st
 
 data Signature
-  = SignatureAlias Alias
+  = SignatureImportDec ImportDec
+  | SignatureAlias Alias
   | SignatureInterface Interface
   | SignatureConstDec ConstDec
   | SignatureFunctionDec (NonEmpty FunctionDec)

@@ -274,6 +274,51 @@ spec = describe "TSHM.Parser" $ do
       parse' p `shouldFailOn` ".1.2"
       parse' p `shouldFailOn` "1.2.3"
 
+  describe "importDec" $ do
+    let ident' = Gen.list (Range.linear 1 99) Gen.alpha
+
+    it "parses default import" $ hedgehog $ do
+      imp <- forAll ident'
+      pkg <- forAll ident'
+      parse' importDec ("import " <> imp <> " from \"" <> pkg <> "\"") =*=
+        ImportDec pkg (ImportDef imp)
+
+    it "parses default type import" $ hedgehog $ do
+      imp <- forAll ident'
+      pkg <- forAll ident'
+      parse' importDec ("import type " <> imp <> " from \"" <> pkg <> "\"") =*=
+        ImportDec pkg (ImportDef imp)
+
+    it "parses named imports" $ hedgehog $ do
+      imp1 <- forAll ident'
+      imp2 <- forAll ident'
+      pkg <- forAll ident'
+      parse' importDec ("import { " <> imp1 <> ", " <> imp2 <> " } from \"" <> pkg <> "\"") =*=
+        ImportDec pkg (ImportNamed $ fromList [imp1, imp2])
+
+    it "parses named type imports" $ hedgehog $ do
+      imp1 <- forAll ident'
+      imp2 <- forAll ident'
+      pkg <- forAll ident'
+      parse' importDec ("import type { " <> imp1 <> ", " <> imp2 <> " } from \"" <> pkg <> "\"") =*=
+        ImportDec pkg (ImportNamed $ fromList [imp1, imp2])
+
+    it "parses mixed imports" $ hedgehog $ do
+      imp1 <- forAll ident'
+      imp2 <- forAll ident'
+      imp3 <- forAll ident'
+      pkg <- forAll ident'
+      parse' importDec ("import " <> imp1 <> ", { " <> imp2 <> ", " <> imp3 <> " } from \"" <> pkg <> "\"") =*=
+        ImportDec pkg (ImportBoth imp1 $ fromList [imp2, imp3])
+
+    it "parses mixed type imports" $ hedgehog $ do
+      imp1 <- forAll ident'
+      imp2 <- forAll ident'
+      imp3 <- forAll ident'
+      pkg <- forAll ident'
+      parse' importDec ("import type " <> imp1 <> ", { " <> imp2 <> ", " <> imp3 <> " } from \"" <> pkg <> "\"") =*=
+        ImportDec pkg (ImportBoth imp1 $ fromList [imp2, imp3])
+
   describe "constDecIdent" $ do
     let ident' = Gen.list (Range.linear 1 99) Gen.alpha
 

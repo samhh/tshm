@@ -80,6 +80,7 @@ renderPrintState = do
         matchSubtype _                 = Nothing
 
 fsignature :: Signature -> Printer'
+fsignature (SignatureImportDec x)    = importDec x
 fsignature (SignatureAlias x)        = alias x
 fsignature (SignatureInterface x)    = interface x
 fsignature (SignatureEnum x)         = enum x
@@ -278,6 +279,19 @@ object (ObjectMapped m p (kt, xt, asm) vt) = do
   x <- expr xt
   v <- expr vt
   pure $ "{ " <> ro <> "[" <> k <> " in " <> x <> as <> "]" <> sep <> " " <> v <> " }"
+
+importDec :: ImportDec -> Printer'
+importDec x = pure $ "import \"" <> importDecFrom x <> "\" " <> imp (importDecContents x)
+  where imp :: Import -> String
+        imp (ImportDef d)     = def d
+        imp (ImportNamed ns)  = named ns
+        imp (ImportBoth d ns) = def d <> " " <> named ns
+
+        def :: String -> String
+        def = ("as " <>)
+
+        named :: NonEmpty String -> String
+        named = surround "(" ")" . intercalate ", " . toList
 
 constDec :: ConstDec -> Printer'
 constDec x = (\t ps -> constDecName x <> " :: " <> renderedTypeArgs ps <> renderedSubtypes ps <> t)

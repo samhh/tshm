@@ -29,7 +29,8 @@ declaration = scN *> NE.some signature <* scN <* eof
 
 signature :: Parser Signature
 signature = choice
-  [ try $ SignatureAlias <$> alias
+  [ SignatureImportDec <$> importDec
+  , try $ SignatureAlias <$> alias
   , try $ SignatureInterface <$> interface
   , try $ SignatureConstDec <$> constDec
   , try $ SignatureFunctionDec <$> NE.sepBy1 fnDec (some newline)
@@ -259,6 +260,21 @@ params = parens $ sepEndBy param (symN ",")
 
 lambda :: Parser Lambda
 lambda = Lambda <$> optional typeArgs <*> params <*> (sym "=>" *> expr)
+
+importDec :: Parser ImportDec
+importDec = flip ImportDec <$> (sym "import" *> optional (sym "type") *> imports) <*> (sym "from" *> str) <* optional (sym ";")
+  where imports :: Parser Import
+        imports = choice
+          [ ImportNamed <$> named
+          , try $ ImportBoth <$> (def <* sym ",") <*> named
+          , ImportDef <$> def
+          ]
+
+        def :: Parser String
+        def = ident
+
+        named :: Parser (NonEmpty String)
+        named = braces $ NE.sepBy1 ident (sym ",")
 
 constDecIdent :: Parser String
 constDecIdent =

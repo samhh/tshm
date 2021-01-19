@@ -80,6 +80,14 @@ spec = describe "TSHM.Printer" $ do
     pp "interface X { a: B }" =*= "type X = { a: B }"
     pp "interface X extends Y { a: B }" =*= "type X = { a: B } & Y"
 
+  it "prints import declarations" $ do
+    pp "import x from 'y'" =*= "import \"y\" as x"
+    pp "import type x from 'y'" =*= "import \"y\" as x"
+    pp "import { x, y } from 'z'" =*= "import \"z\" (x, y)"
+    pp "import type { x, y } from 'z'" =*= "import \"z\" (x, y)"
+    pp "import def, { x, y } from 'z'" =*= "import \"z\" as def (x, y)"
+    pp "import type def, { x, y } from 'z'" =*= "import \"z\" as def (x, y)"
+
   it "prints const declarations" $ do
     pp "declare const x: number" =*= "x :: number"
     pp "declare const f: (x: A) => (y: B) => C" =*= "f :: A -> B -> C"
