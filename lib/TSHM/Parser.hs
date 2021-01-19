@@ -82,17 +82,17 @@ operators =
   [ [ Postfix $ multi
       (   try (flip TIndexedAccess <$> bracks expr)
       <|> TGeneric "Array" . pure . (, Nothing) <$ symN "[" <* sym "]"
-      <|> flip TDotAccess <$> (sym "." *> ident)
+      <|> flip TDotAccess <$> (symN "." *> ident)
       )
     ]
-  , [ Prefix $ TUnOp UnOpReflection <$ sym "typeof "
-    , Prefix $ TUnOp UnOpKeys       <$ sym "keyof "
-    , Prefix $ TUnOp UnOpReadonly   <$ sym "readonly "
+  , [ Prefix $ TUnOp UnOpReflection <$ symN "typeof "
+    , Prefix $ TUnOp UnOpKeys       <$ symN "keyof "
+    , Prefix $ TUnOp UnOpReadonly   <$ symN "readonly "
     ]
-  , [ InfixR $ TBinOp BinOpIntersection <$ sym "&"
-    , InfixR $ TBinOp BinOpUnion        <$ sym "|"
+  , [ InfixR $ TBinOp BinOpIntersection <$ symN "&"
+    , InfixR $ TBinOp BinOpUnion        <$ symN "|"
     ]
-  , [ TernR $ (\x -> (`TCond` x) <$ sym ":") <$> (sym "extends" *> expr <* sym "?")
+  , [ TernR $ (\x -> (`TCond` x) <$ symN ":") <$> (symN "extends" *> expr <* symN "?")
     ]
   ]
     where multi :: Alternative f => f (a -> a) -> f (a -> a)
