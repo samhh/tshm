@@ -2,6 +2,8 @@ module CLI (parse, Opts (..), Input (..)) where
 
 import qualified Options.Applicative as A
 import           Prelude
+import Paths_tshm (version)
+import Data.Version (showVersion)
 
 data Input
   = FilePath String
@@ -29,8 +31,9 @@ parser = Opts <$>
   <*> A.switch (A.short 'r' <> A.long "readonly" <> A.help "Display readonly modifiers")
 
 withHelp :: A.Parser a -> A.ParserInfo a
-withHelp p = A.info (A.helper <*> p) (A.fullDesc <> A.progDesc d)
+withHelp p = A.info (A.helper <*> v <*> p) (A.fullDesc <> A.progDesc d)
   where d = "A parser and formatter for TypeScript declarations that outputs HM-style type signatures."
+        v = A.infoOption (showVersion version) (A.short 'v' <> A.long "version" <> A.help "Output version")
 
 -- | Parse command-line options. The library we're using for this will handle
 -- the possibility of failure for us, which isn't encoded in the type

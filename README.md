@@ -3,12 +3,14 @@
 A parser and formatter for TypeScript declarations that outputs HM-style type signatures.
 
 ```
-Usage: tshm (filepath | (-e|--eval code)) [-f|--forall string] [-r|--readonly]
+Usage: tshm [-v|--version] (filepath | (-e|--eval code)) [-f|--forall string]
+            [-r|--readonly]
   A parser and formatter for TypeScript declarations that outputs HM-style type
   signatures.
 
 Available options:
   -h,--help                Show this help text
+  -v,--version             Output version
   filepath                 Read and evaluate the file at the provided path
   -e,--eval code           Evaluate input code directly
   -f,--forall string       Specify a string to be used to express universal
