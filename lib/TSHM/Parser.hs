@@ -267,7 +267,9 @@ importDec = flip ImportDec <$> (sym "import" *> optional (sym "type") *> imports
   where imports :: Parser Import
         imports = choice
           [ ImportNamed <$> named
-          , try $ ImportBoth <$> (def <* sym ",") <*> named
+          , ImportAll <$> allp
+          , try $ ImportDefAndNamed <$> (def <* sym ",") <*> named
+          , try $ ImportDefAndAll <$> (def <* sym ", ") <*> allp
           , ImportDef <$> def
           ]
 
@@ -276,6 +278,9 @@ importDec = flip ImportDec <$> (sym "import" *> optional (sym "type") *> imports
 
         named :: Parser (NonEmpty String)
         named = braces $ NE.sepBy1 ident (sym ",")
+
+        allp :: Parser String
+        allp = sym "*" *> sym "as" *> ident
 
 exportDec :: Parser ExportDec
 exportDec = ExportDef <$> (symN "export default" *> expr <* optional (sym ";"))

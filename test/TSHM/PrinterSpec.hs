@@ -2,7 +2,8 @@ module TSHM.PrinterSpec (spec) where
 
 import           Prelude
 import           TSHM.Parser         (parseDeclaration)
-import           TSHM.Printer        (PrintConfig (PrintConfig), printDeclaration)
+import           TSHM.Printer        (PrintConfig (PrintConfig),
+                                      printDeclaration)
 import           Test.Hspec
 import           Test.Hspec.Hedgehog (PropertyT, (===))
 import           Text.Megaparsec     (ParseErrorBundle)
@@ -81,12 +82,12 @@ spec = describe "TSHM.Printer" $ do
     pp "interface X extends Y { a: B }" =*= "type X = Y & { a: B }"
 
   it "prints import declarations" $ do
-    pp "import x from 'y'" =*= "import \"y\" as x"
-    pp "import type x from 'y'" =*= "import \"y\" as x"
+    pp "import x from 'y'" =*= "import \"y\" (default as x)"
+    pp "import type x from 'y'" =*= "import \"y\" (default as x)"
     pp "import { x, y } from 'z'" =*= "import \"z\" (x, y)"
     pp "import type { x, y } from 'z'" =*= "import \"z\" (x, y)"
-    pp "import def, { x, y } from 'z'" =*= "import \"z\" as def (x, y)"
-    pp "import type def, { x, y } from 'z'" =*= "import \"z\" as def (x, y)"
+    pp "import def, { x, y } from 'z'" =*= "import \"z\" (default as def, x, y)"
+    pp "import type def, { x, y } from 'z'" =*= "import \"z\" (default as def, x, y)"
 
   it "prints export declarations" $ do
     pp "export default 'x'" =*= "default :: \"x\""

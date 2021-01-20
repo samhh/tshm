@@ -284,15 +284,20 @@ object (ObjectMapped m p (kt, xt, asm) vt) = do
 importDec :: ImportDec -> Printer'
 importDec x = pure $ "import \"" <> importDecFrom x <> "\" " <> imp (importDecContents x)
   where imp :: Import -> String
-        imp (ImportDef d)     = def d
-        imp (ImportNamed ns)  = named ns
-        imp (ImportBoth d ns) = def d <> " " <> named ns
+        imp (ImportDef d)            = named $ defToNamed d
+        imp (ImportNamed ns)         = named ns
+        imp (ImportAll a)            = allp a
+        imp (ImportDefAndNamed d ns) = named $ defToNamed d <> ns
+        imp (ImportDefAndAll d a)    = allp a <> " " <> named (defToNamed d)
 
-        def :: String -> String
-        def = ("as " <>)
+        defToNamed :: String -> NonEmpty String
+        defToNamed = pure . ("default as " <>)
 
         named :: NonEmpty String -> String
         named = surround "(" ")" . intercalate ", " . toList
+
+        allp :: String -> String
+        allp = ("as " <>)
 
 exportDec :: ExportDec -> Printer'
 exportDec (ExportDef x) = ("default :: " <>) <$> expr x

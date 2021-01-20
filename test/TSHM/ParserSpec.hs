@@ -303,13 +303,21 @@ spec = describe "TSHM.Parser" $ do
       parse' importDec ("import type { " <> imp1 <> ", " <> imp2 <> " } from \"" <> pkg <> "\"") =*=
         ImportDec pkg (ImportNamed $ fromList [imp1, imp2])
 
+    it "parses asterisk imports" $ hedgehog $ do
+      imp <- forAll ident'
+      pkg <- forAll ident'
+      parse' importDec ("import * as " <> imp <> " from \"" <> pkg <> "\"") =*=
+        ImportDec pkg (ImportAll imp)
+
     it "parses mixed imports" $ hedgehog $ do
       imp1 <- forAll ident'
       imp2 <- forAll ident'
       imp3 <- forAll ident'
       pkg <- forAll ident'
       parse' importDec ("import " <> imp1 <> ", { " <> imp2 <> ", " <> imp3 <> " } from \"" <> pkg <> "\"") =*=
-        ImportDec pkg (ImportBoth imp1 $ fromList [imp2, imp3])
+        ImportDec pkg (ImportDefAndNamed imp1 $ fromList [imp2, imp3])
+      parse' importDec ("import " <> imp1 <> ", * as " <> imp2 <> " from \"" <> pkg <> "\"") =*=
+        ImportDec pkg (ImportDefAndAll imp1 imp2)
 
     it "parses mixed type imports" $ hedgehog $ do
       imp1 <- forAll ident'
@@ -317,7 +325,7 @@ spec = describe "TSHM.Parser" $ do
       imp3 <- forAll ident'
       pkg <- forAll ident'
       parse' importDec ("import type " <> imp1 <> ", { " <> imp2 <> ", " <> imp3 <> " } from \"" <> pkg <> "\"") =*=
-        ImportDec pkg (ImportBoth imp1 $ fromList [imp2, imp3])
+        ImportDec pkg (ImportDefAndNamed imp1 $ fromList [imp2, imp3])
 
   describe "exportDec" $ do
     it "parses any default export" $ do

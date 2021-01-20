@@ -111,7 +111,9 @@ data Lambda = Lambda
 data Import
   = ImportDef String
   | ImportNamed (NonEmpty String)
-  | ImportBoth String (NonEmpty String)
+  | ImportAll String
+  | ImportDefAndNamed String (NonEmpty String)
+  | ImportDefAndAll { defIdent :: String, allIdent :: String }
   deriving (Eq, Show)
 
 data ImportDec = ImportDec
