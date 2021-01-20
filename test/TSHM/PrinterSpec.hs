@@ -78,7 +78,7 @@ spec = describe "TSHM.Printer" $ do
 
   it "prints interfaces" $ do
     pp "interface X { a: B }" =*= "type X = { a: B }"
-    pp "interface X extends Y { a: B }" =*= "type X = { a: B } & Y"
+    pp "interface X extends Y { a: B }" =*= "type X = Y & { a: B }"
 
   it "prints import declarations" $ do
     pp "import x from 'y'" =*= "import \"y\" as x"
@@ -160,7 +160,7 @@ spec = describe "TSHM.Printer" $ do
       pp "export type Json = boolean | number | string | null | JsonArray | JsonRecord" =*=
         "type Json = boolean | number | string | null | JsonArray | JsonRecord"
       pp "export interface JsonArray extends ReadonlyArray<Json> {}" =*=
-        "type JsonArray = {} & ReadonlyArray Json"
+        "type JsonArray = ReadonlyArray Json & {}"
 
     it "fp-ts/function" $ do
       -- the actual pipe function at time of writing goes on until T, but that
@@ -208,7 +208,7 @@ spec = describe "TSHM.Printer" $ do
         , "  readonly compare: (x: A, y: A) => Ordering"
         , "}"
         ]) =*=
-        "type Ord a = { readonly compare: (a, a) -> Ordering } & Eq a"
+        "type Ord a = Eq a & { readonly compare: (a, a) -> Ordering }"
 
       pp "export declare function getMonoid<A = never>(): Monoid<Ord<A>>" =*=
         "getMonoid :: forall a. () -> Monoid (Ord a)"

@@ -164,10 +164,10 @@ data SEnum = SEnum
 
 fromInterface :: Interface -> Alias
 fromInterface x = Alias (interfaceName x) (interfaceTypeArgs x) t
-  where obj = TObject $ interfaceType x
-        t = case interfaceExtends x of
-          Nothing -> obj
-          Just st -> TBinOp BinOpIntersection obj st
+  where t = let obj = TObject $ interfaceType x
+             in case interfaceExtends x of
+                Nothing -> obj
+                Just st -> TBinOp BinOpIntersection st obj
 
 data Signature
   = SignatureImportDec ImportDec
