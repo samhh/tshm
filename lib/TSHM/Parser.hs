@@ -30,6 +30,7 @@ declaration = scN *> NE.some signature <* scN <* eof
 signature :: Parser Signature
 signature = choice
   [ SignatureImportDec <$> importDec
+  , SignatureExportDec <$> exportDec
   , try $ SignatureAlias <$> alias
   , try $ SignatureInterface <$> interface
   , try $ SignatureConstDec <$> constDec
@@ -275,6 +276,9 @@ importDec = flip ImportDec <$> (sym "import" *> optional (sym "type") *> imports
 
         named :: Parser (NonEmpty String)
         named = braces $ NE.sepBy1 ident (sym ",")
+
+exportDec :: Parser ExportDec
+exportDec = ExportDef <$> (symN "export default" *> expr <* optional (sym ";"))
 
 constDecIdent :: Parser String
 constDecIdent =

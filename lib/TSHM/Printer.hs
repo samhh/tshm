@@ -81,6 +81,7 @@ renderPrintState = do
 
 fsignature :: Signature -> Printer'
 fsignature (SignatureImportDec x)    = importDec x
+fsignature (SignatureExportDec x)    = exportDec x
 fsignature (SignatureAlias x)        = alias x
 fsignature (SignatureInterface x)    = interface x
 fsignature (SignatureEnum x)         = enum x
@@ -292,6 +293,9 @@ importDec x = pure $ "import \"" <> importDecFrom x <> "\" " <> imp (importDecCo
 
         named :: NonEmpty String -> String
         named = surround "(" ")" . intercalate ", " . toList
+
+exportDec :: ExportDec -> Printer'
+exportDec (ExportDef x) = ("default :: " <>) <$> expr x
 
 constDec :: ConstDec -> Printer'
 constDec x = (\t ps -> constDecName x <> " :: " <> renderedTypeArgs ps <> renderedSubtypes ps <> t)

@@ -119,6 +119,10 @@ data ImportDec = ImportDec
   , importDecContents :: Import
   } deriving (Eq, Show)
 
+data ExportDec
+  = ExportDef Expr
+  deriving (Eq, Show)
+
 data ConstDec = ConstDec
   { constDecName :: String
   , constDecType :: Expr
@@ -167,6 +171,8 @@ fromInterface x = Alias (interfaceName x) (interfaceTypeArgs x) t
 
 data Signature
   = SignatureImportDec ImportDec
+  -- Concerns exports not captured by any of the other signature variants below.
+  | SignatureExportDec ExportDec
   | SignatureAlias Alias
   | SignatureInterface Interface
   | SignatureConstDec ConstDec

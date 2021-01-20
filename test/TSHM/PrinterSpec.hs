@@ -88,6 +88,10 @@ spec = describe "TSHM.Printer" $ do
     pp "import def, { x, y } from 'z'" =*= "import \"z\" as def (x, y)"
     pp "import type def, { x, y } from 'z'" =*= "import \"z\" as def (x, y)"
 
+  it "prints export declarations" $ do
+    pp "export default 'x'" =*= "default :: \"x\""
+    pp "export default 'x';" =*= "default :: \"x\""
+
   it "prints const declarations" $ do
     pp "declare const x: number" =*= "x :: number"
     pp "declare const f: (x: A) => (y: B) => C" =*= "f :: A -> B -> C"

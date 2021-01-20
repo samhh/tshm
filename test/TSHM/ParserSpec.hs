@@ -319,6 +319,13 @@ spec = describe "TSHM.Parser" $ do
       parse' importDec ("import type " <> imp1 <> ", { " <> imp2 <> ", " <> imp3 <> " } from \"" <> pkg <> "\"") =*=
         ImportDec pkg (ImportBoth imp1 $ fromList [imp2, imp3])
 
+  describe "exportDec" $ do
+    it "parses any default export" $ do
+      parse' exportDec "export default x" =*= ExportDef (TMisc "x")
+      parse' exportDec "export default x;" =*= ExportDef (TMisc "x")
+      parse' exportDec "export default a & \"b\"" =*= ExportDef (TBinOp BinOpIntersection (TMisc "a") (TString "b"))
+      parse' exportDec "export default a & \"b\";" =*= ExportDef (TBinOp BinOpIntersection (TMisc "a") (TString "b"))
+
   describe "constDecIdent" $ do
     let ident' = Gen.list (Range.linear 1 99) Gen.alpha
 
