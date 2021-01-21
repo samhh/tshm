@@ -78,7 +78,7 @@ angles = between' "<" ">"
 bracks :: Parser a -> Parser a
 bracks = between' "[" "]"
 
-operators :: [[Operator Parser Expr]]
+operators :: [[Operator Parser TExpr]]
 operators =
   [ [ Postfix $ multi
       (   try (flip TIndexedAccess <$> bracks expr)
@@ -99,7 +99,7 @@ operators =
     where multi :: Alternative f => f (a -> a) -> f (a -> a)
           multi f = foldr1 (flip (.)) <$> some f
 
-expr :: Parser Expr
+expr :: Parser TExpr
 expr = (`makeExprParser` operators) $ choice
   [ try $ TGrouped <$> parens expr
   , TAny <$ keyword "any"
@@ -147,7 +147,7 @@ ro = bool Mut Immut . isJust <$> optional (sym "readonly ")
 roMod :: Parser (Maybe ModMut)
 roMod = optional ((const RemMut <$ sym "-" <|> const AddMut <$ optional (sym "+")) <*> sym "readonly")
 
-generic :: Parser Expr
+generic :: Parser TExpr
 generic = TGeneric <$> ident <*> typeArgs
 
 str :: Parser String
@@ -181,7 +181,7 @@ num = lex $ (<>) . foldMap pure <$> optional (char '-') <*> choice
   , some numberChar
   ]
 
-tuple :: Parser [Expr]
+tuple :: Parser [TExpr]
 tuple = bracks $ sepEndBy expr (sym ",")
 
 objLitProps :: Parser Object
@@ -239,7 +239,7 @@ typeArgs = angles (NE.sepEndBy1 typeArg (sym ","))
             ]
           <*> pDefault
 
-        pDefault :: Parser (Maybe Expr)
+        pDefault :: Parser (Maybe TExpr)
         pDefault = optional $ sym "=" *> expr
 
 params :: Parser [Param]

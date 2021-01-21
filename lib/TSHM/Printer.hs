@@ -75,7 +75,7 @@ renderPrintState = do
         printableTypeArg (TSubtype y _, _) = Just <$> misc y
         printableTypeArg _                 = pure Nothing
 
-        matchSubtype :: TypeArg -> Maybe (String, Expr)
+        matchSubtype :: TypeArg -> Maybe (String, TExpr)
         matchSubtype (TSubtype y z, _) = Just (y, z)
         matchSubtype _                 = Nothing
 
@@ -95,7 +95,7 @@ fsignature (SignatureFunctionDec xs) = intercalate "\n" <$> mapM (clean lambdaDe
 declaration :: Printer'
 declaration = fmap (intercalate "\n\n" . toList) . mapM fsignature . signatures =<< ask
 
-expr :: Expr -> Printer'
+expr :: TExpr -> Printer'
 expr t = do
   res <- f t
   modify $ \s -> s { immediateFunctionArg = False }
@@ -127,7 +127,7 @@ expr t = do
           modify $ \s -> s { ambiguouslyNested = False }
           surround "(" ")" <$> expr x
 
-ambiguouslyNestedExpr :: Expr -> Printer'
+ambiguouslyNestedExpr :: TExpr -> Printer'
 ambiguouslyNestedExpr t = do
   modify $ \s -> s { ambiguouslyNested = True }
   expr t
@@ -139,7 +139,7 @@ param = f
         f (Optional, Normal, x) = (<> "?") <$> annotatedExpr x
         f (Optional, Rest, x)   = ("..." <>) . (<> "?") <$> annotatedExpr x
 
-        annotatedExpr :: Expr -> Printer'
+        annotatedExpr :: TExpr -> Printer'
         annotatedExpr x = do
           modify $ \s -> s { immediateFunctionArg = True }
           expr x
@@ -156,13 +156,13 @@ misc [x] = do
   tas <- ((<>) <$> implicitTypeArgs <*> explicitTypeArgs) <$> get
   ys <- ((<>) <$> mappedTypeKeys <*> inferredTypes) <$> get
   pure . pure $ if elem (pure x) ys || any (isViable . fst) tas then toLower x else x
-  where isViable :: Expr -> Bool
+  where isViable :: TExpr -> Bool
         isViable (TMisc [y])      = y == x
         isViable (TSubtype [y] _) = y == x
         isViable _                = False
 misc x   = pure x
 
-subtype :: String -> Expr -> Printer'
+subtype :: String -> TExpr -> Printer'
 subtype x y = surrounding " extends " <$> misc x <*> ambiguouslyNestedExpr y
 
 lambda :: Lambda -> Printer'
@@ -173,12 +173,12 @@ lambda x = do
 
   (doIf (surround "(" ")") nested .) . surrounding " -> " <$> params (lambdaParams x) <*> expr (lambdaReturn x)
 
-fnewtype :: String -> Expr -> Printer'
+fnewtype :: String -> TExpr -> Printer'
 fnewtype x y = (("newtype " <> x <> " = ") <>) <$> expr y
 
-isNewtype :: Expr -> Maybe Expr
+isNewtype :: TExpr -> Maybe TExpr
 isNewtype (TGeneric "Newtype" xs) = fmap snd . guarded (isNewtypeObject . fst) =<< isNewtypeTypeArgs xs
-  where isNewtypeTypeArgs :: NonEmpty TypeArg -> Maybe (Object, Expr)
+  where isNewtypeTypeArgs :: NonEmpty TypeArg -> Maybe (Object, TExpr)
         isNewtypeTypeArgs ys
           | length ys == 2 = (, fst $ ys !! 1) <$> isObject (head ys)
           | otherwise = Nothing
@@ -227,7 +227,7 @@ infer x = do
   nested <- ambiguouslyNested <$> get
   doIf (surround "(" ")") nested . ("infer " <>) <$> misc x
 
-unOp :: UnOp -> Expr -> Printer'
+unOp :: UnOp -> TExpr -> Printer'
 unOp o t = do
   cfgRO <- readonly <$> ask
   if o == UnOpReadonly && not cfgRO then expr t else do
@@ -238,7 +238,7 @@ unOp o t = do
           op UnOpKeys       = "keyof"
           op UnOpReadonly   = "readonly"
 
-binOp :: BinOp -> Expr -> Expr -> Printer'
+binOp :: BinOp -> TExpr -> TExpr -> Printer'
 binOp o l r = do
   nested <- ambiguouslyNested <$> get
   (doIf (surround "(" ")") nested .) . surrounding (" " <> op o <> " ")
@@ -252,7 +252,7 @@ template :: TemplateToken -> Printer'
 template (TemplateStr x)  = pure x
 template (TemplateExpr x) = surround "${" "}" <$> expr x
 
-cond :: Expr -> Expr -> Expr -> Expr -> Printer'
+cond :: TExpr -> TExpr -> TExpr -> TExpr -> Printer'
 cond lt rt tt ft = (\l r t f -> l <> " extends " <> r <> " ? " <> t <> " : " <> f) <$>
   expr lt <*> expr rt <*> expr tt <*> expr ft
 

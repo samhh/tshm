@@ -22,7 +22,7 @@ f /=* a = first (const ()) (f a) === Left ()
 (=*=) :: (Eq a, Eq e, Show a, Show e) => Either e a -> a -> PropertyT IO ()
 a =*= b = a === Right b
 
-typeArgs' :: [Expr] -> NonEmpty TypeArg
+typeArgs' :: [TExpr] -> NonEmpty TypeArg
 typeArgs' = fmap (, Nothing) . fromList
 
 spec :: Spec
