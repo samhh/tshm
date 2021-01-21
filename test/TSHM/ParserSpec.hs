@@ -446,10 +446,6 @@ spec = describe "TSHM.Parser" $ do
   describe "alias" $ do
     let p = parse' $ alias <* eof
 
-    it "optionally supports semicolons" $ do
-      p "type X = Y" `shouldParse` Alias "X" Nothing (TMisc "Y")
-      p "type X = Y;" `shouldParse` Alias "X" Nothing (TMisc "Y")
-
     it "parses type arguments" $ do
       p "type X<A, B extends string> = A | B" `shouldParse`
         Alias
@@ -489,13 +485,6 @@ spec = describe "TSHM.Parser" $ do
           (Just $ typeArgs' [TMisc "A", TSubtype "B" (TGeneric "Array" $ typeArgs' [TMisc "A"])])
           (Just $ TMisc "C")
           (ObjectLit [ObjectPair Mut Required (OKeyIdent "a", TMisc "A")])
-
-  describe "constDec" $ do
-    let p = parse' $ constDec <* eof
-
-    it "optionally supports semicolons" $ do
-      p "declare const x: string" `shouldParse` ConstDec "x" (TMisc "string")
-      p "declare const x: string;" `shouldParse` ConstDec "x" (TMisc "string")
 
   describe "fnDec" $ do
     let p = parse' $ fnDec <* eof

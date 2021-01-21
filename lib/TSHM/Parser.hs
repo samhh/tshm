@@ -36,7 +36,7 @@ statement = choice
   , try $ StatementConstDec <$> constDec
   , try $ StatementFunctionDec <$> NE.sepBy1 fnDec (some newline)
   , StatementEnum <$> enum
-  ]
+  ] <* optional (sym ";")
 
 getSc :: Parser () -> Parser ()
 getSc x = L.space x (L.skipLineComment "//") (L.skipBlockComment "/*" "*/")
@@ -263,7 +263,7 @@ lambda :: Parser Lambda
 lambda = Lambda <$> optional typeArgs <*> params <*> (sym "=>" *> expr)
 
 importDec :: Parser ImportDec
-importDec = flip ImportDec <$> (sym "import" *> optional (sym "type") *> imports) <*> (sym "from" *> str) <* optional (sym ";")
+importDec = flip ImportDec <$> (sym "import" *> optional (sym "type") *> imports) <*> (sym "from" *> str)
   where imports :: Parser Import
         imports = choice
           [ ImportNamed <$> named
@@ -283,7 +283,7 @@ importDec = flip ImportDec <$> (sym "import" *> optional (sym "type") *> imports
         allp = sym "*" *> sym "as" *> ident
 
 exportDec :: Parser ExportDec
-exportDec = ExportDef <$> (symN "export default" *> expr <* optional (sym ";"))
+exportDec = ExportDef <$> (symN "export default" *> expr)
 
 constDecIdent :: Parser String
 constDecIdent =
@@ -294,7 +294,7 @@ constDecIdent =
   <* sym ":"
 
 constDec :: Parser ConstDec
-constDec = ConstDec <$> constDecIdent <*> expr <* optional (sym ";")
+constDec = ConstDec <$> constDecIdent <*> expr
 
 fnDecName :: Parser String
 fnDecName =
@@ -312,7 +312,7 @@ alias :: Parser Alias
 alias = Alias
   <$> (optional (sym "export") *> sym "type" *> ident)
   <*> (optional typeArgs <* sym "=")
-  <*> expr <* optional (sym ";")
+  <*> expr
 
 interface :: Parser Interface
 interface = Interface
