@@ -21,7 +21,7 @@ doIf f True  = f
 doIf _ False = id
 
 data PrintConfig = PrintConfig
-  { signatures :: NonEmpty Signature
+  { signatures :: NonEmpty Statement
   , forall     :: Maybe String
   , readonly   :: Bool
   }
@@ -79,21 +79,21 @@ renderPrintState = do
         matchSubtype (TSubtype y z, _) = Just (y, z)
         matchSubtype _                 = Nothing
 
-fsignature :: Signature -> Printer'
-fsignature (SignatureImportDec x)    = importDec x
-fsignature (SignatureExportDec x)    = exportDec x
-fsignature (SignatureAlias x)        = alias x
-fsignature (SignatureInterface x)    = interface x
-fsignature (SignatureEnum x)         = enum x
-fsignature (SignatureConstDec x)     = constDec x
-fsignature (SignatureFunctionDec xs) = intercalate "\n" <$> mapM (clean lambdaDec) (toList xs)
+statement :: Statement -> Printer'
+statement (StatementImportDec x)    = importDec x
+statement (StatementExportDec x)    = exportDec x
+statement (StatementAlias x)        = alias x
+statement (StatementInterface x)    = interface x
+statement (StatementEnum x)         = enum x
+statement (StatementConstDec x)     = constDec x
+statement (StatementFunctionDec xs) = intercalate "\n" <$> mapM (clean lambdaDec) (toList xs)
   where clean :: (a -> Printer') -> a -> Printer'
         clean p x = do
           modify $ \s -> s { implicitTypeArgs = [] }
           p x
 
 declaration :: Printer'
-declaration = fmap (intercalate "\n\n" . toList) . mapM fsignature . signatures =<< ask
+declaration = fmap (intercalate "\n\n" . toList) . mapM statement . signatures =<< ask
 
 expr :: TExpr -> Printer'
 expr t = do

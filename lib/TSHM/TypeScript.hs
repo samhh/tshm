@@ -171,14 +171,14 @@ fromInterface x = Alias (interfaceName x) (interfaceTypeArgs x) t
                 Nothing -> obj
                 Just st -> TBinOp BinOpIntersection st obj
 
-data Signature
-  = SignatureImportDec ImportDec
+data Statement
+  = StatementImportDec ImportDec
   -- Concerns exports not captured by any of the other signature variants below.
-  | SignatureExportDec ExportDec
-  | SignatureAlias Alias
-  | SignatureInterface Interface
-  | SignatureConstDec ConstDec
-  | SignatureFunctionDec (NonEmpty FunctionDec)
-  | SignatureEnum SEnum
+  | StatementExportDec ExportDec
+  | StatementAlias Alias
+  | StatementInterface Interface
+  | StatementConstDec ConstDec
+  | StatementFunctionDec (NonEmpty FunctionDec)
+  | StatementEnum SEnum
   deriving (Eq, Show)
 

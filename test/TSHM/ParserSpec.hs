@@ -515,47 +515,47 @@ spec = describe "TSHM.Parser" $ do
         , EnumMember (EKeyStr "C") (Just $ TString "1")
         ]
 
-  describe "signature" $ do
+  describe "statement" $ do
     it "parses and skips comments" $ do
-      parse' signature "declare /*x*/const/**/ x/* x xx xxx */: void/**///x" `shouldParse` SignatureConstDec (ConstDec "x" TVoid)
+      parse' statement "declare /*x*/const/**/ x/* x xx xxx */: void/**///x" `shouldParse` StatementConstDec (ConstDec "x" TVoid)
 
     it "parses all variants" $ do
-      parse' signature "declare const f: void" `shouldParse` SignatureConstDec (ConstDec "f" TVoid)
-      parse' signature "export declare const f: void" `shouldParse` SignatureConstDec (ConstDec "f" TVoid)
-      parse' signature "type X = void" `shouldParse` SignatureAlias (Alias "X" Nothing TVoid)
-      parse' signature "export type X = void" `shouldParse` SignatureAlias (Alias "X" Nothing TVoid)
-      parse' signature "interface X {}" `shouldParse` SignatureInterface (Interface "X" Nothing Nothing (ObjectLit []))
-      parse' signature "export interface X {}" `shouldParse` SignatureInterface (Interface "X" Nothing Nothing (ObjectLit []))
-      parse' signature "declare function f(): void" `shouldParse` SignatureFunctionDec (fromList [FunctionDec "f" (Lambda Nothing [] TVoid)])
-      parse' signature "export declare function f(): void" `shouldParse` SignatureFunctionDec (fromList [FunctionDec "f" (Lambda Nothing [] TVoid)])
-      parse' signature (unlines' ["declare function f(): A", "declare function f(): B"]) `shouldParse`
-        SignatureFunctionDec (fromList
+      parse' statement "declare const f: void" `shouldParse` StatementConstDec (ConstDec "f" TVoid)
+      parse' statement "export declare const f: void" `shouldParse` StatementConstDec (ConstDec "f" TVoid)
+      parse' statement "type X = void" `shouldParse` StatementAlias (Alias "X" Nothing TVoid)
+      parse' statement "export type X = void" `shouldParse` StatementAlias (Alias "X" Nothing TVoid)
+      parse' statement "interface X {}" `shouldParse` StatementInterface (Interface "X" Nothing Nothing (ObjectLit []))
+      parse' statement "export interface X {}" `shouldParse` StatementInterface (Interface "X" Nothing Nothing (ObjectLit []))
+      parse' statement "declare function f(): void" `shouldParse` StatementFunctionDec (fromList [FunctionDec "f" (Lambda Nothing [] TVoid)])
+      parse' statement "export declare function f(): void" `shouldParse` StatementFunctionDec (fromList [FunctionDec "f" (Lambda Nothing [] TVoid)])
+      parse' statement (unlines' ["declare function f(): A", "declare function f(): B"]) `shouldParse`
+        StatementFunctionDec (fromList
           [ FunctionDec "f" (Lambda Nothing [] (TMisc "A"))
           , FunctionDec "f" (Lambda Nothing [] (TMisc "B"))
           ])
-      parse' signature (unlines' ["export declare function f(): A", "export declare function f(): B"]) `shouldParse`
-        SignatureFunctionDec (fromList
+      parse' statement (unlines' ["export declare function f(): A", "export declare function f(): B"]) `shouldParse`
+        StatementFunctionDec (fromList
           [ FunctionDec "f" (Lambda Nothing [] (TMisc "A"))
           , FunctionDec "f" (Lambda Nothing [] (TMisc "B"))
           ])
 
-    it "parses real signatures" $ do
-      parse' signature "export declare const empty: ''" `shouldParse` SignatureConstDec (ConstDec "empty" (TString ""))
+    it "parses real statements" $ do
+      parse' statement "export declare const empty: ''" `shouldParse` StatementConstDec (ConstDec "empty" (TString ""))
 
-      parse' signature "export declare const aperture: (n: number) => <A>(xs: A[]) => A[][]" `shouldParse`
-        SignatureConstDec (ConstDec "aperture" (TLambda (Lambda Nothing [(Required, Normal, TMisc "number")] (TLambda (Lambda (Just $ typeArgs' [TMisc "A"]) [(Required, Normal, TGeneric "Array" $ typeArgs' [TMisc "A"])] (TGeneric "Array" $ typeArgs' [TGeneric "Array" $ typeArgs' [TMisc "A"]]))))))
+      parse' statement "export declare const aperture: (n: number) => <A>(xs: A[]) => A[][]" `shouldParse`
+        StatementConstDec (ConstDec "aperture" (TLambda (Lambda Nothing [(Required, Normal, TMisc "number")] (TLambda (Lambda (Just $ typeArgs' [TMisc "A"]) [(Required, Normal, TGeneric "Array" $ typeArgs' [TMisc "A"])] (TGeneric "Array" $ typeArgs' [TGeneric "Array" $ typeArgs' [TMisc "A"]]))))))
 
-      parse' signature "export declare const anyPass: <A>(fs: Predicate<A>[]) => Predicate<A>" `shouldParse`
-        SignatureConstDec (ConstDec "anyPass" (TLambda (Lambda (Just $ typeArgs' [TMisc "A"]) [(Required, Normal, TGeneric "Array" $ typeArgs' [TGeneric "Predicate" $ typeArgs' [TMisc "A"]])] (TGeneric "Predicate" $ typeArgs' [TMisc "A"]))))
+      parse' statement "export declare const anyPass: <A>(fs: Predicate<A>[]) => Predicate<A>" `shouldParse`
+        StatementConstDec (ConstDec "anyPass" (TLambda (Lambda (Just $ typeArgs' [TMisc "A"]) [(Required, Normal, TGeneric "Array" $ typeArgs' [TGeneric "Predicate" $ typeArgs' [TMisc "A"]])] (TGeneric "Predicate" $ typeArgs' [TMisc "A"]))))
 
-      parse' signature "export declare const merge: <A>(x: A) => <B>(y: B) => A & B" `shouldParse`
-        SignatureConstDec (ConstDec "merge" (TLambda (Lambda (Just $ typeArgs' [TMisc "A"]) [(Required, Normal, TMisc "A")] (TLambda (Lambda (Just $ typeArgs' [TMisc "B"]) [(Required, Normal, TMisc "B")] (TBinOp BinOpIntersection (TMisc "A") (TMisc "B")))))))
+      parse' statement "export declare const merge: <A>(x: A) => <B>(y: B) => A & B" `shouldParse`
+        StatementConstDec (ConstDec "merge" (TLambda (Lambda (Just $ typeArgs' [TMisc "A"]) [(Required, Normal, TMisc "A")] (TLambda (Lambda (Just $ typeArgs' [TMisc "B"]) [(Required, Normal, TMisc "B")] (TBinOp BinOpIntersection (TMisc "A") (TMisc "B")))))))
 
-      parse' signature "export declare const omit: <K extends string>(ks: K[]) => <V, A extends Record<K, V>>(x: Partial<A>) => Pick<A, Exclude<keyof A, K>>" `shouldParse`
-        SignatureConstDec (ConstDec "omit" (TLambda (Lambda (Just $ typeArgs' [TSubtype "K" (TMisc "string")]) [(Required, Normal, TGeneric "Array" $ typeArgs' [TMisc "K"])] (TLambda (Lambda (Just $ typeArgs' [TMisc "V", TSubtype "A" (TGeneric "Record" $ typeArgs' [TMisc "K", TMisc "V"])]) [(Required, Normal, TGeneric "Partial" $ typeArgs' [TMisc "A"])] (TGeneric "Pick" $ typeArgs' [TMisc "A", TGeneric "Exclude" $ typeArgs' [TUnOp UnOpKeys (TMisc "A"), TMisc "K"]]))))))
+      parse' statement "export declare const omit: <K extends string>(ks: K[]) => <V, A extends Record<K, V>>(x: Partial<A>) => Pick<A, Exclude<keyof A, K>>" `shouldParse`
+        StatementConstDec (ConstDec "omit" (TLambda (Lambda (Just $ typeArgs' [TSubtype "K" (TMisc "string")]) [(Required, Normal, TGeneric "Array" $ typeArgs' [TMisc "K"])] (TLambda (Lambda (Just $ typeArgs' [TMisc "V", TSubtype "A" (TGeneric "Record" $ typeArgs' [TMisc "K", TMisc "V"])]) [(Required, Normal, TGeneric "Partial" $ typeArgs' [TMisc "A"])] (TGeneric "Pick" $ typeArgs' [TMisc "A", TGeneric "Exclude" $ typeArgs' [TUnOp UnOpKeys (TMisc "A"), TMisc "K"]]))))))
 
-      parse' signature "export declare const unary: <A extends unknown[], B>(f: (...xs: A) => B) => (xs: A) => B" `shouldParse`
-        SignatureConstDec (ConstDec "unary" (TLambda (Lambda (Just $ typeArgs' [TSubtype "A" (TGeneric "Array" $ typeArgs' [TUnknown]), TMisc "B"]) [(Required, Normal, TLambda (Lambda Nothing [(Required, Rest, TMisc "A")] (TMisc "B")))] (TLambda (Lambda Nothing [(Required, Normal, TMisc "A")] (TMisc "B"))))))
+      parse' statement "export declare const unary: <A extends unknown[], B>(f: (...xs: A) => B) => (xs: A) => B" `shouldParse`
+        StatementConstDec (ConstDec "unary" (TLambda (Lambda (Just $ typeArgs' [TSubtype "A" (TGeneric "Array" $ typeArgs' [TUnknown]), TMisc "B"]) [(Required, Normal, TLambda (Lambda Nothing [(Required, Rest, TMisc "A")] (TMisc "B")))] (TLambda (Lambda Nothing [(Required, Normal, TMisc "A")] (TMisc "B"))))))
 
-      parse' signature "export interface Some<A> { readonly _tag: 'Some', readonly value: A }" `shouldParse`
-        SignatureInterface (Interface "Some" (Just $ typeArgs' [TMisc "A"]) Nothing (ObjectLit [ObjectPair Immut Required (OKeyIdent "_tag", TString "Some"), ObjectPair Immut Required (OKeyIdent "value", TMisc "A")]))
+      parse' statement "export interface Some<A> { readonly _tag: 'Some', readonly value: A }" `shouldParse`
+        StatementInterface (Interface "Some" (Just $ typeArgs' [TMisc "A"]) Nothing (ObjectLit [ObjectPair Immut Required (OKeyIdent "_tag", TString "Some"), ObjectPair Immut Required (OKeyIdent "value", TMisc "A")]))

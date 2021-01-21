@@ -17,25 +17,25 @@ import           Text.Megaparsec                    hiding (many, some)
 import           Text.Megaparsec.Char
 import qualified Text.Megaparsec.Char.Lexer         as L
 
-type ParseOutput = Either (ParseErrorBundle String Void) (NonEmpty Signature)
+type ParseOutput = Either (ParseErrorBundle String Void) (NonEmpty Statement)
 
 parseDeclaration :: String -> ParseOutput
 parseDeclaration = parse declaration "input"
 
 type Parser = Parsec Void String
 
-declaration :: Parser (NonEmpty Signature)
-declaration = scN *> NE.some signature <* scN <* eof
+declaration :: Parser (NonEmpty Statement)
+declaration = scN *> NE.some statement <* scN <* eof
 
-signature :: Parser Signature
-signature = choice
-  [ SignatureImportDec <$> importDec
-  , SignatureExportDec <$> exportDec
-  , try $ SignatureAlias <$> alias
-  , try $ SignatureInterface <$> interface
-  , try $ SignatureConstDec <$> constDec
-  , try $ SignatureFunctionDec <$> NE.sepBy1 fnDec (some newline)
-  , SignatureEnum <$> enum
+statement :: Parser Statement
+statement = choice
+  [ StatementImportDec <$> importDec
+  , StatementExportDec <$> exportDec
+  , try $ StatementAlias <$> alias
+  , try $ StatementInterface <$> interface
+  , try $ StatementConstDec <$> constDec
+  , try $ StatementFunctionDec <$> NE.sepBy1 fnDec (some newline)
+  , StatementEnum <$> enum
   ]
 
 getSc :: Parser () -> Parser ()
