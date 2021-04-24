@@ -6,12 +6,12 @@ import Paths_tshm (version)
 import Data.Version (showVersion)
 
 data Input
-  = FilePath String
-  | Eval String
+  = FilePath Text
+  | Eval Text
 
 data Opts = Opts
   { input    :: Input
-  , forall   :: Maybe String
+  , forall   :: Maybe Text
   , readonly :: Bool
   }
 

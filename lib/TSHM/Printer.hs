@@ -1,16 +1,14 @@
-{-# HLINT ignore "Use unwords" #-} -- Until we're using Text
-
 module TSHM.Printer (printDeclaration, PrintConfig (PrintConfig)) where
 
 import           Control.Monad.RWS   (RWS, evalRWS)
-import           Data.Char           (toLower)
 import           Data.List.NonEmpty  ((!!))
+import qualified Data.Text           as T
 import           Data.Tuple.Sequence (sequenceT)
 import           Prelude
 import           TSHM.TypeScript
 
 type Printer a = RWS PrintConfig () PrintState a
-type Printer' = Printer String
+type Printer' = Printer Text
 
 surround :: Semigroup a => a -> a -> a -> a
 surround l r x = l <> x <> r
@@ -24,7 +22,7 @@ doIf _ False = id
 
 data PrintConfig = PrintConfig
   { signatures :: NonEmpty Statement
-  , forall     :: Maybe String
+  , forall     :: Maybe Text
   , readonly   :: Bool
   }
 
@@ -33,8 +31,8 @@ data PrintState = PrintState
   , immediateFunctionArg :: Bool
   , explicitTypeArgs     :: [TypeArg]
   , implicitTypeArgs     :: [TypeArg]
-  , mappedTypeKeys       :: [String]
-  , inferredTypes        :: [String]
+  , mappedTypeKeys       :: [Text]
+  , inferredTypes        :: [Text]
   }
 
 instance Semigroup PrintState where
@@ -49,12 +47,12 @@ instance Semigroup PrintState where
 instance Monoid PrintState where
   mempty = PrintState False False mempty mempty mempty mempty
 
-printDeclaration :: PrintConfig -> String
+printDeclaration :: PrintConfig -> Text
 printDeclaration x = fst $ evalRWS declaration x mempty
 
 data RenderedPrintState = RenderedPrintState
-  { renderedTypeArgs :: String
-  , renderedSubtypes :: String
+  { renderedTypeArgs :: Text
+  , renderedSubtypes :: Text
   }
 
 renderPrintState :: Printer RenderedPrintState
@@ -62,22 +60,22 @@ renderPrintState = do
   tas <- implicitTypeArgs <$> get
   fam <- forall <$> ask
 
-  targsm :: Maybe [String] <- fmap (guarded (not . null)) . mapMaybeM printableTypeArg $ tas
+  targsm :: Maybe [Text] <- fmap (guarded (not . null)) . mapMaybeM printableTypeArg $ tas
   let targsSig = case sequenceT (fam, targsm) of
-        Just (fa, ts) -> fa <> " " <> intercalate " " ts <> ". "
+        Just (fa, ts) -> fa <> " " <> unwords ts <> ". "
         Nothing       -> ""
 
-  sts :: Maybe [String] <- fmap (guarded (not . null)) . mapM (uncurry subtype) . mapMaybe matchSubtype $ tas
-  let stsSig = foldMap ((<> " => ") . intercalate ", ") sts
+  sts :: Maybe [Text] <- fmap (guarded (not . null)) . mapM (uncurry subtype) . mapMaybe matchSubtype $ tas
+  let stsSig = foldMap ((<> " => ") . T.intercalate ", ") sts
 
   pure $ RenderedPrintState targsSig stsSig
 
-  where printableTypeArg :: TypeArg -> Printer (Maybe String)
+  where printableTypeArg :: TypeArg -> Printer (Maybe Text)
         printableTypeArg (TMisc y, _)      = Just <$> misc y
         printableTypeArg (TSubtype y _, _) = Just <$> misc y
         printableTypeArg _                 = pure Nothing
 
-        matchSubtype :: TypeArg -> Maybe (String, TExpr)
+        matchSubtype :: TypeArg -> Maybe (Text, TExpr)
         matchSubtype (TSubtype y z, _) = Just (y, z)
         matchSubtype _                 = Nothing
 
@@ -88,14 +86,14 @@ statement (StatementAlias x)        = alias x
 statement (StatementInterface x)    = interface x
 statement (StatementEnum x)         = enum x
 statement (StatementConstDec x)     = constDec x
-statement (StatementFunctionDec xs) = intercalate "\n" <$> mapM (clean lambdaDec) (toList xs)
+statement (StatementFunctionDec xs) = T.intercalate "\n" <$> mapM (clean lambdaDec) (toList xs)
   where clean :: (a -> Printer') -> a -> Printer'
         clean p x = do
           modify $ \s -> s { implicitTypeArgs = [] }
           p x
 
 declaration :: Printer'
-declaration = fmap (intercalate "\n\n" . toList) . mapM statement . signatures =<< ask
+declaration = fmap (T.intercalate "\n\n" . toList) . mapM statement . signatures =<< ask
 
 expr :: TExpr -> Printer'
 expr t = do
@@ -112,9 +110,9 @@ expr t = do
         f (TBoolean x)           = pure $ if x then "true" else "false"
         f (TMisc x)              = misc x
         f (TString x)            = pure $ "\"" <> x <> "\""
-        f (TTemplate xs)         = surround "`" "`" . intercalate "" <$> mapM template xs
+        f (TTemplate xs)         = surround "`" "`" . T.concat <$> mapM template xs
         f (TNumber x)            = pure x
-        f (TTuple xs)            = surround "[" "]" . intercalate ", " <$> mapM expr xs
+        f (TTuple xs)            = surround "[" "]" . T.intercalate ", " <$> mapM expr xs
         f (TGeneric x ys)        = generic (x, ys)
         f (TSubtype x y)         = subtype x y
         f (TObject xs)           = object xs
@@ -149,22 +147,23 @@ param = f
 params :: [Param] -> Printer'
 params []  = pure "()"
 params [x] = param x
-params xs  = surround "(" ")" . intercalate ", " <$> mapM param xs
+params xs  = surround "(" ")" . T.intercalate ", " <$> mapM param xs
 
-misc :: String -> Printer'
+misc :: Text -> Printer'
 -- If the type is a single character, and we know about it from a type argument
 -- or mapped type, then lowercase it
-misc [x] = do
+misc (T.uncons -> Just (x', T.uncons -> Nothing)) = do
+  let x = T.singleton x'
   tas <- ((<>) <$> implicitTypeArgs <*> explicitTypeArgs) <$> get
-  ys <- ((<>) <$> mappedTypeKeys <*> inferredTypes) <$> get
-  pure . pure $ if elem (pure x) ys || any (isViable . fst) tas then toLower x else x
+  ys <- (fmap T.concat . (<>) <$> mappedTypeKeys <*> inferredTypes) <$> get
+  pure $ if x `T.isInfixOf` ys || any (isViable . fst) tas then T.toLower x else x
   where isViable :: TExpr -> Bool
-        isViable (TMisc [y])      = y == x
-        isViable (TSubtype [y] _) = y == x
-        isViable _                = False
+        isViable (TMisc (T.uncons -> Just (y, T.uncons -> Nothing)))      = y == x'
+        isViable (TSubtype (T.uncons -> Just (y, T.uncons -> Nothing)) _) = y == x'
+        isViable _                                                        = False
 misc x   = pure x
 
-subtype :: String -> TExpr -> Printer'
+subtype :: Text -> TExpr -> Printer'
 subtype x y = surrounding " extends " <$> misc x <*> ambiguouslyNestedExpr y
 
 lambda :: Lambda -> Printer'
@@ -175,7 +174,7 @@ lambda x = do
 
   (doIf (surround "(" ")") nested .) . surrounding " -> " <$> params (lambdaParams x) <*> expr (lambdaReturn x)
 
-fnewtype :: String -> TExpr -> Printer'
+fnewtype :: Text -> TExpr -> Printer'
 fnewtype x y = (("newtype " <> x <> " = ") <>) <$> expr y
 
 isNewtype :: TExpr -> Maybe TExpr
@@ -194,13 +193,13 @@ isNewtype (TGeneric "Newtype" xs) = fmap snd . guarded (isNewtypeObject . fst) =
         isNewtypeObject _                                              = False
 isNewtype _ = Nothing
 
-generic :: (String, NonEmpty TypeArg) -> Printer'
+generic :: (Text, NonEmpty TypeArg) -> Printer'
 generic (x, ys) = do
   nested <- ambiguouslyNested <$> get
   if nested then do
     modify $ \s -> s { ambiguouslyNested = False }
     surround "(" ")" <$> generic (x, ys)
-  else ((x <> " ") <>) . intercalate " " <$> mapM expr' (toList ys)
+  else ((x <> " ") <>) . unwords <$> mapM expr' (toList ys)
   where expr' :: TypeArg -> Printer'
         expr' z = do
           modify $ \s -> s { ambiguouslyNested = True }
@@ -223,7 +222,7 @@ objectPair (ObjectPair m p (kt, vt)) = do
 
   (\k v -> ro <> k <> delim <> v) <$> objectKey kt <*> expr vt
 
-infer :: String -> Printer'
+infer :: Text -> Printer'
 infer x = do
   modify (\s -> s { inferredTypes = x : inferredTypes s })
   nested <- ambiguouslyNested <$> get
@@ -235,7 +234,7 @@ unOp o t = do
   if o == UnOpReadonly && not cfgRO then expr t else do
     nested <- ambiguouslyNested <$> get
     doIf (surround "(" ")") nested . ((op o <> " ") <>) <$> expr t
-    where op :: UnOp -> String
+    where op :: UnOp -> Text
           op UnOpReflection = "typeof"
           op UnOpKeys       = "keyof"
           op UnOpReadonly   = "readonly"
@@ -246,7 +245,7 @@ binOp o l r = do
   (doIf (surround "(" ")") nested .) . surrounding (" " <> op o <> " ")
     <$> expr l <*> expr r
 
-  where op :: BinOp -> String
+  where op :: BinOp -> Text
         op BinOpIntersection = "&"
         op BinOpUnion        = "|"
 
@@ -258,17 +257,17 @@ cond :: TExpr -> TExpr -> TExpr -> TExpr -> Printer'
 cond lt rt tt ft = (\l r t f -> l <> " extends " <> r <> " ? " <> t <> " : " <> f) <$>
   expr lt <*> expr rt <*> expr tt <*> expr ft
 
-modMut :: ModMut -> String
+modMut :: ModMut -> Text
 modMut AddMut = "readonly"
 modMut RemMut = "-readonly"
 
-modOpt :: ModOpt -> String
+modOpt :: ModOpt -> Text
 modOpt AddOpt = "?:"
 modOpt RemOpt = "-?:"
 
 object :: Object -> Printer'
 object (ObjectLit []) = pure "{}"
-object (ObjectLit xs) = surround "{ " " }" . intercalate ", " <$> mapM objectPair xs
+object (ObjectLit xs) = surround "{ " " }" . T.intercalate ", " <$> mapM objectPair xs
 object (ObjectMapped m p (kt, xt, asm) vt) = do
   modify $ \s -> s { mappedTypeKeys = kt : mappedTypeKeys s }
   cfgRO <- readonly <$> ask
@@ -285,20 +284,20 @@ object (ObjectMapped m p (kt, xt, asm) vt) = do
 
 importDec :: ImportDec -> Printer'
 importDec x = pure $ "import \"" <> importDecFrom x <> "\" " <> imp (importDecContents x)
-  where imp :: Import -> String
+  where imp :: Import -> Text
         imp (ImportDef d)            = named $ defToNamed d
         imp (ImportNamed ns)         = named ns
         imp (ImportAll a)            = allp a
         imp (ImportDefAndNamed d ns) = named $ defToNamed d <> ns
         imp (ImportDefAndAll d a)    = allp a <> " " <> named (defToNamed d)
 
-        defToNamed :: String -> NonEmpty String
+        defToNamed :: Text -> NonEmpty Text
         defToNamed = pure . ("default as " <>)
 
-        named :: NonEmpty String -> String
-        named = surround "(" ")" . intercalate ", " . toList
+        named :: NonEmpty Text -> Text
+        named = surround "(" ")" . T.intercalate ", " . toList
 
-        allp :: String -> String
+        allp :: Text -> Text
         allp = ("as " <>)
 
 exportDec :: ExportDec -> Printer'
@@ -318,11 +317,11 @@ alias x = case isNewtype (aliasType x) of
   Nothing -> do
     let explicitTargs = foldMap toList (aliasTypeArgs x)
     modify $ \s -> s { explicitTypeArgs = explicitTypeArgs s <> explicitTargs }
-    explicitTargsP <- intercalate " " <$> mapMaybeM printableTypeArg explicitTargs
+    explicitTargsP <- unwords <$> mapMaybeM printableTypeArg explicitTargs
     ttype <- expr (aliasType x)
     ps <- renderPrintState
-    pure $ "type " <> aliasName x <> (if null explicitTargsP then "" else " ") <> explicitTargsP <> " = " <> renderedTypeArgs ps <> renderedSubtypes ps <> ttype
-      where printableTypeArg :: TypeArg -> Printer (Maybe String)
+    pure $ "type " <> aliasName x <> (if T.null explicitTargsP then "" else " ") <> explicitTargsP <> " = " <> renderedTypeArgs ps <> renderedSubtypes ps <> ttype
+      where printableTypeArg :: TypeArg -> Printer (Maybe Text)
             printableTypeArg (TMisc y, _)      = Just <$> misc y
             printableTypeArg (TSubtype y z, _) = Just . surround "(" ")" <$> subtype y z
             printableTypeArg _                   = pure Nothing
@@ -333,12 +332,12 @@ interface x = case isNewtype =<< interfaceExtends x of
   Nothing -> alias $ fromInterface x
 
 enum :: SEnum -> Printer'
-enum x = (\ys -> "enum " <> enumName x <> " {" <> (if null ys then "" else " ") <> intercalate ", " ys <> " }") <$>
+enum x = (\ys -> "enum " <> enumName x <> " {" <> (if null ys then "" else " ") <> T.intercalate ", " ys <> " }") <$>
   mapM enumMember (enumMembers x)
   where enumMember :: EnumMember -> Printer'
         enumMember (EnumMember k Nothing)  = pure $ enumKey k
         enumMember (EnumMember k (Just v)) = ((enumKey k <> " = ") <>) <$> expr v
 
-        enumKey :: EnumKey -> String
+        enumKey :: EnumKey -> Text
         enumKey (EKeyIdent k) = k
         enumKey (EKeyStr k)   = "\"" <> k <> "\""

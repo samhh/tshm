@@ -1,5 +1,6 @@
 module TSHM.ParserSpec (spec) where
 
+import qualified Data.Text             as T
 import qualified Hedgehog.Gen          as Gen
 import qualified Hedgehog.Range        as Range
 import           Prelude
@@ -10,8 +11,8 @@ import           Test.Hspec.Hedgehog   (PropertyT, forAll, hedgehog, (===))
 import           Test.Hspec.Megaparsec
 import           Text.Megaparsec       (ParseErrorBundle, Parsec, eof, parse)
 
-unlines' :: [String] -> String
-unlines' = intercalate "\n"
+unlines' :: [Text] -> Text
+unlines' = T.intercalate "\n"
 
 parse' :: Parsec e s a -> s -> Either (ParseErrorBundle s e) a
 parse' = flip parse ""
@@ -275,7 +276,7 @@ spec = describe "TSHM.Parser" $ do
       parse' p `shouldFailOn` "1.2.3"
 
   describe "importDec" $ do
-    let ident' = Gen.list (Range.linear 1 99) Gen.alpha
+    let ident' = Gen.text (Range.linear 1 99) Gen.alpha
 
     it "parses default import" $ hedgehog $ do
       imp <- forAll ident'
@@ -335,7 +336,7 @@ spec = describe "TSHM.Parser" $ do
       parse' exportDec "export default a & \"b\";" =*= ExportDef (TBinOp BinOpIntersection (TMisc "a") (TString "b"))
 
   describe "constDecIdent" $ do
-    let ident' = Gen.list (Range.linear 1 99) Gen.alpha
+    let ident' = Gen.text (Range.linear 1 99) Gen.alpha
 
     it "parses const declaration" $ hedgehog $ do
       x <- forAll ident'

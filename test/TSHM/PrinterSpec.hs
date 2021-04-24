@@ -1,5 +1,6 @@
 module TSHM.PrinterSpec (spec) where
 
+import qualified Data.Text           as T
 import           Prelude
 import           TSHM.Parser         (parseDeclaration)
 import           TSHM.Printer        (PrintConfig (PrintConfig),
@@ -8,13 +9,13 @@ import           Test.Hspec
 import           Test.Hspec.Hedgehog (PropertyT, (===))
 import           Text.Megaparsec     (ParseErrorBundle)
 
-unlines' :: [String] -> String
-unlines' = intercalate "\n"
+unlines' :: [Text] -> Text
+unlines' = T.intercalate "\n"
 
-ppWith :: Maybe String -> Bool -> String -> Either (ParseErrorBundle String Void) String
+ppWith :: Maybe Text -> Bool -> Text -> Either (ParseErrorBundle Text Void) Text
 ppWith x y = fmap (printDeclaration . (\sig -> PrintConfig sig x y)) . parseDeclaration
 
-pp :: String -> Either (ParseErrorBundle String Void) String
+pp :: Text -> Either (ParseErrorBundle Text Void) Text
 pp = ppWith (Just "forall") True
 
 (=*=) :: (Eq a, Eq e, Show a, Show e) => Either e a -> a -> PropertyT IO ()

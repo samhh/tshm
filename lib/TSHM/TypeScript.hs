@@ -24,9 +24,9 @@ data Partial
   deriving (Eq, Show)
 
 data ObjectKey
-  = OKeyIdent String
-  | OKeyStr String
-  | OKeyNum String
+  = OKeyIdent Text
+  | OKeyStr Text
+  | OKeyNum Text
   | OKeyComputed TExpr
   | OKeyIndex TExpr
   deriving (Eq, Show)
@@ -53,13 +53,13 @@ data ModOpt
 
 data Object
   = ObjectLit [ObjectPair]
-  | ObjectMapped (Maybe ModMut) (Maybe ModOpt) (String, TExpr, Maybe TExpr) TExpr
+  | ObjectMapped (Maybe ModMut) (Maybe ModOpt) (Text, TExpr, Maybe TExpr) TExpr
   deriving (Eq, Show)
 
 type TypeArg = (TExpr, Maybe TExpr)
 
 data TemplateToken
-  = TemplateStr String
+  = TemplateStr Text
   | TemplateExpr TExpr
   deriving (Eq, Show)
 
@@ -72,26 +72,26 @@ data TExpr
   | TUndefined
   | TUniqueSymbol
   | TBoolean Bool
-  | TMisc String
-  | TString String
+  | TMisc Text
+  | TString Text
   | TTemplate [TemplateToken]
   -- This is represented as a string because numbers are hard and tend to
   -- differ a fair amount between languages. We don't actually need to do any
   -- arithmetic, so this keeps things simple!
-  | TNumber String
+  | TNumber Text
   | TTuple [TExpr]
   | TObject Object
   | TIndexedAccess TExpr TExpr
-  | TDotAccess TExpr String
-  | TGeneric String (NonEmpty TypeArg)
-  | TSubtype String TExpr
+  | TDotAccess TExpr Text
+  | TGeneric Text (NonEmpty TypeArg)
+  | TSubtype Text TExpr
   | TLambda Lambda
   | TUnOp UnOp TExpr
   | TBinOp BinOp TExpr TExpr
   | TCond TExpr TExpr TExpr TExpr
   -- This is defined here as opposed to with the other unary operators as it
   -- can only precede a new identifier.
-  | TInfer String
+  | TInfer Text
   | TGrouped TExpr
   deriving (Eq, Show)
 
@@ -109,15 +109,15 @@ data Lambda = Lambda
   } deriving (Eq, Show)
 
 data Import
-  = ImportDef String
-  | ImportNamed (NonEmpty String)
-  | ImportAll String
-  | ImportDefAndNamed String (NonEmpty String)
-  | ImportDefAndAll { defIdent :: String, allIdent :: String }
+  = ImportDef Text
+  | ImportNamed (NonEmpty Text)
+  | ImportAll Text
+  | ImportDefAndNamed Text (NonEmpty Text)
+  | ImportDefAndAll { defIdent :: Text, allIdent :: Text }
   deriving (Eq, Show)
 
 data ImportDec = ImportDec
-  { importDecFrom     :: String
+  { importDecFrom     :: Text
   , importDecContents :: Import
   } deriving (Eq, Show)
 
@@ -126,12 +126,12 @@ newtype ExportDec
   deriving (Eq, Show)
 
 data ConstDec = ConstDec
-  { constDecName :: String
+  { constDecName :: Text
   , constDecType :: TExpr
   } deriving (Eq, Show)
 
 data FunctionDec = FunctionDec
-  { functionDecName :: String
+  { functionDecName :: Text
   , functionDecType :: Lambda
   } deriving (Eq, Show)
 
@@ -139,28 +139,28 @@ fromFunctionDec :: FunctionDec -> ConstDec
 fromFunctionDec (FunctionDec x y) = ConstDec x (TLambda y)
 
 data Alias = Alias
-  { aliasName     :: String
+  { aliasName     :: Text
   , aliasTypeArgs :: Maybe (NonEmpty TypeArg)
   , aliasType     :: TExpr
   } deriving (Eq, Show)
 
 data Interface = Interface
-  { interfaceName     :: String
+  { interfaceName     :: Text
   , interfaceTypeArgs :: Maybe (NonEmpty TypeArg)
   , interfaceExtends  :: Maybe TExpr
   , interfaceType     :: Object
   } deriving (Eq, Show)
 
 data EnumKey
-  = EKeyIdent String
-  | EKeyStr String
+  = EKeyIdent Text
+  | EKeyStr Text
   deriving (Eq, Show)
 
 data EnumMember = EnumMember EnumKey (Maybe TExpr)
   deriving (Eq, Show)
 
 data SEnum = SEnum
-  { enumName    :: String
+  { enumName    :: Text
   , enumMembers :: [EnumMember]
   } deriving (Eq, Show)
 

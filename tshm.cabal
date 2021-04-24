@@ -12,13 +12,16 @@ common common
     ConstraintKinds
     LambdaCase
     NoImplicitPrelude
+    OverloadedStrings
     ScopedTypeVariables
     TupleSections
+    ViewPatterns
   ghc-options:
     -Wall
   build-depends:
       base                 ^>=4.14
     , relude               ^>=0.7
+    , text                 ^>=1.2
   mixins:
       base hiding (Prelude)
     , relude (Relude as Prelude)

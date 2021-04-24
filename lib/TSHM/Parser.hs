@@ -10,6 +10,7 @@ import           Control.Monad.Combinators.Expr     (Operator (..),
                                                      makeExprParser)
 import qualified Control.Monad.Combinators.NonEmpty as NE
 import           Data.List                          (foldr1)
+import qualified Data.Text                          as T
 import           Data.Void                          ()
 import           Prelude
 import           TSHM.TypeScript
@@ -17,12 +18,12 @@ import           Text.Megaparsec                    hiding (many, some)
 import           Text.Megaparsec.Char
 import qualified Text.Megaparsec.Char.Lexer         as L
 
-type ParseOutput = Either (ParseErrorBundle String Void) (NonEmpty Statement)
+type ParseOutput = Either (ParseErrorBundle Text Void) (NonEmpty Statement)
 
-parseDeclaration :: String -> ParseOutput
+parseDeclaration :: Text -> ParseOutput
 parseDeclaration = parse declaration "input"
 
-type Parser = Parsec Void String
+type Parser = Parsec Void Text
 
 declaration :: Parser (NonEmpty Statement)
 declaration = scN *> NE.some statement <* scN <* eof
@@ -51,19 +52,19 @@ scN :: Parser ()
 scN = getSc space1
 
 -- This can be thought of as just `string x <* sc`.
-sym :: String -> Parser String
+sym :: Text -> Parser Text
 sym = L.symbol sc
 
 -- An alternative symbol parser that parses newlines.
-symN :: String -> Parser String
+symN :: Text -> Parser Text
 symN = L.symbol scN
 
 -- This is literally just `p <* sc`, but it slightly formalises how we're
 -- trying to formally approach whitespace.
-lex :: Parser String -> Parser String
+lex :: Parser Text -> Parser Text
 lex = L.lexeme sc
 
-between' :: String -> String -> Parser a -> Parser a
+between' :: Text -> Text -> Parser a -> Parser a
 between' l r = between (symN l) (scN *> sym r)
 
 parens :: Parser a -> Parser a
@@ -135,11 +136,11 @@ identTailChar = identHeadChar <|> numberChar
 -- identifiers, behaving the same except also allowing reserved words. There's
 -- currently no distinction in this module as we don't perform any manner of
 -- correctness checking, making them for our purposes identical.
-ident :: Parser String
-ident = lex $ (:) <$> identHeadChar <*> (maybeToMonoid <$> optional (some identTailChar))
+ident :: Parser Text
+ident = lex $ fmap T.pack . (:) <$> identHeadChar <*> (maybeToMonoid <$> optional (some identTailChar))
 
-keyword :: String -> Parser String
-keyword x = try $ lex $ string x <* notFollowedBy identTailChar
+keyword :: Text -> Parser Text
+keyword x = try . lex $ string x <* notFollowedBy identTailChar
 
 ro :: Parser Mutant
 ro = bool Mut Immut . isJust <$> optional (sym "readonly ")
@@ -150,18 +151,18 @@ roMod = optional ((const RemMut <$ sym "-" <|> const AddMut <$ optional (sym "+"
 generic :: Parser TExpr
 generic = TGeneric <$> ident <*> typeArgs
 
-str :: Parser String
+str :: Parser Text
 str = lex $ strOf '\'' <|> strOf '"'
-  where strOf :: Char -> Parser String
+  where strOf :: Char -> Parser Text
         strOf c =
           let p = char c
-           in p *> manyTill L.charLiteral p
+           in T.pack <$> (p *> manyTill L.charLiteral p)
 
 template :: Parser [TemplateToken]
 template = char '`' *> go <* sym "`"
   where go :: Parser [TemplateToken]
         go = do
-          s <- guard' <$> manyTill L.charLiteral (lookAhead $ string "${" <|> string "`")
+          s <- guard' . T.pack <$> manyTill L.charLiteral (lookAhead $ string "${" <|> string "`")
           isInterp <- True <$ lookAhead (string "${") <|> False <$ lookAhead (string "`")
 
           if isInterp
@@ -171,11 +172,11 @@ template = char '`' *> go <* sym "`"
         interp :: Parser TemplateToken
         interp = TemplateExpr <$> (sym "${" *> expr <* char '}')
 
-        guard' :: String -> [TemplateToken]
-        guard' = foldMap (pure . TemplateStr) . (guarded (not . null) :: String -> Maybe String)
+        guard' :: Text -> [TemplateToken]
+        guard' = foldMap (pure . TemplateStr) . (guarded (not . T.null) :: Text -> Maybe Text)
 
-num :: Parser String
-num = lex $ (<>) . foldMap pure <$> optional (char '-') <*> choice
+num :: Parser Text
+num = lex $ fmap T.pack . (<>) . foldMap pure <$> optional (char '-') <*> choice
   [ try $ (\x y z -> x <> pure y <> z) <$> some numberChar <*> char '.' <*> some numberChar
   , (:) <$> char '.' <*> some numberChar
   , some numberChar
@@ -273,19 +274,19 @@ importDec = flip ImportDec <$> (sym "import" *> optional (sym "type") *> imports
           , ImportDef <$> def
           ]
 
-        def :: Parser String
+        def :: Parser Text
         def = ident
 
-        named :: Parser (NonEmpty String)
+        named :: Parser (NonEmpty Text)
         named = braces $ NE.sepBy1 ident (sym ",")
 
-        allp :: Parser String
+        allp :: Parser Text
         allp = sym "*" *> sym "as" *> ident
 
 exportDec :: Parser ExportDec
 exportDec = ExportDef <$> (symN "export default" *> expr)
 
-constDecIdent :: Parser String
+constDecIdent :: Parser Text
 constDecIdent =
      optional (sym "export")
   *> sym "declare"
@@ -296,7 +297,7 @@ constDecIdent =
 constDec :: Parser ConstDec
 constDec = ConstDec <$> constDecIdent <*> expr
 
-fnDecName :: Parser String
+fnDecName :: Parser Text
 fnDecName =
       optional (sym "export")
    *> sym "declare"
