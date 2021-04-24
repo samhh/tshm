@@ -1,3 +1,5 @@
+{-# HLINT ignore "Use unwords" #-} -- Until we're using Text
+
 module TSHM.Printer (printDeclaration, PrintConfig (PrintConfig)) where
 
 import           Control.Monad.RWS   (RWS, evalRWS)

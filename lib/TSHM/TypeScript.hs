@@ -121,7 +121,7 @@ data ImportDec = ImportDec
   , importDecContents :: Import
   } deriving (Eq, Show)
 
-data ExportDec
+newtype ExportDec
   = ExportDef TExpr
   deriving (Eq, Show)
 
