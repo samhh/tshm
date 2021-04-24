@@ -48,3 +48,11 @@ At present, the parser can reliably parse a single input declaration. Within thi
 
 The parser does not perform any sort of correctness checking beyond its ability to understand the syntax.
 
+## Contributing
+
+tshm is currently developed against GHC 8.10.4.
+
+The codebase is split up into two parts, `lib/` and `src/`, representing the internal library and the CLI interface respectively.
+
+The library handles parsing and printing. During parsing we parse the input into an AST, performing no correctness checking beyond what's needed to reliably parse any valid TypeScript declaration. Printing is essentially the parsing process in reverse, taking a syntactic token and outputting a string representing it. The library has a number of unit tests defined for each the parser and the printer.
+
