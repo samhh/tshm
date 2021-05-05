@@ -232,6 +232,8 @@ spec = describe "TSHM.Printer" $ do
         , ") => <E, B>(fab: TaskEither<E, (a: A) => B>) => TaskEither<D | E, B>"
         ]) =*=
         "apW :: forall d a e b. TaskEither d a -> TaskEither e (a -> b) -> TaskEither (d | e) b"
+      pp "export declare type URI = typeof URI" =*=
+        "type URI = typeof URI"
 
     it "fp-ts-std/Array" $ do
       pp "export declare const aperture: (n: number) => <A>(xs: A[]) => A[][]" =*=

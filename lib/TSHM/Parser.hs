@@ -311,7 +311,7 @@ fnDec = FunctionDec
 
 alias :: Parser Alias
 alias = Alias
-  <$> (optional (sym "export") *> sym "type" *> ident)
+  <$> (optional (sym "export") *> optional (sym "declare") *> sym "type" *> ident)
   <*> (optional typeArgs <* sym "=")
   <*> expr
 
