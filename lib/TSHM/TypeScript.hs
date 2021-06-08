@@ -95,12 +95,22 @@ data TExpr
   | TGrouped TExpr
   deriving (Eq, Show)
 
+-- | A named parameter is coherent in terms of reflection as TypeScript
+-- disallows looking ahead.
+data ParamName
+  = ParamNamed Text
+  | ParamDestructured
+  deriving (Eq, Show)
+
 data ParamScope
   = Normal
   | Rest
   deriving (Eq, Show)
 
-type Param = (Partial, ParamScope, TExpr)
+data Param = Param
+  { paramName :: ParamName
+  , paramValue :: (Partial, ParamScope, TExpr)
+  } deriving (Eq, Show)
 
 data Lambda = Lambda
   { lambdaTypeArgs :: Maybe (NonEmpty TypeArg)

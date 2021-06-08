@@ -29,6 +29,7 @@ data PrintConfig = PrintConfig
 data PrintState = PrintState
   { ambiguouslyNested    :: Bool
   , immediateFunctionArg :: Bool
+  , namedFunctionArgs    :: [(Text, Text)]
   , explicitTypeArgs     :: [TypeArg]
   , implicitTypeArgs     :: [TypeArg]
   , mappedTypeKeys       :: [Text]
@@ -39,13 +40,14 @@ instance Semigroup PrintState where
   a <> b = PrintState
     (ambiguouslyNested a || ambiguouslyNested b)
     (immediateFunctionArg a || immediateFunctionArg b)
+    (namedFunctionArgs a <> namedFunctionArgs b)
     (explicitTypeArgs a <> explicitTypeArgs b)
     (implicitTypeArgs a <> implicitTypeArgs b)
     (mappedTypeKeys a <> mappedTypeKeys b)
     (inferredTypes a <> inferredTypes b)
 
 instance Monoid PrintState where
-  mempty = PrintState False False mempty mempty mempty mempty
+  mempty = PrintState False False mempty mempty mempty mempty mempty
 
 printDeclaration :: PrintConfig -> Text
 printDeclaration x = fst $ evalRWS declaration x mempty
@@ -133,7 +135,12 @@ ambiguouslyNestedExpr t = do
   expr t
 
 param :: Param -> Printer'
-param = f
+param (Param n xs) = case n of
+  ParamDestructured -> f xs
+  ParamNamed n'     -> do
+    printed <- f xs
+    modify $ \s -> s { namedFunctionArgs = (n', printed) : namedFunctionArgs s }
+    pure printed
   where f (Required, Normal, x) = annotatedExpr x
         f (Required, Rest, x)   = ("..." <>) <$> annotatedExpr x
         f (Optional, Normal, x) = (<> "?") <$> annotatedExpr x
@@ -231,13 +238,17 @@ infer x = do
 unOp :: UnOp -> TExpr -> Printer'
 unOp o t = do
   cfgRO <- readonly <$> ask
-  if o == UnOpReadonly && not cfgRO then expr t else do
-    nested <- ambiguouslyNested <$> get
-    doIf (surround "(" ")") nested . ((op o <> " ") <>) <$> expr t
-    where op :: UnOp -> Text
-          op UnOpReflection = "typeof"
-          op UnOpKeys       = "keyof"
-          op UnOpReadonly   = "readonly"
+  raw <- expr t
+  out <- case o of
+    UnOpReadonly   -> pure $ if cfgRO then "readonly " <> raw else raw
+    UnOpKeys       -> pure $ "keyof " <> raw
+    UnOpReflection -> do
+      args <- namedFunctionArgs <$> get
+      pure $ case find ((== raw) . fst) args of
+        Just (_, v) -> v
+        Nothing     -> "typeof " <> raw
+  nested <- ambiguouslyNested <$> get
+  pure $ doIf (surround "(" ")") nested out
 
 binOp :: BinOp -> TExpr -> TExpr -> Printer'
 binOp o l r = do

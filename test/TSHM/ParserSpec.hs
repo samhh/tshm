@@ -93,10 +93,10 @@ spec = describe "TSHM.Parser" $ do
 
     it "parses function" $ do
       parse' expr "<A, B>(a: A) => B" `shouldParse`
-         TLambda (Lambda (Just $ typeArgs' [TMisc "A", TMisc "B"]) [(Required, Normal, TMisc "A")] (TMisc "B"))
+         TLambda (Lambda (Just $ typeArgs' [TMisc "A", TMisc "B"]) [Param (ParamNamed "a") (Required, Normal, TMisc "A")] (TMisc "B"))
 
       parse' expr "(x: F<A, B>) => G<C, D>" `shouldParse`
-         TLambda (Lambda Nothing [(Required, Normal, TGeneric "F" $ typeArgs' [TMisc "A", TMisc "B"])] (TGeneric "G" $ typeArgs' [TMisc "C", TMisc "D"]))
+         TLambda (Lambda Nothing [Param (ParamNamed "x") (Required, Normal, TGeneric "F" $ typeArgs' [TMisc "A", TMisc "B"])] (TGeneric "G" $ typeArgs' [TMisc "C", TMisc "D"]))
 
     it "parses infix operators" $ do
       parse' expr "A & B | C" `shouldParse` TBinOp BinOpIntersection (TMisc "A") (TBinOp BinOpUnion (TMisc "B") (TMisc "C"))
@@ -122,7 +122,7 @@ spec = describe "TSHM.Parser" $ do
 
     it "parses params" $ do
       parse' lambda "(x: number, y: string) => void" `shouldParse`
-        Lambda Nothing [(Required, Normal, TMisc "number"), (Required, Normal, TMisc "string")] TVoid
+        Lambda Nothing [Param (ParamNamed "x") (Required, Normal, TMisc "number"), Param (ParamNamed "y") (Required, Normal, TMisc "string")] TVoid
 
     it "parses return type" $ do
       parse' lambda "() => number" `shouldParse` Lambda Nothing [] (TMisc "number")
@@ -138,9 +138,9 @@ spec = describe "TSHM.Parser" $ do
             , TSubtype "A" (TGeneric "Array" $ typeArgs' [TMisc "B"])
             ]
           )
-          [ (Required, Normal, TLambda (Lambda
+          [ Param (ParamNamed "f") (Required, Normal, TLambda (Lambda
             (Just $ typeArgs' [TSubtype "C" (TMisc "number"), TMisc "D"])
-            [(Required, Normal, TString "ciao")]
+            [Param (ParamNamed "x") (Required, Normal, TString "ciao")]
             (TMisc "string")))
           ]
           TVoid
@@ -157,10 +157,10 @@ spec = describe "TSHM.Parser" $ do
               ]
             ]
           )
-          [ (Required, Normal, TMisc "number")
-          , (Required, Normal, TLambda (Lambda
+          [ Param (ParamNamed "x") (Required, Normal, TMisc "number")
+          , Param (ParamNamed "y") (Required, Normal, TLambda (Lambda
               (Just $ typeArgs' [TMisc "C"])
-              [(Required, Normal, TMisc "C")]
+              [Param (ParamNamed "z") (Required, Normal, TMisc "C")]
               (TLambda (Lambda Nothing [] (TMisc "C")))))
           ]
           ( TLambda (Lambda Nothing [] TVoid))
@@ -409,40 +409,40 @@ spec = describe "TSHM.Parser" $ do
       parse' params "()" `shouldParse` []
 
     it "parses single param" $ do
-      parse' params "(a: number)" `shouldParse` [(Required, Normal, TMisc "number")]
+      parse' params "(a: number)" `shouldParse` [Param (ParamNamed "a") (Required, Normal, TMisc "number")]
 
     it "parses multiple params" $ do
       parse' params "(a: number, b: <A>(x: string) => void, c: Array<boolean>)" `shouldParse`
-        [ (Required, Normal, TMisc "number")
-        , (Required, Normal, TLambda (Lambda (Just $ typeArgs' [TMisc "A"]) [(Required, Normal, TMisc "string")] TVoid))
-        , (Required, Normal, TGeneric "Array" $ typeArgs' [TMisc "boolean"])
+        [ Param (ParamNamed "a") (Required, Normal, TMisc "number")
+        , Param (ParamNamed "b") (Required, Normal, TLambda (Lambda (Just $ typeArgs' [TMisc "A"]) [Param (ParamNamed "x") (Required, Normal, TMisc "string")] TVoid))
+        , Param (ParamNamed "c") (Required, Normal, TGeneric "Array" $ typeArgs' [TMisc "boolean"])
         ]
 
     it "parses rest params" $ do
       parse' params "(...a: number, b: string, ...c: boolean)" `shouldParse`
-        [ (Required, Rest, TMisc "number")
-        , (Required, Normal, TMisc "string")
-        , (Required, Rest, TMisc "boolean")
+        [ Param (ParamNamed "a") (Required, Rest, TMisc "number")
+        , Param (ParamNamed "b") (Required, Normal, TMisc "string")
+        , Param (ParamNamed "c") (Required, Rest, TMisc "boolean")
         ]
 
     it "parses optional params" $ do
       parse' params "(a?: A, ...b?: B, c: C)" `shouldParse`
-        [ (Optional, Normal, TMisc "A")
-        , (Optional, Rest, TMisc "B")
-        , (Required, Normal, TMisc "C")
+        [ Param (ParamNamed "a") (Optional, Normal, TMisc "A")
+        , Param (ParamNamed "b") (Optional, Rest, TMisc "B")
+        , Param (ParamNamed "c") (Required, Normal, TMisc "C")
         ]
 
     it "parses optional whitespace and newlines" $ do
       parse' params (unlines' ["(", ")"]) `shouldParse` []
-      parse' params (unlines' ["(", "x: A", ")"]) `shouldParse` [(Required, Normal, TMisc "A")]
-      parse' params (unlines' ["(", "x: A,", "y: B", ")"]) `shouldParse` [(Required, Normal, TMisc "A"), (Required, Normal, TMisc "B")]
+      parse' params (unlines' ["(", "x: A", ")"]) `shouldParse` [Param (ParamNamed "x") (Required, Normal, TMisc "A")]
+      parse' params (unlines' ["(", "x: A,", "y: B", ")"]) `shouldParse` [Param (ParamNamed "x") (Required, Normal, TMisc "A"), Param (ParamNamed "y") (Required, Normal, TMisc "B")]
 
     it "parses optional trailing comma in non-empty params" $ do
-      parse' params "(a: number,)" `shouldParse` [(Required, Normal, TMisc "number")]
+      parse' params "(a: number,)" `shouldParse` [Param (ParamNamed "a") (Required, Normal, TMisc "number")]
 
     it "parses destructures" $ do
-      parse' params "({ a: [a, { a, ...a }, ...a], a: a, ...a }: x)" `shouldParse` [(Required, Normal, TMisc "x")]
-      parse' params "([a, { a, ...a }, ...a]: x)" `shouldParse` [(Required, Normal, TMisc "x")]
+      parse' params "({ a: [a, { a, ...a }, ...a], a: a, ...a }: x)" `shouldParse` [Param ParamDestructured (Required, Normal, TMisc "x")]
+      parse' params "([a, { a, ...a }, ...a]: x)" `shouldParse` [Param ParamDestructured (Required, Normal, TMisc "x")]
 
   describe "alias" $ do
     let p = parse' $ alias <* eof
@@ -491,7 +491,7 @@ spec = describe "TSHM.Parser" $ do
     let p = parse' $ fnDec <* eof
 
     it "parses" $ do
-      p "declare function f<A>(x: A): <B extends A>(y: B) => C" `shouldParse` FunctionDec "f" (Lambda (Just $ typeArgs' [TMisc "A"]) [(Required, Normal, TMisc "A")] (TLambda $ Lambda (Just $ typeArgs' [TSubtype "B" (TMisc "A")]) [(Required, Normal, TMisc "B")] (TMisc "C")))
+      p "declare function f<A>(x: A): <B extends A>(y: B) => C" `shouldParse` FunctionDec "f" (Lambda (Just $ typeArgs' [TMisc "A"]) [Param (ParamNamed "x") (Required, Normal, TMisc "A")] (TLambda $ Lambda (Just $ typeArgs' [TSubtype "B" (TMisc "A")]) [Param (ParamNamed "y") (Required, Normal, TMisc "B")] (TMisc "C")))
 
   describe "enum" $ do
     let p = parse' $ enum <* eof
@@ -533,19 +533,19 @@ spec = describe "TSHM.Parser" $ do
       parse' statement "export declare const empty: ''" `shouldParse` StatementConstDec (ConstDec "empty" (TString ""))
 
       parse' statement "export declare const aperture: (n: number) => <A>(xs: A[]) => A[][]" `shouldParse`
-        StatementConstDec (ConstDec "aperture" (TLambda (Lambda Nothing [(Required, Normal, TMisc "number")] (TLambda (Lambda (Just $ typeArgs' [TMisc "A"]) [(Required, Normal, TGeneric "Array" $ typeArgs' [TMisc "A"])] (TGeneric "Array" $ typeArgs' [TGeneric "Array" $ typeArgs' [TMisc "A"]]))))))
+        StatementConstDec (ConstDec "aperture" (TLambda (Lambda Nothing [Param (ParamNamed "n") (Required, Normal, TMisc "number")] (TLambda (Lambda (Just $ typeArgs' [TMisc "A"]) [Param (ParamNamed "xs") (Required, Normal, TGeneric "Array" $ typeArgs' [TMisc "A"])] (TGeneric "Array" $ typeArgs' [TGeneric "Array" $ typeArgs' [TMisc "A"]]))))))
 
       parse' statement "export declare const anyPass: <A>(fs: Predicate<A>[]) => Predicate<A>" `shouldParse`
-        StatementConstDec (ConstDec "anyPass" (TLambda (Lambda (Just $ typeArgs' [TMisc "A"]) [(Required, Normal, TGeneric "Array" $ typeArgs' [TGeneric "Predicate" $ typeArgs' [TMisc "A"]])] (TGeneric "Predicate" $ typeArgs' [TMisc "A"]))))
+        StatementConstDec (ConstDec "anyPass" (TLambda (Lambda (Just $ typeArgs' [TMisc "A"]) [Param (ParamNamed "fs") (Required, Normal, TGeneric "Array" $ typeArgs' [TGeneric "Predicate" $ typeArgs' [TMisc "A"]])] (TGeneric "Predicate" $ typeArgs' [TMisc "A"]))))
 
       parse' statement "export declare const merge: <A>(x: A) => <B>(y: B) => A & B" `shouldParse`
-        StatementConstDec (ConstDec "merge" (TLambda (Lambda (Just $ typeArgs' [TMisc "A"]) [(Required, Normal, TMisc "A")] (TLambda (Lambda (Just $ typeArgs' [TMisc "B"]) [(Required, Normal, TMisc "B")] (TBinOp BinOpIntersection (TMisc "A") (TMisc "B")))))))
+        StatementConstDec (ConstDec "merge" (TLambda (Lambda (Just $ typeArgs' [TMisc "A"]) [Param (ParamNamed "x") (Required, Normal, TMisc "A")] (TLambda (Lambda (Just $ typeArgs' [TMisc "B"]) [Param (ParamNamed "y") (Required, Normal, TMisc "B")] (TBinOp BinOpIntersection (TMisc "A") (TMisc "B")))))))
 
       parse' statement "export declare const omit: <K extends string>(ks: K[]) => <V, A extends Record<K, V>>(x: Partial<A>) => Pick<A, Exclude<keyof A, K>>" `shouldParse`
-        StatementConstDec (ConstDec "omit" (TLambda (Lambda (Just $ typeArgs' [TSubtype "K" (TMisc "string")]) [(Required, Normal, TGeneric "Array" $ typeArgs' [TMisc "K"])] (TLambda (Lambda (Just $ typeArgs' [TMisc "V", TSubtype "A" (TGeneric "Record" $ typeArgs' [TMisc "K", TMisc "V"])]) [(Required, Normal, TGeneric "Partial" $ typeArgs' [TMisc "A"])] (TGeneric "Pick" $ typeArgs' [TMisc "A", TGeneric "Exclude" $ typeArgs' [TUnOp UnOpKeys (TMisc "A"), TMisc "K"]]))))))
+        StatementConstDec (ConstDec "omit" (TLambda (Lambda (Just $ typeArgs' [TSubtype "K" (TMisc "string")]) [Param (ParamNamed "ks") (Required, Normal, TGeneric "Array" $ typeArgs' [TMisc "K"])] (TLambda (Lambda (Just $ typeArgs' [TMisc "V", TSubtype "A" (TGeneric "Record" $ typeArgs' [TMisc "K", TMisc "V"])]) [Param (ParamNamed "x") (Required, Normal, TGeneric "Partial" $ typeArgs' [TMisc "A"])] (TGeneric "Pick" $ typeArgs' [TMisc "A", TGeneric "Exclude" $ typeArgs' [TUnOp UnOpKeys (TMisc "A"), TMisc "K"]]))))))
 
       parse' statement "export declare const unary: <A extends unknown[], B>(f: (...xs: A) => B) => (xs: A) => B" `shouldParse`
-        StatementConstDec (ConstDec "unary" (TLambda (Lambda (Just $ typeArgs' [TSubtype "A" (TGeneric "Array" $ typeArgs' [TUnknown]), TMisc "B"]) [(Required, Normal, TLambda (Lambda Nothing [(Required, Rest, TMisc "A")] (TMisc "B")))] (TLambda (Lambda Nothing [(Required, Normal, TMisc "A")] (TMisc "B"))))))
+        StatementConstDec (ConstDec "unary" (TLambda (Lambda (Just $ typeArgs' [TSubtype "A" (TGeneric "Array" $ typeArgs' [TUnknown]), TMisc "B"]) [Param (ParamNamed "f") (Required, Normal, TLambda (Lambda Nothing [Param (ParamNamed "xs") (Required, Rest, TMisc "A")] (TMisc "B")))] (TLambda (Lambda Nothing [Param (ParamNamed "xs") (Required, Normal, TMisc "A")] (TMisc "B"))))))
 
       parse' statement "export interface Some<A> { readonly _tag: 'Some', readonly value: A }" `shouldParse`
         StatementInterface (Interface "Some" (Just $ typeArgs' [TMisc "A"]) Nothing (ObjectLit [ObjectPair Immut Required (OKeyIdent "_tag", TString "Some"), ObjectPair Immut Required (OKeyIdent "value", TMisc "A")]))

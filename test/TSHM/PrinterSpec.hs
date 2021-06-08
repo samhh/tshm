@@ -141,6 +141,18 @@ spec = describe "TSHM.Printer" $ do
     pp "export interface X extends Newtype<{ readonly Y: unique symbol }, Z> {}" =*=
       "newtype X = Z"
 
+  it "prints type of known referenced reflection type" $ do
+    pp "declare const f: (x: { y: number; z: [string] }) => [typeof x, x]" =*=
+      "f :: { y: number, z: [string] } -> [{ y: number, z: [string] }, x]"
+
+  it "prints most recently discovered reflection type" $ do
+    pp "declare const f: (x: number) => (x: string) => typeof x" =*=
+      "f :: number -> string -> string"
+
+  it "prints dumb typeof for unknown referenced reflection type" $ do
+    pp "declare const f: typeof x" =*=
+      "f :: typeof x"
+
   describe "prints real signatures from" $ do
     it "fp-ts/Array" $ do
       pp "export declare const zero: <A>() => A[]" =*=

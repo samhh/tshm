@@ -246,13 +246,13 @@ typeArgs = angles (NE.sepEndBy1 typeArg (sym ","))
 params :: Parser [Param]
 params = parens $ sepEndBy param (symN ",")
   where param :: Parser Param
-        param = (\x y z -> (y, x, z)) <$> rest <*> (name *> sep) <*> (optional (sym "new") *> expr)
+        param = (\s n r v -> Param n (r, s, v)) <$> rest <*> name <*> sep <*> (optional (sym "new") *> expr)
 
-        name :: Parser ()
+        name :: Parser ParamName
         name =
-              () <$ ident
-          <|> () <$ bracks (sepEndBy (rest *> name)                                (symN ","))
-          <|> () <$ braces (sepEndBy (rest *> ident *> optional (sym ":" *> name)) (symN ","))
+              ParamNamed <$> ident
+          <|> ParamDestructured <$ bracks (sepEndBy (rest *> name)                                (symN ","))
+          <|> ParamDestructured <$ braces (sepEndBy (rest *> ident *> optional (sym ":" *> name)) (symN ","))
 
         rest :: Parser ParamScope
         rest = bool Normal Rest . isJust <$> optional (sym "...")
