@@ -45,7 +45,8 @@ library
     TSHM.Printer
     TSHM.TypeScript
   build-depends:
-      megaparsec           ^>=9.0
+      containers           ^>=0.6
+    , megaparsec           ^>=9.0
     , parser-combinators   ^>=1.2
     , mtl                  ^>=2.2
     , tuple                ^>=0.3.0

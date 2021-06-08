@@ -2,6 +2,7 @@ module TSHM.Printer (printDeclaration, PrintConfig (PrintConfig)) where
 
 import           Control.Monad.RWS   (RWS, evalRWS)
 import           Data.List.NonEmpty  ((!!))
+import           Data.Map            (insert, lookup)
 import qualified Data.Text           as T
 import           Data.Tuple.Sequence (sequenceT)
 import           Prelude
@@ -29,7 +30,7 @@ data PrintConfig = PrintConfig
 data PrintState = PrintState
   { ambiguouslyNested    :: Bool
   , immediateFunctionArg :: Bool
-  , namedFunctionArgs    :: [(Text, Text)]
+  , namedFunctionArgs    :: Map Text Text
   , explicitTypeArgs     :: [TypeArg]
   , implicitTypeArgs     :: [TypeArg]
   , mappedTypeKeys       :: [Text]
@@ -139,7 +140,7 @@ param (Param n xs) = case n of
   ParamDestructured -> f xs
   ParamNamed n'     -> do
     printed <- f xs
-    modify $ \s -> s { namedFunctionArgs = (n', printed) : namedFunctionArgs s }
+    modify $ \s -> s { namedFunctionArgs = insert n' printed (namedFunctionArgs s) }
     pure printed
   where f (Required, Normal, x) = annotatedExpr x
         f (Required, Rest, x)   = ("..." <>) <$> annotatedExpr x
@@ -244,9 +245,7 @@ unOp o t = do
     UnOpKeys       -> pure $ "keyof " <> raw
     UnOpReflection -> do
       args <- namedFunctionArgs <$> get
-      pure $ case find ((== raw) . fst) args of
-        Just (_, v) -> v
-        Nothing     -> "typeof " <> raw
+      pure $ fromMaybe ("typeof " <> raw) (lookup raw args)
   nested <- ambiguouslyNested <$> get
   pure $ doIf (surround "(" ")") nested out
 
