@@ -94,7 +94,10 @@ spec = describe "TSHM.Printer" $ do
     pp "export default 'x'" =*= "default :: \"x\""
     pp "export default 'x';" =*= "default :: \"x\""
     pp "export {}" =*= ""
-    pp "export { x }" =*= ""
+    pp "export { x, y }" =*= ""
+    pp "declare const x: number; export { x }" =*= "x :: number"
+    pp "export { x as y }" =*= ""
+    pp "declare const x: number; export { x as y }" =*= "y :: number"
 
   it "doesn't print non-exported const declarations" $ do
     pp "declare const x: number" =*= ""

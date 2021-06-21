@@ -35,6 +35,7 @@ data PrintState = PrintState
   , implicitTypeArgs     :: [TypeArg]
   , mappedTypeKeys       :: [Text]
   , inferredTypes        :: [Text]
+  , unexportedDecs       :: Map Text Text
   }
 
 instance Semigroup PrintState where
@@ -46,9 +47,10 @@ instance Semigroup PrintState where
     (implicitTypeArgs a <> implicitTypeArgs b)
     (mappedTypeKeys a <> mappedTypeKeys b)
     (inferredTypes a <> inferredTypes b)
+    (unexportedDecs a <> unexportedDecs b)
 
 instance Monoid PrintState where
-  mempty = PrintState False False mempty mempty mempty mempty mempty
+  mempty = PrintState False False mempty mempty mempty mempty mempty mempty
 
 printDeclaration :: PrintConfig -> Text
 printDeclaration x = fst $ evalRWS declaration x mempty
@@ -96,7 +98,7 @@ statement (StatementFunctionDec xs) = T.intercalate "\n" <$> mapM (clean lambdaD
           p x
 
 declaration :: Printer'
-declaration = fmap (T.intercalate "\n\n" . toList) . mapM statement . signatures =<< ask
+declaration = fmap (T.intercalate "\n\n" . filter (not . T.null) . toList) . mapM statement . signatures =<< ask
 
 expr :: TExpr -> Printer'
 expr t = do
@@ -312,17 +314,23 @@ importDec x = pure $ "import \"" <> importDecFrom x <> "\" " <> imp (importDecCo
 
 exportDec :: ExportDec -> Printer'
 exportDec (ExportDef x)        = ("default :: " <>) <$> expr x
-exportDec (ExportNamedRefs xs) = pure mempty
+exportDec (ExportNamedRefs xs) = T.intercalate "\n\n" . filter (not . T.null) <$> mapM exportNamedRef xs
+  where exportNamedRef :: ExportNamedRef -> Printer'
+        exportNamedRef (ExportNamedRefUnchanged x) = ((x <> " :: ") <>) `from` x
+        exportNamedRef (ExportNamedRefRenamed x y) = ((y <> " :: ") <>) `from` x
+        from :: (Text -> Text) -> Text -> Printer'
+        from f k = foldMap f . lookup k . unexportedDecs <$> get
 
 constDec :: ConstDec -> Printer'
-constDec (ConstDec _ _ False) = pure mempty
-constDec (ConstDec n t _)     =
-  (\t' ps -> n <> " :: " <> renderedTypeArgs ps <> renderedSubtypes ps <> t')
-  <$> expr t <*> renderPrintState
+constDec (ConstDec n t isExported) = do
+  t' <- (\t' ps -> renderedTypeArgs ps <> renderedSubtypes ps <> t') <$> expr t <*> renderPrintState
+  if isExported
+     then pure $ n <> " :: " <> t'
+     else "" <$ modify (\s -> s { unexportedDecs = insert n t' (unexportedDecs s) })
 
 lambdaDec :: FunctionDec -> Printer'
 lambdaDec (FunctionDec _ _ False) = pure mempty
-lambdaDec (FunctionDec n t _)     =
+lambdaDec (FunctionDec n t True)  =
   (\t' ps -> n <> " :: " <> renderedTypeArgs ps <> renderedSubtypes ps <> t')
   <$> lambda t <*> renderPrintState
 
