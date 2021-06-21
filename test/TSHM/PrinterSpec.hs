@@ -24,36 +24,36 @@ a =*= b = a === Right b
 spec :: Spec
 spec = describe "TSHM.Printer" $ do
   it "prints specified universal quantification" $ do
-    ppWith Nothing True "declare const f: <A>() => A" =*= "f :: () -> a"
-    ppWith (Just "forall") True "declare const f: <A>() => A" =*= "f :: forall a. () -> a"
-    ppWith (Just "∀") True "declare const f: <A>() => A" =*= "f :: ∀ a. () -> a"
+    ppWith Nothing True "export declare const f: <A>() => A" =*= "f :: () -> a"
+    ppWith (Just "forall") True "export declare const f: <A>() => A" =*= "f :: forall a. () -> a"
+    ppWith (Just "∀") True "export declare const f: <A>() => A" =*= "f :: ∀ a. () -> a"
 
 
   it "conditionally prints readonly modifier" $ do
-    ppWith Nothing True  "declare const x: { readonly k: v }" =*= "x :: { readonly k: v }"
-    ppWith Nothing False "declare const x: { readonly k: v }" =*= "x :: { k: v }"
+    ppWith Nothing True  "export declare const x: { readonly k: v }" =*= "x :: { readonly k: v }"
+    ppWith Nothing False "export declare const x: { readonly k: v }" =*= "x :: { k: v }"
 
-    ppWith Nothing True  "declare const x: { k: readonly v }" =*= "x :: { k: readonly v }"
-    ppWith Nothing False "declare const x: { k: readonly v }" =*= "x :: { k: v }"
+    ppWith Nothing True  "export declare const x: { k: readonly v }" =*= "x :: { k: readonly v }"
+    ppWith Nothing False "export declare const x: { k: readonly v }" =*= "x :: { k: v }"
 
-    ppWith Nothing True  "declare const x: { k: v }" =*= "x :: { k: v }"
-    ppWith Nothing False "declare const x: { k: v }" =*= "x :: { k: v }"
+    ppWith Nothing True  "export declare const x: { k: v }" =*= "x :: { k: v }"
+    ppWith Nothing False "export declare const x: { k: v }" =*= "x :: { k: v }"
 
   it "conditionally prints readonly mapped type modifier" $ do
-    ppWith Nothing True  "declare const x: { readonly [k in x]: v }" =*= "x :: { readonly [k in x]: v }"
-    ppWith Nothing False "declare const x: { readonly [k in x]: v }" =*= "x :: { [k in x]: v }"
+    ppWith Nothing True  "export declare const x: { readonly [k in x]: v }" =*= "x :: { readonly [k in x]: v }"
+    ppWith Nothing False "export declare const x: { readonly [k in x]: v }" =*= "x :: { [k in x]: v }"
 
-    ppWith Nothing True  "declare const x: { +readonly [k in x]: v }" =*= "x :: { readonly [k in x]: v }"
-    ppWith Nothing False "declare const x: { +readonly [k in x]: v }" =*= "x :: { [k in x]: v }"
+    ppWith Nothing True  "export declare const x: { +readonly [k in x]: v }" =*= "x :: { readonly [k in x]: v }"
+    ppWith Nothing False "export declare const x: { +readonly [k in x]: v }" =*= "x :: { [k in x]: v }"
 
-    ppWith Nothing True  "declare const x: { -readonly [k in x]: v }" =*= "x :: { -readonly [k in x]: v }"
-    ppWith Nothing False "declare const x: { -readonly [k in x]: v }" =*= "x :: { [k in x]: v }"
+    ppWith Nothing True  "export declare const x: { -readonly [k in x]: v }" =*= "x :: { -readonly [k in x]: v }"
+    ppWith Nothing False "export declare const x: { -readonly [k in x]: v }" =*= "x :: { [k in x]: v }"
 
   it "prints optionality mapped type modifier" $ do
-    pp "declare const x: { [K in A]: B }" =*= "x :: { [k in A]: B }"
-    pp "declare const x: { [K in A]?: B }" =*= "x :: { [k in A]?: B }"
-    pp "declare const x: { [K in A]+?: B }" =*= "x :: { [k in A]?: B }"
-    pp "declare const x: { [K in A]-?: B }" =*= "x :: { [k in A]-?: B }"
+    pp "export declare const x: { [K in A]: B }" =*= "x :: { [k in A]: B }"
+    pp "export declare const x: { [K in A]?: B }" =*= "x :: { [k in A]?: B }"
+    pp "export declare const x: { [K in A]+?: B }" =*= "x :: { [k in A]?: B }"
+    pp "export declare const x: { [K in A]-?: B }" =*= "x :: { [k in A]-?: B }"
 
   it "prints mapped type as clause" $ do
     pp "type Ageless<A> = { [K in keyof A as Exclude<K, 'age'>]: A[K] }" =*=
@@ -93,15 +93,23 @@ spec = describe "TSHM.Printer" $ do
   it "prints export declarations" $ do
     pp "export default 'x'" =*= "default :: \"x\""
     pp "export default 'x';" =*= "default :: \"x\""
+    pp "export {}" =*= ""
+    pp "export { x }" =*= ""
+
+  it "doesn't print non-exported const declarations" $ do
+    pp "declare const x: number" =*= ""
 
   it "prints const declarations" $ do
-    pp "declare const x: number" =*= "x :: number"
-    pp "declare const f: (x: A) => (y: B) => C" =*= "f :: A -> B -> C"
-    pp "declare const f: <A>(x: A) => [A, A]" =*= "f :: forall a. a -> [a, a]"
+    pp "export declare const x: number" =*= "x :: number"
+    pp "export declare const f: (x: A) => (y: B) => C" =*= "f :: A -> B -> C"
+    pp "export declare const f: <A>(x: A) => [A, A]" =*= "f :: forall a. a -> [a, a]"
 
-  it "prints function declarations" $ do
-    pp "declare function f(x: A): (y: B) => C" =*= "f :: A -> B -> C"
-    pp "declare function f<A>(x: A): [A, A]" =*= "f :: forall a. a -> [a, a]"
+  it "doesn't print non-exported function declarations" $ do
+    pp "declare function f(x: A): (y: B) => C" =*= ""
+
+  it "prints exported function declarations" $ do
+    pp "export declare function f(x: A): (y: B) => C" =*= "f :: A -> B -> C"
+    pp "export declare function f<A>(x: A): [A, A]" =*= "f :: forall a. a -> [a, a]"
 
   it "prints overloaded function declarations" $ do
     pp (unlines'
@@ -117,7 +125,7 @@ spec = describe "TSHM.Printer" $ do
     pp "enum X { A = 0, B, 'C' = '1' }" =*= "enum X { A = 0, B, \"C\" = \"1\" }"
     pp "const enum X { A = 0, B, 'C' = '1' }" =*= "enum X { A = 0, B, \"C\" = \"1\" }"
     pp "declare enum X { A = 0, B, 'C' = '1' }" =*= "enum X { A = 0, B, \"C\" = \"1\" }"
-    pp "declare const enum X { A = 0, B, 'C' = '1' }" =*= "enum X { A = 0, B, \"C\" = \"1\" }"
+    pp "export declare const enum X { A = 0, B, 'C' = '1' }" =*= "enum X { A = 0, B, \"C\" = \"1\" }"
 
   it "prints universal quantification and subtypes" $ do
     pp "type X = <A>(x: A) => <B>(y: B) => <C, D extends A, E extends Partial<A>>(c: [C, D, E]) => Either<E, C & D>" =*=
@@ -142,15 +150,15 @@ spec = describe "TSHM.Printer" $ do
       "newtype X = Z"
 
   it "prints type of known referenced reflection type" $ do
-    pp "declare const f: (x: { y: number; z: [string] }) => [typeof x, x]" =*=
+    pp "export declare const f: (x: { y: number; z: [string] }) => [typeof x, x]" =*=
       "f :: { y: number, z: [string] } -> [{ y: number, z: [string] }, x]"
 
   it "prints most recently discovered reflection type" $ do
-    pp "declare const f: (x: number) => (x: string) => typeof x" =*=
+    pp "export declare const f: (x: number) => (x: string) => typeof x" =*=
       "f :: number -> string -> string"
 
   it "prints dumb typeof for unknown referenced reflection type" $ do
-    pp "declare const f: typeof x" =*=
+    pp "export declare const f: typeof x" =*=
       "f :: typeof x"
 
   describe "prints real signatures from" $ do

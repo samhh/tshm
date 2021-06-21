@@ -284,7 +284,7 @@ object (ObjectMapped m p (kt, xt, asm) vt) = do
   let ro = foldMap ((<> " ") . modMut) . mfilter (const cfgRO) $ m
   let sep = maybe ":" modOpt p
   as <- case asm of
-    Nothing -> pure ""
+    Nothing -> pure mempty
     Just x  -> (" as " <>) <$> expr x
 
   k <- misc kt
@@ -311,15 +311,20 @@ importDec x = pure $ "import \"" <> importDecFrom x <> "\" " <> imp (importDecCo
         allp = ("as " <>)
 
 exportDec :: ExportDec -> Printer'
-exportDec (ExportDef x) = ("default :: " <>) <$> expr x
+exportDec (ExportDef x)        = ("default :: " <>) <$> expr x
+exportDec (ExportNamedRefs xs) = pure mempty
 
 constDec :: ConstDec -> Printer'
-constDec x = (\t ps -> constDecName x <> " :: " <> renderedTypeArgs ps <> renderedSubtypes ps <> t)
-  <$> expr (constDecType x) <*> renderPrintState
+constDec (ConstDec _ _ False) = pure mempty
+constDec (ConstDec n t _)     =
+  (\t' ps -> n <> " :: " <> renderedTypeArgs ps <> renderedSubtypes ps <> t')
+  <$> expr t <*> renderPrintState
 
 lambdaDec :: FunctionDec -> Printer'
-lambdaDec x = (\t ps -> functionDecName x <> " :: " <> renderedTypeArgs ps <> renderedSubtypes ps <> t)
-  <$> lambda (functionDecType x) <*> renderPrintState
+lambdaDec (FunctionDec _ _ False) = pure mempty
+lambdaDec (FunctionDec n t _)     =
+  (\t' ps -> n <> " :: " <> renderedTypeArgs ps <> renderedSubtypes ps <> t')
+  <$> lambda t <*> renderPrintState
 
 alias :: Alias -> Printer'
 alias x = case isNewtype (aliasType x) of

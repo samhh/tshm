@@ -290,26 +290,21 @@ exportDec =
   where unchanged = ExportNamedRefUnchanged <$> ident
         renamed = ExportNamedRefRenamed <$> try (ident <* sym "as") <*> ident
 
-constDecIdent :: Parser Text
-constDecIdent =
-     optional (sym "export")
-  *> sym "declare"
-  *> sym "const"
-  *> ident
-  <* sym ":"
+constDecIdent :: Parser (Text, Bool)
+constDecIdent = flip (,)
+  <$> (isJust <$> optional (sym "export"))
+  <*> (sym "declare" *> sym "const" *> ident <* sym ":")
 
 constDec :: Parser ConstDec
-constDec = ConstDec <$> constDecIdent <*> expr
+constDec = (\(x, y) z -> ConstDec x z y) <$> constDecIdent <*> expr
 
-fnDecName :: Parser Text
-fnDecName =
-      optional (sym "export")
-   *> sym "declare"
-   *> sym "function"
-   *> ident
+fnDecName :: Parser (Text, Bool)
+fnDecName = flip (,)
+  <$> (isJust <$> optional (sym "export"))
+  <*> (sym "declare" *> sym "function" *> ident)
 
 fnDec :: Parser FunctionDec
-fnDec = FunctionDec
+fnDec = (\(x, y) z -> FunctionDec x z y)
   <$> fnDecName
   <*> (Lambda <$> optional typeArgs <*> params <* sym ":" <*> expr)
 

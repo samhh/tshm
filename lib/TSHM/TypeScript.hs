@@ -108,7 +108,7 @@ data ParamScope
   deriving (Eq, Show)
 
 data Param = Param
-  { paramName :: ParamName
+  { paramName  :: ParamName
   , paramValue :: (Partial, ParamScope, TExpr)
   } deriving (Eq, Show)
 
@@ -142,17 +142,19 @@ data ExportDec
   deriving (Eq, Show)
 
 data ConstDec = ConstDec
-  { constDecName :: Text
-  , constDecType :: TExpr
+  { constDecName     :: Text
+  , constDecType     :: TExpr
+  , constDecExported :: Bool
   } deriving (Eq, Show)
 
 data FunctionDec = FunctionDec
   { functionDecName :: Text
   , functionDecType :: Lambda
+  , functionDecExported :: Bool
   } deriving (Eq, Show)
 
 fromFunctionDec :: FunctionDec -> ConstDec
-fromFunctionDec (FunctionDec x y) = ConstDec x (TLambda y)
+fromFunctionDec (FunctionDec x y z) = ConstDec x (TLambda y) z
 
 data Alias = Alias
   { aliasName     :: Text
