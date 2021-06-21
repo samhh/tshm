@@ -84,21 +84,21 @@ renderPrintState = do
         matchSubtype (TSubtype y z, _) = Just (y, z)
         matchSubtype _                 = Nothing
 
-statement :: Statement -> Printer'
-statement (StatementImportDec x)    = importDec x
+statement :: Statement -> Printer (Maybe (NonEmpty Text))
+statement (StatementImportDec x)    = pure . pure <$> importDec x
 statement (StatementExportDec x)    = exportDec x
-statement (StatementAlias x)        = alias x
-statement (StatementInterface x)    = interface x
-statement (StatementEnum x)         = enum x
-statement (StatementConstDec x)     = constDec x
-statement (StatementFunctionDec xs) = T.intercalate "\n" <$> mapM (clean lambdaDec) (toList xs)
+statement (StatementAlias x)        = pure . pure <$> alias x
+statement (StatementInterface x)    = pure . pure <$> interface x
+statement (StatementEnum x)         = pure . pure <$> enum x
+statement (StatementConstDec x)     = fmap pure <$> constDec x
+statement (StatementFunctionDec xs) = pure . pure . T.intercalate "\n" <$> mapM (clean lambdaDec) (toList xs)
   where clean :: (a -> Printer') -> a -> Printer'
         clean p x = do
           modify $ \s -> s { implicitTypeArgs = [] }
           p x
 
 declaration :: Printer'
-declaration = fmap (T.intercalate "\n\n" . filter (not . T.null) . toList) . mapM statement . signatures =<< ask
+declaration = fmap (T.intercalate "\n\n" . (toList =<<)) . mapMaybeM statement . toList . signatures =<< ask
 
 expr :: TExpr -> Printer'
 expr t = do
@@ -312,21 +312,22 @@ importDec x = pure $ "import \"" <> importDecFrom x <> "\" " <> imp (importDecCo
         allp :: Text -> Text
         allp = ("as " <>)
 
-exportDec :: ExportDec -> Printer'
-exportDec (ExportDef x)        = ("default :: " <>) <$> expr x
-exportDec (ExportNamedRefs xs) = T.intercalate "\n\n" . filter (not . T.null) <$> mapM exportNamedRef xs
-  where exportNamedRef :: ExportNamedRef -> Printer'
+exportDec :: ExportDec -> Printer (Maybe (NonEmpty Text))
+exportDec (ExportDef x)        = pure . pure . ("default :: " <>) <$> expr x
+exportDec (ExportNamedRefs xs) = nonEmpty <$> mapMaybeM exportNamedRef xs
+  where exportNamedRef :: ExportNamedRef -> Printer (Maybe Text)
         exportNamedRef (ExportNamedRefUnchanged x) = ((x <> " :: ") <>) `from` x
         exportNamedRef (ExportNamedRefRenamed x y) = ((y <> " :: ") <>) `from` x
-        from :: (Text -> Text) -> Text -> Printer'
-        from f k = foldMap f . lookup k . unexportedDecs <$> get
 
-constDec :: ConstDec -> Printer'
+        from :: (Text -> Text) -> Text -> Printer (Maybe Text)
+        from f k = fmap f . lookup k . unexportedDecs <$> get
+
+constDec :: ConstDec -> Printer (Maybe Text)
 constDec (ConstDec n t isExported) = do
   t' <- (\t' ps -> renderedTypeArgs ps <> renderedSubtypes ps <> t') <$> expr t <*> renderPrintState
   if isExported
-     then pure $ n <> " :: " <> t'
-     else "" <$ modify (\s -> s { unexportedDecs = insert n t' (unexportedDecs s) })
+     then pure . pure $ n <> " :: " <> t'
+     else empty <$ modify (\s -> s { unexportedDecs = insert n t' (unexportedDecs s) })
 
 lambdaDec :: FunctionDec -> Printer'
 lambdaDec (FunctionDec _ _ False) = pure mempty
