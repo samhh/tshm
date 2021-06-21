@@ -329,11 +329,17 @@ spec = describe "TSHM.Parser" $ do
         ImportDec pkg (ImportDefAndNamed imp1 $ fromList [imp2, imp3])
 
   describe "exportDec" $ do
-    it "parses any default export" $ do
+    it "parses default export" $ do
       parse' exportDec "export default x" =*= ExportDef (TMisc "x")
       parse' exportDec "export default x;" =*= ExportDef (TMisc "x")
       parse' exportDec "export default a & \"b\"" =*= ExportDef (TBinOp BinOpIntersection (TMisc "a") (TString "b"))
       parse' exportDec "export default a & \"b\";" =*= ExportDef (TBinOp BinOpIntersection (TMisc "a") (TString "b"))
+
+    it "parses named refs export" $ do
+      parse' exportDec "export {}" =*= ExportNamedRefs []
+      parse' exportDec "export { x }" =*= ExportNamedRefs [ExportNamedRefUnchanged "x"]
+      parse' exportDec "export { x, y as y2, z }" =*=
+        ExportNamedRefs [ExportNamedRefUnchanged "x", ExportNamedRefRenamed "y" "y2", ExportNamedRefUnchanged "z"]
 
   describe "constDecIdent" $ do
     let ident' = Gen.text (Range.linear 1 99) Gen.alpha

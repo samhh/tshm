@@ -131,8 +131,14 @@ data ImportDec = ImportDec
   , importDecContents :: Import
   } deriving (Eq, Show)
 
-newtype ExportDec
+data ExportNamedRef
+  = ExportNamedRefUnchanged Text
+  | ExportNamedRefRenamed Text Text
+  deriving (Eq, Show)
+
+data ExportDec
   = ExportDef TExpr
+  | ExportNamedRefs [ExportNamedRef]
   deriving (Eq, Show)
 
 data ConstDec = ConstDec
