@@ -33,7 +33,7 @@ parser = Opts <$>
 withHelp :: A.Parser a -> A.ParserInfo a
 withHelp p = A.info (A.helper <*> v <*> p) (A.fullDesc <> A.progDesc d)
   where d = "A parser and formatter for TypeScript declarations that outputs HM-style type signatures."
-        v = A.infoOption (showVersion version) (A.short 'v' <> A.long "version" <> A.help "Output version")
+        v = A.infoOption (showVersion version) (A.short 'v' <> A.long "version" <> A.help "Output version" <> A.hidden)
 
 -- | Parse command-line options. The library we're using for this will handle
 -- the possibility of failure for us, which isn't encoded in the type

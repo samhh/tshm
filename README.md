@@ -3,7 +3,7 @@
 A parser and formatter for TypeScript declarations that outputs HM-style type signatures.
 
 ```
-Usage: tshm [-v|--version] (filepath | (-e|--eval code)) [-f|--forall string]
+Usage: tshm (filepath | (-e|--eval code)) [-f|--forall string]
             [-r|--readonly]
   A parser and formatter for TypeScript declarations that outputs HM-style type
   signatures.
