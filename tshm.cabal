@@ -44,6 +44,7 @@ library
     TSHM.Parser
     TSHM.Printer
     TSHM.TypeScript
+    Utils
   build-depends:
       containers           ^>=0.6
     , megaparsec           ^>=9.0
@@ -68,4 +69,5 @@ test-suite test-tshm
   other-modules:
     TSHM.ParserSpec
     TSHM.PrinterSpec
+    UtilsSpec
 
