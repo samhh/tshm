@@ -1,10 +1,11 @@
 module Main (main) where
 
-import           CLI          (Input (..), Opts (..), parse)
-import qualified Data.Text    as T
+import           CLI             (Input (..), Opts (..), parse)
+import qualified Data.Text       as T
 import           Prelude
-import           TSHM.Parser  (parseDeclaration)
-import           TSHM.Printer (PrintConfig (PrintConfig), printDeclaration)
+import           TSHM.Parser     (parseDeclaration)
+import           TSHM.Printer    (PrintConfig (PrintConfig), printDeclaration)
+import           TSHM.Reconciler (reconcile)
 
 main :: IO ()
 main = do
@@ -14,5 +15,5 @@ main = do
     FilePath x -> readFileText $ T.unpack x
   case parseDeclaration code of
     Left e  -> print e *> exitFailure
-    Right x -> putTextLn . printDeclaration $ PrintConfig x (forall opts) (readonly opts)
+    Right ast -> putTextLn . printDeclaration $ PrintConfig (reconcile ast) (forall opts) (readonly opts)
 

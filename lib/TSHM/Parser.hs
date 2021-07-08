@@ -28,16 +28,18 @@ type Parser = Parsec Void Text
 declaration :: Parser AST
 declaration = scN *> NE.some statement <* eof
 
-statement :: Parser Statement
+statement :: Parser ScopedStatement
 statement = choice
-  [ StatementImportDec <$> importDec
-  , StatementExportDec <$> exportDec
-  , try $ StatementAlias <$> alias
-  , try $ StatementInterface <$> interface
-  , try $ StatementConstDec <$> constDec
-  , try $ StatementFunctionDec <$> NE.sepBy1 fnDec (some newline)
-  , StatementEnum <$> enum
-  ] <* optional (sym ";")
+  [ ScopedStatementImportDec <$> importDec
+  , try $ ScopedStatementExportDec <$> exportDec
+  , try $ ScopedStatementMisc <$> scope <*> (fmap StatementAlias <$> alias)
+  , try $ ScopedStatementMisc <$> scope <*> (fmap StatementInterface <$> interface)
+  , try $ ScopedStatementMisc <$> scope <*> (fmap StatementConstDec <$> constDec)
+  -- Overloaded function members don't have to be direct siblings, so we'll just
+  -- parse them individually for now and reconcile later
+  , try $ ScopedStatementMisc <$> scope <*> (fmap (StatementFunctionDec . pure) <$> fnDec)
+  , ScopedStatementMisc <$> scope <*> (fmap StatementEnum <$> enum)
+  ] <* scN <* optional (symN ";")
 
 getSc :: Parser () -> Parser ()
 getSc x = L.space x (L.skipLineComment "//") (L.skipBlockComment "/*" "*/")
@@ -141,6 +143,11 @@ ident = lex $ fmap T.pack . (:) <$> identHeadChar <*> (maybeToMonoid <$> optiona
 
 keyword :: Text -> Parser Text
 keyword x = try . lex $ string x <* notFollowedBy identTailChar
+
+scope :: Parser Scope
+scope = toScope . isJust <$> optional (sym "export")
+  where toScope True  = Exported
+        toScope False = Local
 
 ro :: Parser Mutant
 ro = bool Mut Immut . isJust <$> optional (sym "readonly ")
@@ -290,41 +297,31 @@ exportDec =
   where unchanged = ExportNamedRefUnchanged <$> ident
         renamed = ExportNamedRefRenamed <$> try (ident <* sym "as") <*> ident
 
-constDecIdent :: Parser (Text, Bool)
-constDecIdent = flip (,)
-  <$> (isJust <$> optional (sym "export"))
-  <*> (sym "declare" *> sym "const" *> ident <* sym ":")
+constDecIdent :: Parser Text
+constDecIdent = sym "declare" *> sym "const" *> ident <* sym ":"
 
-constDec :: Parser ConstDec
-constDec = (\(x, y) z -> ConstDec x z y) <$> constDecIdent <*> expr
+constDec :: Parser (Text, ConstDec)
+constDec = (,) <$> constDecIdent <*> (ConstDec <$> expr)
 
-fnDecName :: Parser (Text, Bool)
-fnDecName = flip (,)
-  <$> (isJust <$> optional (sym "export"))
-  <*> (sym "declare" *> sym "function" *> ident)
+fnDec :: Parser (Text, FunctionDec)
+fnDec = (,)
+  <$> (sym "declare" *> sym "function" *> ident)
+  <*> (((FunctionDec .) .) . Lambda <$> optional typeArgs <*> params <* sym ":" <*> expr)
 
-fnDec :: Parser FunctionDec
-fnDec = (\(x, y) z -> FunctionDec x z y)
-  <$> fnDecName
-  <*> (Lambda <$> optional typeArgs <*> params <* sym ":" <*> expr)
-
-alias :: Parser Alias
-alias = Alias
+alias :: Parser (Text, Alias)
+alias = (,)
   <$> (optional (sym "export") *> optional (sym "declare") *> sym "type" *> ident)
-  <*> (optional typeArgs <* sym "=")
-  <*> expr
+  <*> (Alias <$> (optional typeArgs <* sym "=") <*> expr)
 
-interface :: Parser Interface
-interface = Interface
+interface :: Parser (Text, Interface)
+interface = (,)
   <$> (optional (sym "export") *> sym "interface" *> ident)
-  <*> optional typeArgs
-  <*> optional (try $ sym "extends" *> expr)
-  <*> object
+  <*> (Interface <$> optional typeArgs <*> optional (try $ sym "extends" *> expr) <*> object)
 
-enum :: Parser SEnum
-enum = SEnum
+enum :: Parser (Text, SEnum)
+enum = (,)
   <$> (optional (sym "export") *> optional (sym "declare") *> optional (sym "const") *> sym "enum" *> ident)
-  <*> braces (sepEndBy member (symN ","))
+  <*> (SEnum <$> braces (sepEndBy member (symN ",")))
   where member :: Parser EnumMember
         member = EnumMember <$> key <*> optional (sym "=" *> expr)
 

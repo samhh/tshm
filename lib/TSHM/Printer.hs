@@ -35,7 +35,8 @@ data PrintState = PrintState
   , implicitTypeArgs     :: [TypeArg]
   , mappedTypeKeys       :: [Text]
   , inferredTypes        :: [Text]
-  , unexportedDecs       :: Map Text Text
+  -- | The keys are original identifiers / names.
+  , unexportedDecs       :: Map Text Statement
   }
 
 instance Semigroup PrintState where
@@ -84,21 +85,27 @@ renderPrintState = do
         matchSubtype (TSubtype y z, _) = Just (y, z)
         matchSubtype _                 = Nothing
 
-statement :: Statement -> Printer (Maybe (NonEmpty Text))
-statement (StatementImportDec x)    = pure . pure <$> importDec x
-statement (StatementExportDec x)    = exportDec x
-statement (StatementAlias x)        = pure . pure <$> alias x
-statement (StatementInterface x)    = pure . pure <$> interface x
-statement (StatementEnum x)         = pure . pure <$> enum x
-statement (StatementConstDec x)     = fmap pure <$> constDec x
-statement (StatementFunctionDec xs) = pure . pure . T.intercalate "\n" <$> mapM (clean lambdaDec) (toList xs)
+scopedStatement :: ScopedStatement -> Printer (Maybe (NonEmpty Text))
+scopedStatement (ScopedStatementImportDec x)     = pure . pure <$> importDec x
+scopedStatement (ScopedStatementExportDec x)     = exportDec x
+scopedStatement (ScopedStatementMisc Exported y) = pure . pure <$> statement y
+scopedStatement (ScopedStatementMisc Local x)    =
+  empty <$ modify (\s -> s { unexportedDecs = insert (getStmtName x) x (unexportedDecs s) })
+
+statement :: Statement -> Printer Text
+statement (n, StatementAlias x)        = alias n x
+statement (n, StatementInterface x)    = interface n x
+statement (n, StatementEnum x)         = enum n x
+statement (n, StatementConstDec x)     = constDec n x
+statement (n, StatementFunctionDec xs) = T.intercalate "\n" <$> mapM (clean (lambdaDec n)) (toList xs)
   where clean :: (a -> Printer') -> a -> Printer'
         clean p x = do
           modify $ \s -> s { implicitTypeArgs = [] }
           p x
 
+-- | Print an entire "declaration", which is zero or more statements.
 declaration :: Printer'
-declaration = fmap (T.intercalate "\n\n" . (toList =<<)) . mapMaybeM statement . toList . signatures =<< ask
+declaration = fmap (T.intercalate "\n\n" . (toList =<<)) . mapMaybeM scopedStatement . toList . signatures =<< ask
 
 expr :: TExpr -> Printer'
 expr t = do
@@ -316,48 +323,44 @@ exportDec :: ExportDec -> Printer (Maybe (NonEmpty Text))
 exportDec (ExportDef x)        = pure . pure . ("default :: " <>) <$> expr x
 exportDec (ExportNamedRefs xs) = nonEmpty <$> mapMaybeM exportNamedRef xs
   where exportNamedRef :: ExportNamedRef -> Printer (Maybe Text)
-        exportNamedRef (ExportNamedRefUnchanged x) = ((x <> " :: ") <>) `from` x
-        exportNamedRef (ExportNamedRefRenamed x y) = ((y <> " :: ") <>) `from` x
+        exportNamedRef (ExportNamedRefUnchanged x) = id `from` x
+        exportNamedRef (ExportNamedRefRenamed x y) = setStmtName y `from` x
 
-        from :: (Text -> Text) -> Text -> Printer (Maybe Text)
-        from f k = fmap f . lookup k . unexportedDecs <$> get
+        from :: (Statement -> Statement) -> Text -> Printer (Maybe Text)
+        from f k = traverse statement . fmap f . lookup k . unexportedDecs =<< get
 
-constDec :: ConstDec -> Printer (Maybe Text)
-constDec (ConstDec n t isExported) = do
-  t' <- (\t' ps -> renderedTypeArgs ps <> renderedSubtypes ps <> t') <$> expr t <*> renderPrintState
-  if isExported
-     then pure . pure $ n <> " :: " <> t'
-     else empty <$ modify (\s -> s { unexportedDecs = insert n t' (unexportedDecs s) })
+constDec :: Text -> ConstDec -> Printer'
+constDec n (ConstDec t) = f <$> expr t <*> renderPrintState
+  where f t' ps = n <> " :: " <> renderedTypeArgs ps <> renderedSubtypes ps <> t'
 
-lambdaDec :: FunctionDec -> Printer'
-lambdaDec (FunctionDec _ _ False) = pure mempty
-lambdaDec (FunctionDec n t True)  =
+lambdaDec :: Text -> FunctionDec -> Printer'
+lambdaDec n (FunctionDec t)  =
   (\t' ps -> n <> " :: " <> renderedTypeArgs ps <> renderedSubtypes ps <> t')
   <$> lambda t <*> renderPrintState
 
-alias :: Alias -> Printer'
-alias x = case isNewtype (aliasType x) of
-  Just y -> fnewtype (aliasName x) y
+alias :: Text -> Alias -> Printer'
+alias n x = case isNewtype (aliasType x) of
+  Just y -> fnewtype n y
   Nothing -> do
     let explicitTargs = foldMap toList (aliasTypeArgs x)
     modify $ \s -> s { explicitTypeArgs = explicitTypeArgs s <> explicitTargs }
     explicitTargsP <- unwords <$> mapMaybeM printableTypeArg explicitTargs
     ttype <- expr (aliasType x)
     ps <- renderPrintState
-    pure $ "type " <> aliasName x <> (if T.null explicitTargsP then "" else " ") <> explicitTargsP <> " = " <> renderedTypeArgs ps <> renderedSubtypes ps <> ttype
+    pure $ "type " <> n <> (if T.null explicitTargsP then "" else " ") <> explicitTargsP <> " = " <> renderedTypeArgs ps <> renderedSubtypes ps <> ttype
       where printableTypeArg :: TypeArg -> Printer (Maybe Text)
             printableTypeArg (TMisc y, _)      = Just <$> misc y
             printableTypeArg (TSubtype y z, _) = Just . surround "(" ")" <$> subtype y z
             printableTypeArg _                   = pure Nothing
 
-interface :: Interface -> Printer'
-interface x = case isNewtype =<< interfaceExtends x of
-  Just y  -> fnewtype (interfaceName x) y
-  Nothing -> alias $ fromInterface x
+interface :: Text -> Interface -> Printer'
+interface n x = case isNewtype =<< interfaceExtends x of
+  Just y  -> fnewtype n y
+  Nothing -> alias n (fromInterface x)
 
-enum :: SEnum -> Printer'
-enum x = (\ys -> "enum " <> enumName x <> " {" <> (if null ys then "" else " ") <> T.intercalate ", " ys <> " }") <$>
-  mapM enumMember (enumMembers x)
+enum :: Text -> SEnum -> Printer'
+enum n (SEnum xs) = (\ys -> "enum " <> n <> " {" <> (if null ys then "" else " ") <> T.intercalate ", " ys <> " }") <$>
+  mapM enumMember xs
   where enumMember :: EnumMember -> Printer'
         enumMember (EnumMember k Nothing)  = pure $ enumKey k
         enumMember (EnumMember k (Just v)) = ((enumKey k <> " = ") <>) <$> expr v

@@ -141,30 +141,22 @@ data ExportDec
   | ExportNamedRefs [ExportNamedRef]
   deriving (Eq, Show)
 
-data ConstDec = ConstDec
-  { constDecName     :: Text
-  , constDecType     :: TExpr
-  , constDecExported :: Bool
-  } deriving (Eq, Show)
+newtype ConstDec = ConstDec TExpr
+  deriving (Eq, Show)
 
-data FunctionDec = FunctionDec
-  { functionDecName :: Text
-  , functionDecType :: Lambda
-  , functionDecExported :: Bool
-  } deriving (Eq, Show)
+newtype FunctionDec = FunctionDec Lambda
+  deriving (Eq, Show)
 
 fromFunctionDec :: FunctionDec -> ConstDec
-fromFunctionDec (FunctionDec x y z) = ConstDec x (TLambda y) z
+fromFunctionDec (FunctionDec x) = ConstDec (TLambda x)
 
 data Alias = Alias
-  { aliasName     :: Text
-  , aliasTypeArgs :: Maybe (NonEmpty TypeArg)
+  { aliasTypeArgs :: Maybe (NonEmpty TypeArg)
   , aliasType     :: TExpr
   } deriving (Eq, Show)
 
 data Interface = Interface
-  { interfaceName     :: Text
-  , interfaceTypeArgs :: Maybe (NonEmpty TypeArg)
+  { interfaceTypeArgs :: Maybe (NonEmpty TypeArg)
   , interfaceExtends  :: Maybe TExpr
   , interfaceType     :: Object
   } deriving (Eq, Show)
@@ -177,27 +169,44 @@ data EnumKey
 data EnumMember = EnumMember EnumKey (Maybe TExpr)
   deriving (Eq, Show)
 
-data SEnum = SEnum
-  { enumName    :: Text
-  , enumMembers :: [EnumMember]
-  } deriving (Eq, Show)
+newtype SEnum = SEnum [EnumMember]
+  deriving (Eq, Show)
 
 fromInterface :: Interface -> Alias
-fromInterface x = Alias (interfaceName x) (interfaceTypeArgs x) t
-  where t = let obj = TObject $ interfaceType x
-             in case interfaceExtends x of
-                Nothing -> obj
-                Just st -> TBinOp BinOpIntersection st obj
+fromInterface x =
+    let obj = TObject $ interfaceType x
+        t   = case interfaceExtends x of
+          Nothing -> obj
+          Just st -> TBinOp BinOpIntersection st obj
+     in Alias (interfaceTypeArgs x) t
 
-data Statement
-  = StatementImportDec ImportDec
-  -- Concerns exports not captured by any of the other signature variants below.
-  | StatementExportDec ExportDec
-  | StatementAlias Alias
+data Scope
+  = Exported
+  | Local
+  deriving (Eq, Show)
+
+data StatementType
+  = StatementAlias Alias
   | StatementInterface Interface
   | StatementConstDec ConstDec
   | StatementFunctionDec (NonEmpty FunctionDec)
   | StatementEnum SEnum
+  deriving (Eq, Show)
+
+type Statement = (Text, StatementType)
+
+getStmtName :: Statement -> Text
+getStmtName = fst
+
+setStmtName :: Text -> Statement -> Statement
+setStmtName x (_, y) = (x, y)
+
+data ScopedStatement
+  = ScopedStatementImportDec ImportDec
+  -- | Concerns everything except named exports that are captured by
+  -- `ScopedStatementMisc`.
+  | ScopedStatementExportDec ExportDec
+  | ScopedStatementMisc Scope Statement
   deriving (Eq, Show)
 
 type AST = NonEmpty ScopedStatement

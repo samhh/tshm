@@ -5,6 +5,7 @@ import           Prelude
 import           TSHM.Parser         (parseDeclaration)
 import           TSHM.Printer        (PrintConfig (PrintConfig),
                                       printDeclaration)
+import           TSHM.Reconciler     (reconcile)
 import           Test.Hspec
 import           Test.Hspec.Hedgehog (PropertyT, (===))
 import           Text.Megaparsec     (ParseErrorBundle)
@@ -13,7 +14,7 @@ unlines' :: [Text] -> Text
 unlines' = T.intercalate "\n"
 
 ppWith :: Maybe Text -> Bool -> Text -> Either (ParseErrorBundle Text Void) Text
-ppWith x y = fmap (printDeclaration . (\sig -> PrintConfig sig x y)) . parseDeclaration
+ppWith x y = fmap (printDeclaration . (\ast -> PrintConfig ast x y) . reconcile) . parseDeclaration
 
 pp :: Text -> Either (ParseErrorBundle Text Void) Text
 pp = ppWith (Just "forall") True
@@ -56,31 +57,31 @@ spec = describe "TSHM.Printer" $ do
     pp "export declare const x: { [K in A]-?: B }" =*= "x :: { [k in A]-?: B }"
 
   it "prints mapped type as clause" $ do
-    pp "type Ageless<A> = { [K in keyof A as Exclude<K, 'age'>]: A[K] }" =*=
+    pp "export type Ageless<A> = { [K in keyof A as Exclude<K, 'age'>]: A[K] }" =*=
       "type Ageless a = { [k in keyof a as Exclude k \"age\"]: a[k] }"
 
   it "prints template literals" $ do
-    pp "type X = `${Quantity | Color} fish`" =*=
+    pp "export type X = `${Quantity | Color} fish`" =*=
       "type X = `${Quantity | Color} fish`"
 
     pp (unlines'
-      [ "type Evt<A> = {"
+      [ "export type Evt<A> = {"
       , "  on(evt: `${string & keyof A}Changed`, cb: () => void): void"
       , "}"
       ]) =*= "type Evt a = { on: (`${string & keyof a}Changed`, (() -> void)) -> void }"
 
   it "prints dot access" $ do
-    pp "type X = { k: MyEnum.Member }" =*= "type X = { k: MyEnum.Member }"
+    pp "export type X = { k: MyEnum.Member }" =*= "type X = { k: MyEnum.Member }"
 
   it "prints type aliases" $ do
-    pp "type X = string" =*= "type X = string"
-    pp "type X<A> = string" =*= "type X a = string"
-    pp "type X<A, B extends Array<A>> = string" =*= "type X a (b extends (Array a)) = string"
-    pp "type X = () => string" =*= "type X = () -> string"
+    pp "export type X = string" =*= "type X = string"
+    pp "export type X<A> = string" =*= "type X a = string"
+    pp "export type X<A, B extends Array<A>> = string" =*= "type X a (b extends (Array a)) = string"
+    pp "export type X = () => string" =*= "type X = () -> string"
 
   it "prints interfaces" $ do
-    pp "interface X { a: B }" =*= "type X = { a: B }"
-    pp "interface X extends Y { a: B }" =*= "type X = Y & { a: B }"
+    pp "export interface X { a: B }" =*= "type X = { a: B }"
+    pp "export interface X extends Y { a: B }" =*= "type X = Y & { a: B }"
 
   it "prints import declarations" $ do
     pp "import x from 'y'" =*= "import \"y\" (default as x)"
@@ -114,7 +115,7 @@ spec = describe "TSHM.Printer" $ do
     pp "export declare function f(x: A): (y: B) => C" =*= "f :: A -> B -> C"
     pp "export declare function f<A>(x: A): [A, A]" =*= "f :: forall a. a -> [a, a]"
 
-  it "prints overloaded function declarations" $ do
+  it "prints grouped overloaded function declarations" $ do
     pp (unlines'
       [ "export declare function f(x: A): A"
       , "export declare function f(x: B): B"
@@ -123,26 +124,40 @@ spec = describe "TSHM.Printer" $ do
       , "f :: B -> B"
       ]
 
+  it "prints ungrouped overloaded function declarations" $ do
+    pp (unlines'
+      [ "export declare function f(x: A): A"
+      , "type Irrelevant = Irrelevant"
+      , "export declare function g(x: C): C"
+      , "type Irrelevant = Irrelevant"
+      , "export declare function f(x: B): B"
+      ]) =*= unlines'
+      [ "f :: A -> A"
+      , "f :: B -> B"
+      , ""
+      , "g :: C -> C"
+      ]
+
   it "prints enums" $ do
-    pp "enum X {}" =*= "enum X { }"
-    pp "enum X { A = 0, B, 'C' = '1' }" =*= "enum X { A = 0, B, \"C\" = \"1\" }"
-    pp "const enum X { A = 0, B, 'C' = '1' }" =*= "enum X { A = 0, B, \"C\" = \"1\" }"
-    pp "declare enum X { A = 0, B, 'C' = '1' }" =*= "enum X { A = 0, B, \"C\" = \"1\" }"
+    pp "export enum X {}" =*= "enum X { }"
+    pp "export enum X { A = 0, B, 'C' = '1' }" =*= "enum X { A = 0, B, \"C\" = \"1\" }"
+    pp "export const enum X { A = 0, B, 'C' = '1' }" =*= "enum X { A = 0, B, \"C\" = \"1\" }"
+    pp "export declare enum X { A = 0, B, 'C' = '1' }" =*= "enum X { A = 0, B, \"C\" = \"1\" }"
     pp "export declare const enum X { A = 0, B, 'C' = '1' }" =*= "enum X { A = 0, B, \"C\" = \"1\" }"
 
   it "prints universal quantification and subtypes" $ do
-    pp "type X = <A>(x: A) => <B>(y: B) => <C, D extends A, E extends Partial<A>>(c: [C, D, E]) => Either<E, C & D>" =*=
+    pp "export type X = <A>(x: A) => <B>(y: B) => <C, D extends A, E extends Partial<A>>(c: [C, D, E]) => Either<E, C & D>" =*=
       "type X = forall a b c d e. d extends a, e extends (Partial a) => a -> b -> [c, d, e] -> Either e (c & d)"
 
   it "prints mapped types" $ do
-    pp "type X<A> = { [K in A]: A[K] }" =*= "type X a = { [k in a]: a[k] }"
+    pp "export type X<A> = { [K in A]: A[K] }" =*= "type X a = { [k in a]: a[k] }"
 
   it "prints different object key types" $ do
-    pp "type X = { a: a, 'b': b, 3.3: c, ['d']: d, [e]: e, [f: number]: f }" =*=
+    pp "export type X = { a: a, 'b': b, 3.3: c, ['d']: d, [e]: e, [f: number]: f }" =*=
       "type X = { a: a, \"b\": b, 3.3: c, [\"d\"]: d, [e]: e, [index: number]: f }"
 
   it "correctly wraps generics, expressions, object references, and function arguments in parentheses" $ do
-    pp "type X = <E, A>(x: Either<E, Option<A | E>>) => <B>(f: (x: A) => B) => (x: A | B) => (x: A['k'], y: F<A>['k']) => Option<B>" =*=
+    pp "export type X = <E, A>(x: Either<E, Option<A | E>>) => <B>(f: (x: A) => B) => (x: A | B) => (x: A['k'], y: F<A>['k']) => Option<B>" =*=
       "type X = forall e a b. Either e (Option (a | e)) -> (a -> b) -> a | b -> (a[\"k\"], (F a)[\"k\"]) -> Option b"
 
   it "prints stylised newtype-ts newtypes" $ do
