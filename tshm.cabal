@@ -41,6 +41,7 @@ library
   import:                  common
   hs-source-dirs:          lib/
   exposed-modules:
+    TSHM.Reconciler
     TSHM.Parser
     TSHM.Printer
     TSHM.TypeScript
@@ -69,5 +70,6 @@ test-suite test-tshm
   other-modules:
     TSHM.ParserSpec
     TSHM.PrinterSpec
+    TSHM.ReconcilerSpec
     UtilsSpec
 
