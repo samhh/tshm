@@ -26,7 +26,7 @@ parseDeclaration = parse declaration "input"
 type Parser = Parsec Void Text
 
 declaration :: Parser (NonEmpty Statement)
-declaration = scN *> NE.some statement <* scN <* eof
+declaration = scN *> NE.some statement <* eof
 
 statement :: Parser Statement
 statement = choice
