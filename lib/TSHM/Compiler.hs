@@ -1,4 +1,4 @@
-module TSHM.Printer (printDeclaration, PrintConfig (PrintConfig)) where
+module TSHM.Compiler (compileDeclaration, CompileConfig (CompileConfig)) where
 
 import           Control.Monad.RWS   (RWS, evalRWS)
 import           Data.List.NonEmpty  ((!!))
@@ -8,8 +8,8 @@ import           Data.Tuple.Sequence (sequenceT)
 import           Prelude
 import           TSHM.TypeScript
 
-type Printer a = RWS PrintConfig () PrintState a
-type Printer' = Printer Text
+type Compiler a = RWS CompileConfig () CompileState a
+type Compiler' = Compiler Text
 
 surround :: Semigroup a => a -> a -> a -> a
 surround l r x = l <> x <> r
@@ -21,13 +21,13 @@ doIf :: (a -> a) -> Bool -> a -> a
 doIf f True  = f
 doIf _ False = id
 
-data PrintConfig = PrintConfig
+data CompileConfig = CompileConfig
   { signatures :: AST
   , forall     :: Maybe Text
   , readonly   :: Bool
   }
 
-data PrintState = PrintState
+data CompileState = CompileState
   { ambiguouslyNested    :: Bool
   , immediateFunctionArg :: Bool
   , namedFunctionArgs    :: Map Text Text
@@ -39,8 +39,8 @@ data PrintState = PrintState
   , unexportedDecs       :: Map Text Statement
   }
 
-instance Semigroup PrintState where
-  a <> b = PrintState
+instance Semigroup CompileState where
+  a <> b = CompileState
     (ambiguouslyNested a || ambiguouslyNested b)
     (immediateFunctionArg a || immediateFunctionArg b)
     (namedFunctionArgs a <> namedFunctionArgs b)
@@ -50,23 +50,23 @@ instance Semigroup PrintState where
     (inferredTypes a <> inferredTypes b)
     (unexportedDecs a <> unexportedDecs b)
 
-instance Monoid PrintState where
-  mempty = PrintState False False mempty mempty mempty mempty mempty mempty
+instance Monoid CompileState where
+  mempty = CompileState False False mempty mempty mempty mempty mempty mempty
 
-printDeclaration :: PrintConfig -> Text
-printDeclaration x = fst $ evalRWS declaration x mempty
+compileDeclaration :: CompileConfig -> Text
+compileDeclaration x = fst $ evalRWS declaration x mempty
 
-data RenderedPrintState = RenderedPrintState
+data RenderedCompileState = RenderedCompileState
   { renderedTypeArgs :: Text
   , renderedSubtypes :: Text
   }
 
-renderPrintState :: Printer RenderedPrintState
-renderPrintState = do
+renderCompileState :: Compiler RenderedCompileState
+renderCompileState = do
   tas <- implicitTypeArgs <$> get
   fam <- forall <$> ask
 
-  targsm :: Maybe [Text] <- fmap (guarded (not . null)) . mapMaybeM printableTypeArg $ tas
+  targsm :: Maybe [Text] <- fmap (guarded (not . null)) . mapMaybeM tryCompileTypeArg $ tas
   let targsSig = case sequenceT (fam, targsm) of
         Just (fa, ts) -> fa <> " " <> unwords ts <> ". "
         Nothing       -> ""
@@ -74,40 +74,40 @@ renderPrintState = do
   sts :: Maybe [Text] <- fmap (guarded (not . null)) . mapM (uncurry subtype) . mapMaybe matchSubtype $ tas
   let stsSig = foldMap ((<> " => ") . T.intercalate ", ") sts
 
-  pure $ RenderedPrintState targsSig stsSig
+  pure $ RenderedCompileState targsSig stsSig
 
-  where printableTypeArg :: TypeArg -> Printer (Maybe Text)
-        printableTypeArg (TMisc y, _)      = Just <$> misc y
-        printableTypeArg (TSubtype y _, _) = Just <$> misc y
-        printableTypeArg _                 = pure Nothing
+  where tryCompileTypeArg :: TypeArg -> Compiler (Maybe Text)
+        tryCompileTypeArg (TMisc y, _)      = Just <$> misc y
+        tryCompileTypeArg (TSubtype y _, _) = Just <$> misc y
+        tryCompileTypeArg _                 = pure Nothing
 
         matchSubtype :: TypeArg -> Maybe (Text, TExpr)
         matchSubtype (TSubtype y z, _) = Just (y, z)
         matchSubtype _                 = Nothing
 
-scopedStatement :: ScopedStatement -> Printer (Maybe (NonEmpty Text))
+scopedStatement :: ScopedStatement -> Compiler (Maybe (NonEmpty Text))
 scopedStatement (ScopedStatementImportDec x)     = pure . pure <$> importDec x
 scopedStatement (ScopedStatementExportDec x)     = exportDec x
 scopedStatement (ScopedStatementMisc Exported y) = pure . pure <$> statement y
 scopedStatement (ScopedStatementMisc Local x)    =
   empty <$ modify (\s -> s { unexportedDecs = insert (getStmtName x) x (unexportedDecs s) })
 
-statement :: Statement -> Printer Text
+statement :: Statement -> Compiler Text
 statement (n, StatementAlias x)        = alias n x
 statement (n, StatementInterface x)    = interface n x
 statement (n, StatementEnum x)         = enum n x
 statement (n, StatementConstDec x)     = constDec n x
 statement (n, StatementFunctionDec xs) = T.intercalate "\n" <$> mapM (clean (lambdaDec n)) (toList xs)
-  where clean :: (a -> Printer') -> a -> Printer'
+  where clean :: (a -> Compiler') -> a -> Compiler'
         clean p x = do
           modify $ \s -> s { implicitTypeArgs = [] }
           p x
 
--- | Print an entire "declaration", which is zero or more statements.
-declaration :: Printer'
+-- | Compile an entire "declaration", which is zero or more statements.
+declaration :: Compiler'
 declaration = fmap (T.intercalate "\n\n" . (toList =<<)) . mapMaybeM scopedStatement . toList . signatures =<< ask
 
-expr :: TExpr -> Printer'
+expr :: TExpr -> Compiler'
 expr t = do
   res <- f t
   modify $ \s -> s { immediateFunctionArg = False }
@@ -139,34 +139,34 @@ expr t = do
           modify $ \s -> s { ambiguouslyNested = False }
           surround "(" ")" <$> expr x
 
-ambiguouslyNestedExpr :: TExpr -> Printer'
+ambiguouslyNestedExpr :: TExpr -> Compiler'
 ambiguouslyNestedExpr t = do
   modify $ \s -> s { ambiguouslyNested = True }
   expr t
 
-param :: Param -> Printer'
+param :: Param -> Compiler'
 param (Param n xs) = case n of
   ParamDestructured -> f xs
   ParamNamed n'     -> do
-    printed <- f xs
-    modify $ \s -> s { namedFunctionArgs = insert n' printed (namedFunctionArgs s) }
-    pure printed
+    compiled <- f xs
+    modify $ \s -> s { namedFunctionArgs = insert n' compiled (namedFunctionArgs s) }
+    pure compiled
   where f (Required, Normal, x) = annotatedExpr x
         f (Required, Rest, x)   = ("..." <>) <$> annotatedExpr x
         f (Optional, Normal, x) = (<> "?") <$> annotatedExpr x
         f (Optional, Rest, x)   = ("..." <>) . (<> "?") <$> annotatedExpr x
 
-        annotatedExpr :: TExpr -> Printer'
+        annotatedExpr :: TExpr -> Compiler'
         annotatedExpr x = do
           modify $ \s -> s { immediateFunctionArg = True }
           expr x
 
-params :: [Param] -> Printer'
+params :: [Param] -> Compiler'
 params []  = pure "()"
 params [x] = param x
 params xs  = surround "(" ")" . T.intercalate ", " <$> mapM param xs
 
-misc :: Text -> Printer'
+misc :: Text -> Compiler'
 -- If the type is a single character, and we know about it from a type argument
 -- or mapped type, then lowercase it
 misc (T.uncons -> Just (x', T.uncons -> Nothing)) = do
@@ -180,10 +180,10 @@ misc (T.uncons -> Just (x', T.uncons -> Nothing)) = do
         isViable _                                                        = False
 misc x   = pure x
 
-subtype :: Text -> TExpr -> Printer'
+subtype :: Text -> TExpr -> Compiler'
 subtype x y = surrounding " extends " <$> misc x <*> ambiguouslyNestedExpr y
 
-lambda :: Lambda -> Printer'
+lambda :: Lambda -> Compiler'
 lambda x = do
   nested <- uncurry (||) . (immediateFunctionArg &&& ambiguouslyNested) <$> get
   let tas = foldMap toList (lambdaTypeArgs x)
@@ -191,7 +191,7 @@ lambda x = do
 
   (doIf (surround "(" ")") nested .) . surrounding " -> " <$> params (lambdaParams x) <*> expr (lambdaReturn x)
 
-fnewtype :: Text -> TExpr -> Printer'
+fnewtype :: Text -> TExpr -> Compiler'
 fnewtype x y = (("newtype " <> x <> " = ") <>) <$> expr y
 
 isNewtype :: TExpr -> Maybe TExpr
@@ -210,28 +210,28 @@ isNewtype (TGeneric "Newtype" xs) = fmap snd . guarded (isNewtypeObject . fst) =
         isNewtypeObject _                                              = False
 isNewtype _ = Nothing
 
-generic :: (Text, NonEmpty TypeArg) -> Printer'
+generic :: (Text, NonEmpty TypeArg) -> Compiler'
 generic (x, ys) = do
   nested <- ambiguouslyNested <$> get
   if nested then do
     modify $ \s -> s { ambiguouslyNested = False }
     surround "(" ")" <$> generic (x, ys)
   else ((x <> " ") <>) . unwords <$> mapM expr' (toList ys)
-  where expr' :: TypeArg -> Printer'
+  where expr' :: TypeArg -> Compiler'
         expr' z = do
           modify $ \s -> s { ambiguouslyNested = True }
           res <- expr $ fst z
           modify $ \s -> s { ambiguouslyNested = False }
           pure res
 
-objectKey :: ObjectKey -> Printer'
+objectKey :: ObjectKey -> Compiler'
 objectKey (OKeyIdent x)    = pure x
 objectKey (OKeyStr x)      = pure $ "\"" <> x <> "\""
 objectKey (OKeyNum x)      = pure x
 objectKey (OKeyIndex x)    = surround "[index: " "]" <$> expr x
 objectKey (OKeyComputed x) = surround "[" "]" <$> expr x
 
-objectPair :: ObjectPair -> Printer'
+objectPair :: ObjectPair -> Compiler'
 objectPair (ObjectPair m p (kt, vt)) = do
   cfgRO <- readonly <$> ask
   let ro = if cfgRO && m == Immut then "readonly " else ""
@@ -239,13 +239,13 @@ objectPair (ObjectPair m p (kt, vt)) = do
 
   (\k v -> ro <> k <> delim <> v) <$> objectKey kt <*> expr vt
 
-infer :: Text -> Printer'
+infer :: Text -> Compiler'
 infer x = do
   modify (\s -> s { inferredTypes = x : inferredTypes s })
   nested <- ambiguouslyNested <$> get
   doIf (surround "(" ")") nested . ("infer " <>) <$> misc x
 
-unOp :: UnOp -> TExpr -> Printer'
+unOp :: UnOp -> TExpr -> Compiler'
 unOp o t = do
   cfgRO <- readonly <$> ask
   raw <- expr t
@@ -258,7 +258,7 @@ unOp o t = do
   nested <- ambiguouslyNested <$> get
   pure $ doIf (surround "(" ")") nested out
 
-binOp :: BinOp -> TExpr -> TExpr -> Printer'
+binOp :: BinOp -> TExpr -> TExpr -> Compiler'
 binOp o l r = do
   nested <- ambiguouslyNested <$> get
   (doIf (surround "(" ")") nested .) . surrounding (" " <> op o <> " ")
@@ -268,11 +268,11 @@ binOp o l r = do
         op BinOpIntersection = "&"
         op BinOpUnion        = "|"
 
-template :: TemplateToken -> Printer'
+template :: TemplateToken -> Compiler'
 template (TemplateStr x)  = pure x
 template (TemplateExpr x) = surround "${" "}" <$> expr x
 
-cond :: TExpr -> TExpr -> TExpr -> TExpr -> Printer'
+cond :: TExpr -> TExpr -> TExpr -> TExpr -> Compiler'
 cond lt rt tt ft = (\l r t f -> l <> " extends " <> r <> " ? " <> t <> " : " <> f) <$>
   expr lt <*> expr rt <*> expr tt <*> expr ft
 
@@ -284,7 +284,7 @@ modOpt :: ModOpt -> Text
 modOpt AddOpt = "?:"
 modOpt RemOpt = "-?:"
 
-object :: Object -> Printer'
+object :: Object -> Compiler'
 object (ObjectLit []) = pure "{}"
 object (ObjectLit xs) = surround "{ " " }" . T.intercalate ", " <$> mapM objectPair xs
 object (ObjectMapped m p (kt, xt, asm) vt) = do
@@ -301,7 +301,7 @@ object (ObjectMapped m p (kt, xt, asm) vt) = do
   v <- expr vt
   pure $ "{ " <> ro <> "[" <> k <> " in " <> x <> as <> "]" <> sep <> " " <> v <> " }"
 
-importDec :: ImportDec -> Printer'
+importDec :: ImportDec -> Compiler'
 importDec x = pure $ "import \"" <> importDecFrom x <> "\" " <> imp (importDecContents x)
   where imp :: Import -> Text
         imp (ImportDef d)            = named $ defToNamed d
@@ -319,49 +319,49 @@ importDec x = pure $ "import \"" <> importDecFrom x <> "\" " <> imp (importDecCo
         allp :: Text -> Text
         allp = ("as " <>)
 
-exportDec :: ExportDec -> Printer (Maybe (NonEmpty Text))
+exportDec :: ExportDec -> Compiler (Maybe (NonEmpty Text))
 exportDec (ExportDef x)        = pure . pure . ("default :: " <>) <$> expr x
 exportDec (ExportNamedRefs xs) = nonEmpty <$> mapMaybeM exportNamedRef xs
-  where exportNamedRef :: ExportNamedRef -> Printer (Maybe Text)
+  where exportNamedRef :: ExportNamedRef -> Compiler (Maybe Text)
         exportNamedRef (ExportNamedRefUnchanged x) = id `from` x
         exportNamedRef (ExportNamedRefRenamed x y) = setStmtName y `from` x
 
-        from :: (Statement -> Statement) -> Text -> Printer (Maybe Text)
+        from :: (Statement -> Statement) -> Text -> Compiler (Maybe Text)
         from f k = traverse statement . fmap f . lookup k . unexportedDecs =<< get
 
-constDec :: Text -> ConstDec -> Printer'
-constDec n (ConstDec t) = f <$> expr t <*> renderPrintState
+constDec :: Text -> ConstDec -> Compiler'
+constDec n (ConstDec t) = f <$> expr t <*> renderCompileState
   where f t' ps = n <> " :: " <> renderedTypeArgs ps <> renderedSubtypes ps <> t'
 
-lambdaDec :: Text -> FunctionDec -> Printer'
+lambdaDec :: Text -> FunctionDec -> Compiler'
 lambdaDec n (FunctionDec t)  =
   (\t' ps -> n <> " :: " <> renderedTypeArgs ps <> renderedSubtypes ps <> t')
-  <$> lambda t <*> renderPrintState
+  <$> lambda t <*> renderCompileState
 
-alias :: Text -> Alias -> Printer'
+alias :: Text -> Alias -> Compiler'
 alias n x = case isNewtype (aliasType x) of
   Just y -> fnewtype n y
   Nothing -> do
     let explicitTargs = foldMap toList (aliasTypeArgs x)
     modify $ \s -> s { explicitTypeArgs = explicitTypeArgs s <> explicitTargs }
-    explicitTargsP <- unwords <$> mapMaybeM printableTypeArg explicitTargs
+    explicitTargsP <- unwords <$> mapMaybeM tryCompileTypeArg explicitTargs
     ttype <- expr (aliasType x)
-    ps <- renderPrintState
+    ps <- renderCompileState
     pure $ "type " <> n <> (if T.null explicitTargsP then "" else " ") <> explicitTargsP <> " = " <> renderedTypeArgs ps <> renderedSubtypes ps <> ttype
-      where printableTypeArg :: TypeArg -> Printer (Maybe Text)
-            printableTypeArg (TMisc y, _)      = Just <$> misc y
-            printableTypeArg (TSubtype y z, _) = Just . surround "(" ")" <$> subtype y z
-            printableTypeArg _                   = pure Nothing
+      where tryCompileTypeArg :: TypeArg -> Compiler (Maybe Text)
+            tryCompileTypeArg (TMisc y, _)      = Just <$> misc y
+            tryCompileTypeArg (TSubtype y z, _) = Just . surround "(" ")" <$> subtype y z
+            tryCompileTypeArg _                   = pure Nothing
 
-interface :: Text -> Interface -> Printer'
+interface :: Text -> Interface -> Compiler'
 interface n x = case isNewtype =<< interfaceExtends x of
   Just y  -> fnewtype n y
   Nothing -> alias n (fromInterface x)
 
-enum :: Text -> SEnum -> Printer'
+enum :: Text -> SEnum -> Compiler'
 enum n (SEnum xs) = (\ys -> "enum " <> n <> " {" <> (if null ys then "" else " ") <> T.intercalate ", " ys <> " }") <$>
   mapM enumMember xs
-  where enumMember :: EnumMember -> Printer'
+  where enumMember :: EnumMember -> Compiler'
         enumMember (EnumMember k Nothing)  = pure $ enumKey k
         enumMember (EnumMember k (Just v)) = ((enumKey k <> " = ") <>) <$> expr v
 

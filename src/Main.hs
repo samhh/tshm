@@ -4,7 +4,7 @@ import           CLI             (Input (..), Opts (..), parse)
 import qualified Data.Text       as T
 import           Prelude
 import           TSHM.Parser     (parseDeclaration)
-import           TSHM.Printer    (PrintConfig (PrintConfig), printDeclaration)
+import           TSHM.Compiler    (CompileConfig (CompileConfig), compileDeclaration)
 import           TSHM.Reconciler (reconcile)
 
 main :: IO ()
@@ -15,5 +15,5 @@ main = do
     FilePath x -> readFileText $ T.unpack x
   case parseDeclaration code of
     Left e  -> print e *> exitFailure
-    Right ast -> putTextLn . printDeclaration $ PrintConfig (reconcile ast) (forall opts) (readonly opts)
+    Right ast -> putTextLn . compileDeclaration $ CompileConfig (reconcile ast) (forall opts) (readonly opts)
 

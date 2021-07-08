@@ -41,9 +41,9 @@ library
   import:                  common
   hs-source-dirs:          lib/
   exposed-modules:
+    TSHM.Compiler
     TSHM.Reconciler
     TSHM.Parser
-    TSHM.Printer
     TSHM.TypeScript
     Utils
   build-depends:
@@ -68,8 +68,8 @@ test-suite test-tshm
   build-tool-depends:
       hspec-discover:hspec-discover
   other-modules:
+    TSHM.CompilerSpec
     TSHM.ParserSpec
-    TSHM.PrinterSpec
     TSHM.ReconcilerSpec
     UtilsSpec
 

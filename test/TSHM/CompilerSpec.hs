@@ -1,10 +1,10 @@
-module TSHM.PrinterSpec (spec) where
+module TSHM.CompilerSpec (spec) where
 
 import qualified Data.Text           as T
 import           Prelude
 import           TSHM.Parser         (parseDeclaration)
-import           TSHM.Printer        (PrintConfig (PrintConfig),
-                                      printDeclaration)
+import           TSHM.Compiler        (CompileConfig (CompileConfig),
+                                      compileDeclaration)
 import           TSHM.Reconciler     (reconcile)
 import           Test.Hspec
 import           Test.Hspec.Hedgehog (PropertyT, (===))
@@ -14,7 +14,7 @@ unlines' :: [Text] -> Text
 unlines' = T.intercalate "\n"
 
 ppWith :: Maybe Text -> Bool -> Text -> Either (ParseErrorBundle Text Void) Text
-ppWith x y = fmap (printDeclaration . (\ast -> PrintConfig ast x y) . reconcile) . parseDeclaration
+ppWith x y = fmap (compileDeclaration . (\ast -> CompileConfig ast x y) . reconcile) . parseDeclaration
 
 pp :: Text -> Either (ParseErrorBundle Text Void) Text
 pp = ppWith (Just "forall") True
@@ -23,14 +23,14 @@ pp = ppWith (Just "forall") True
 a =*= b = a === Right b
 
 spec :: Spec
-spec = describe "TSHM.Printer" $ do
-  it "prints specified universal quantification" $ do
+spec = describe "TSHM.Compiler" $ do
+  it "compiles specified universal quantification" $ do
     ppWith Nothing True "export declare const f: <A>() => A" =*= "f :: () -> a"
     ppWith (Just "forall") True "export declare const f: <A>() => A" =*= "f :: forall a. () -> a"
     ppWith (Just "∀") True "export declare const f: <A>() => A" =*= "f :: ∀ a. () -> a"
 
 
-  it "conditionally prints readonly modifier" $ do
+  it "conditionally compiles readonly modifier" $ do
     ppWith Nothing True  "export declare const x: { readonly k: v }" =*= "x :: { readonly k: v }"
     ppWith Nothing False "export declare const x: { readonly k: v }" =*= "x :: { k: v }"
 
@@ -40,7 +40,7 @@ spec = describe "TSHM.Printer" $ do
     ppWith Nothing True  "export declare const x: { k: v }" =*= "x :: { k: v }"
     ppWith Nothing False "export declare const x: { k: v }" =*= "x :: { k: v }"
 
-  it "conditionally prints readonly mapped type modifier" $ do
+  it "conditionally compiles readonly mapped type modifier" $ do
     ppWith Nothing True  "export declare const x: { readonly [k in x]: v }" =*= "x :: { readonly [k in x]: v }"
     ppWith Nothing False "export declare const x: { readonly [k in x]: v }" =*= "x :: { [k in x]: v }"
 
@@ -50,17 +50,17 @@ spec = describe "TSHM.Printer" $ do
     ppWith Nothing True  "export declare const x: { -readonly [k in x]: v }" =*= "x :: { -readonly [k in x]: v }"
     ppWith Nothing False "export declare const x: { -readonly [k in x]: v }" =*= "x :: { [k in x]: v }"
 
-  it "prints optionality mapped type modifier" $ do
+  it "compiles optionality mapped type modifier" $ do
     pp "export declare const x: { [K in A]: B }" =*= "x :: { [k in A]: B }"
     pp "export declare const x: { [K in A]?: B }" =*= "x :: { [k in A]?: B }"
     pp "export declare const x: { [K in A]+?: B }" =*= "x :: { [k in A]?: B }"
     pp "export declare const x: { [K in A]-?: B }" =*= "x :: { [k in A]-?: B }"
 
-  it "prints mapped type as clause" $ do
+  it "compiles mapped type as clause" $ do
     pp "export type Ageless<A> = { [K in keyof A as Exclude<K, 'age'>]: A[K] }" =*=
       "type Ageless a = { [k in keyof a as Exclude k \"age\"]: a[k] }"
 
-  it "prints template literals" $ do
+  it "compiles template literals" $ do
     pp "export type X = `${Quantity | Color} fish`" =*=
       "type X = `${Quantity | Color} fish`"
 
@@ -70,20 +70,20 @@ spec = describe "TSHM.Printer" $ do
       , "}"
       ]) =*= "type Evt a = { on: (`${string & keyof a}Changed`, (() -> void)) -> void }"
 
-  it "prints dot access" $ do
+  it "compiles dot access" $ do
     pp "export type X = { k: MyEnum.Member }" =*= "type X = { k: MyEnum.Member }"
 
-  it "prints type aliases" $ do
+  it "compiles type aliases" $ do
     pp "export type X = string" =*= "type X = string"
     pp "export type X<A> = string" =*= "type X a = string"
     pp "export type X<A, B extends Array<A>> = string" =*= "type X a (b extends (Array a)) = string"
     pp "export type X = () => string" =*= "type X = () -> string"
 
-  it "prints interfaces" $ do
+  it "compiles interfaces" $ do
     pp "export interface X { a: B }" =*= "type X = { a: B }"
     pp "export interface X extends Y { a: B }" =*= "type X = Y & { a: B }"
 
-  it "prints import declarations" $ do
+  it "compiles import declarations" $ do
     pp "import x from 'y'" =*= "import \"y\" (default as x)"
     pp "import type x from 'y'" =*= "import \"y\" (default as x)"
     pp "import { x, y } from 'z'" =*= "import \"z\" (x, y)"
@@ -91,7 +91,7 @@ spec = describe "TSHM.Printer" $ do
     pp "import def, { x, y } from 'z'" =*= "import \"z\" (default as def, x, y)"
     pp "import type def, { x, y } from 'z'" =*= "import \"z\" (default as def, x, y)"
 
-  it "prints export declarations" $ do
+  it "compiles export declarations" $ do
     pp "export default 'x'" =*= "default :: \"x\""
     pp "export default 'x';" =*= "default :: \"x\""
     pp "export {}" =*= ""
@@ -100,22 +100,22 @@ spec = describe "TSHM.Printer" $ do
     pp "export { x as y }" =*= ""
     pp "declare const x: number; export { x as y }" =*= "y :: number"
 
-  it "doesn't print non-exported const declarations" $ do
+  it "doesn't compile non-exported const declarations" $ do
     pp "declare const x: number" =*= ""
 
-  it "prints const declarations" $ do
+  it "compiles const declarations" $ do
     pp "export declare const x: number" =*= "x :: number"
     pp "export declare const f: (x: A) => (y: B) => C" =*= "f :: A -> B -> C"
     pp "export declare const f: <A>(x: A) => [A, A]" =*= "f :: forall a. a -> [a, a]"
 
-  it "doesn't print non-exported function declarations" $ do
+  it "doesn't compile non-exported function declarations" $ do
     pp "declare function f(x: A): (y: B) => C" =*= ""
 
-  it "prints exported function declarations" $ do
+  it "compiles exported function declarations" $ do
     pp "export declare function f(x: A): (y: B) => C" =*= "f :: A -> B -> C"
     pp "export declare function f<A>(x: A): [A, A]" =*= "f :: forall a. a -> [a, a]"
 
-  it "prints grouped overloaded function declarations" $ do
+  it "compiles grouped overloaded function declarations" $ do
     pp (unlines'
       [ "export declare function f(x: A): A"
       , "export declare function f(x: B): B"
@@ -124,7 +124,7 @@ spec = describe "TSHM.Printer" $ do
       , "f :: B -> B"
       ]
 
-  it "prints ungrouped overloaded function declarations" $ do
+  it "compiles ungrouped overloaded function declarations" $ do
     pp (unlines'
       [ "export declare function f(x: A): A"
       , "type Irrelevant = Irrelevant"
@@ -138,21 +138,21 @@ spec = describe "TSHM.Printer" $ do
       , "g :: C -> C"
       ]
 
-  it "prints enums" $ do
+  it "compiles enums" $ do
     pp "export enum X {}" =*= "enum X { }"
     pp "export enum X { A = 0, B, 'C' = '1' }" =*= "enum X { A = 0, B, \"C\" = \"1\" }"
     pp "export const enum X { A = 0, B, 'C' = '1' }" =*= "enum X { A = 0, B, \"C\" = \"1\" }"
     pp "export declare enum X { A = 0, B, 'C' = '1' }" =*= "enum X { A = 0, B, \"C\" = \"1\" }"
     pp "export declare const enum X { A = 0, B, 'C' = '1' }" =*= "enum X { A = 0, B, \"C\" = \"1\" }"
 
-  it "prints universal quantification and subtypes" $ do
+  it "compiles universal quantification and subtypes" $ do
     pp "export type X = <A>(x: A) => <B>(y: B) => <C, D extends A, E extends Partial<A>>(c: [C, D, E]) => Either<E, C & D>" =*=
       "type X = forall a b c d e. d extends a, e extends (Partial a) => a -> b -> [c, d, e] -> Either e (c & d)"
 
-  it "prints mapped types" $ do
+  it "compiles mapped types" $ do
     pp "export type X<A> = { [K in A]: A[K] }" =*= "type X a = { [k in a]: a[k] }"
 
-  it "prints different object key types" $ do
+  it "compiles different object key types" $ do
     pp "export type X = { a: a, 'b': b, 3.3: c, ['d']: d, [e]: e, [f: number]: f }" =*=
       "type X = { a: a, \"b\": b, 3.3: c, [\"d\"]: d, [e]: e, [index: number]: f }"
 
@@ -160,26 +160,26 @@ spec = describe "TSHM.Printer" $ do
     pp "export type X = <E, A>(x: Either<E, Option<A | E>>) => <B>(f: (x: A) => B) => (x: A | B) => (x: A['k'], y: F<A>['k']) => Option<B>" =*=
       "type X = forall e a b. Either e (Option (a | e)) -> (a -> b) -> a | b -> (a[\"k\"], (F a)[\"k\"]) -> Option b"
 
-  it "prints stylised newtype-ts newtypes" $ do
+  it "compiles stylised newtype-ts newtypes" $ do
     pp "export type X = Newtype<{ readonly Y: unique symbol }, Z>" =*=
       "newtype X = Z"
 
     pp "export interface X extends Newtype<{ readonly Y: unique symbol }, Z> {}" =*=
       "newtype X = Z"
 
-  it "prints type of known referenced reflection type" $ do
+  it "compiles type of known referenced reflection type" $ do
     pp "export declare const f: (x: { y: number; z: [string] }) => [typeof x, x]" =*=
       "f :: { y: number, z: [string] } -> [{ y: number, z: [string] }, x]"
 
-  it "prints most recently discovered reflection type" $ do
+  it "compiles most recently discovered reflection type" $ do
     pp "export declare const f: (x: number) => (x: string) => typeof x" =*=
       "f :: number -> string -> string"
 
-  it "prints dumb typeof for unknown referenced reflection type" $ do
+  it "compiles dumb typeof for unknown referenced reflection type" $ do
     pp "export declare const f: typeof x" =*=
       "f :: typeof x"
 
-  describe "prints real signatures from" $ do
+  describe "compiles real signatures from" $ do
     it "fp-ts/Array" $ do
       pp "export declare const zero: <A>() => A[]" =*=
         "zero :: forall a. () -> Array a"
