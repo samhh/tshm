@@ -200,3 +200,5 @@ data Statement
   | StatementEnum SEnum
   deriving (Eq, Show)
 
+type AST = NonEmpty ScopedStatement
+

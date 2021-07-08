@@ -22,7 +22,7 @@ doIf f True  = f
 doIf _ False = id
 
 data PrintConfig = PrintConfig
-  { signatures :: NonEmpty Statement
+  { signatures :: AST
   , forall     :: Maybe Text
   , readonly   :: Bool
   }

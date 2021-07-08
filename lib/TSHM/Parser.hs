@@ -18,14 +18,14 @@ import           Text.Megaparsec                    hiding (many, some)
 import           Text.Megaparsec.Char
 import qualified Text.Megaparsec.Char.Lexer         as L
 
-type ParseOutput = Either (ParseErrorBundle Text Void) (NonEmpty Statement)
+type ParseOutput = Either (ParseErrorBundle Text Void) AST
 
 parseDeclaration :: Text -> ParseOutput
 parseDeclaration = parse declaration "input"
 
 type Parser = Parsec Void Text
 
-declaration :: Parser (NonEmpty Statement)
+declaration :: Parser AST
 declaration = scN *> NE.some statement <* eof
 
 statement :: Parser Statement
