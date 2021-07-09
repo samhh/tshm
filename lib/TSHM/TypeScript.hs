@@ -137,7 +137,8 @@ data ExportNamedRef
   deriving (Eq, Show)
 
 data ExportDec
-  = ExportDef TExpr
+  -- | Default exports in declaration files always refer to identifiers.
+  = ExportDef Text
   | ExportNamedRefs [ExportNamedRef]
   deriving (Eq, Show)
 
@@ -185,6 +186,8 @@ data Scope
   | Local
   deriving (Eq, Show)
 
+type StatementName = Text
+
 data StatementType
   = StatementAlias Alias
   | StatementInterface Interface
@@ -193,7 +196,7 @@ data StatementType
   | StatementEnum SEnum
   deriving (Eq, Show)
 
-type Statement = (Text, StatementType)
+type Statement = (StatementName, StatementType)
 
 getStmtName :: Statement -> Text
 getStmtName = fst
@@ -209,5 +212,7 @@ data ScopedStatement
   | ScopedStatementMisc Scope Statement
   deriving (Eq, Show)
 
-type AST = NonEmpty ScopedStatement
+type ParsedAST = NonEmpty ScopedStatement
+
+type ReconciledAST = [ScopedStatement]
 

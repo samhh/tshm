@@ -330,10 +330,8 @@ spec = describe "TSHM.Parser" $ do
 
   describe "exportDec" $ do
     it "parses default export" $ do
-      parse' exportDec "export default x" =*= ExportDef (TMisc "x")
-      parse' exportDec "export default x;" =*= ExportDef (TMisc "x")
-      parse' exportDec "export default a & \"b\"" =*= ExportDef (TBinOp BinOpIntersection (TMisc "a") (TString "b"))
-      parse' exportDec "export default a & \"b\";" =*= ExportDef (TBinOp BinOpIntersection (TMisc "a") (TString "b"))
+      parse' exportDec "export default x" =*= ExportDef "x"
+      parse' exportDec "export default x;" =*= ExportDef "x"
 
     it "parses named refs export" $ do
       parse' exportDec "export {}" =*= ExportNamedRefs []

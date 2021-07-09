@@ -18,14 +18,14 @@ import           Text.Megaparsec                    hiding (many, some)
 import           Text.Megaparsec.Char
 import qualified Text.Megaparsec.Char.Lexer         as L
 
-type ParseOutput = Either (ParseErrorBundle Text Void) AST
+type ParseOutput = Either (ParseErrorBundle Text Void) ParsedAST
 
 parseDeclaration :: Text -> ParseOutput
 parseDeclaration = parse declaration "input"
 
 type Parser = Parsec Void Text
 
-declaration :: Parser AST
+declaration :: Parser ParsedAST
 declaration = scN *> NE.some statement <* eof
 
 statement :: Parser ScopedStatement
@@ -292,7 +292,7 @@ importDec = flip ImportDec <$> (sym "import" *> optional (sym "type") *> imports
 
 exportDec :: Parser ExportDec
 exportDec =
-      ExportDef <$> (symN "export default" *> expr)
+      ExportDef <$> (symN "export default" *> ident)
   <|> ExportNamedRefs <$> try (symN "export" *> braces (sepEndBy (renamed <|> unchanged) (symN ",")))
   where unchanged = ExportNamedRefUnchanged <$> ident
         renamed = ExportNamedRefRenamed <$> try (ident <* sym "as") <*> ident

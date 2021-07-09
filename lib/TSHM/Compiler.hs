@@ -22,7 +22,7 @@ doIf f True  = f
 doIf _ False = id
 
 data CompileConfig = CompileConfig
-  { signatures :: AST
+  { signatures :: ReconciledAST
   , forall     :: Maybe Text
   , readonly   :: Bool
   }
@@ -105,7 +105,7 @@ statement (n, StatementFunctionDec xs) = T.intercalate "\n" <$> mapM (clean (lam
 
 -- | Compile an entire "declaration", which is zero or more statements.
 declaration :: Compiler'
-declaration = fmap (T.intercalate "\n\n" . (toList =<<)) . mapMaybeM scopedStatement . toList . signatures =<< ask
+declaration = fmap (T.intercalate "\n\n" . (toList =<<)) . mapMaybeM scopedStatement . signatures =<< ask
 
 expr :: TExpr -> Compiler'
 expr t = do
@@ -320,7 +320,8 @@ importDec x = pure $ "import \"" <> importDecFrom x <> "\" " <> imp (importDecCo
         allp = ("as " <>)
 
 exportDec :: ExportDec -> Compiler (Maybe (NonEmpty Text))
-exportDec (ExportDef x)        = pure . pure . ("default :: " <>) <$> expr x
+-- This will have been reconciled out.
+exportDec (ExportDef _)        = pure Nothing
 exportDec (ExportNamedRefs xs) = nonEmpty <$> mapMaybeM exportNamedRef xs
   where exportNamedRef :: ExportNamedRef -> Compiler (Maybe Text)
         exportNamedRef (ExportNamedRefUnchanged x) = id `from` x

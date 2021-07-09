@@ -92,13 +92,25 @@ spec = describe "TSHM.Compiler" $ do
     pp "import type def, { x, y } from 'z'" =*= "import \"z\" (default as def, x, y)"
 
   it "compiles export declarations" $ do
-    pp "export default 'x'" =*= "default :: \"x\""
-    pp "export default 'x';" =*= "default :: \"x\""
+    pp "declare const x: 'x'; export default x" =*= "default :: \"x\""
+    pp "export default x; declare const x: 'x'" =*= "default :: \"x\""
+    pp "export default x; export declare const x: 'x'" =*= unlines'
+      [ "default :: \"x\""
+      , ""
+      , "x :: \"x\""
+      ]
     pp "export {}" =*= ""
     pp "export { x, y }" =*= ""
     pp "declare const x: number; export { x }" =*= "x :: number"
+    pp "export { x }; declare const x: number" =*= "x :: number"
     pp "export { x as y }" =*= ""
     pp "declare const x: number; export { x as y }" =*= "y :: number"
+    pp "export { x as y }; declare const x: number" =*= "y :: number"
+    pp "export { x as y }; export declare const x: number" =*= unlines'
+      [ "y :: number"
+      , ""
+      , "x :: number"
+      ]
 
   it "doesn't compile non-exported const declarations" $ do
     pp "declare const x: number" =*= ""
@@ -136,6 +148,21 @@ spec = describe "TSHM.Compiler" $ do
       , "f :: B -> B"
       , ""
       , "g :: C -> C"
+      ]
+
+  it "compiles default exported overloaded function declarations" $ do
+    pp (unlines'
+      [ "declare function f(x: A): A"
+      , "type Irrelevant = Irrelevant"
+      , "export declare function g(x: C): C"
+      , "type Irrelevant = Irrelevant"
+      , "export default f"
+      , "declare function f(x: B): B"
+      ]) =*= unlines'
+      [ "g :: C -> C"
+      , ""
+      , "default :: A -> A"
+      , "default :: B -> B"
       ]
 
   it "compiles enums" $ do

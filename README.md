@@ -54,5 +54,5 @@ tshm is currently developed against GHC 8.10.4.
 
 The codebase is split up into two parts, `lib/` and `src/`, representing the internal library and the CLI interface respectively.
 
-The library handles everything from parsing to compilation. During parsing we parse the input into an AST, performing no correctness checking beyond what's needed to reliably parse any valid TypeScript declaration. Prior to compilation we perform a reconciliation step in which semantics that couldn't be handled by the parser are taken care of. Compiling is essentially the parsing process in reverse, taking a syntactic token and outputting a string representing it. The library has a number of unit tests defined for each the parser, reconciler, and compiler.
+The library handles everything from parsing to compilation. During parsing we parse the input into an initial AST, performing no correctness checking beyond what's needed to reliably parse any valid TypeScript declaration. Prior to compilation we perform a reconciliation step in which semantics that couldn't be handled by the parser are taken care of. Compiling is essentially the parsing process in reverse, taking a syntactic token and outputting a string representing it. The library has a number of unit tests defined for each the parser, reconciler, and compiler.
 
