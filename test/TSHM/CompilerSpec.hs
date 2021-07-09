@@ -7,7 +7,6 @@ import           TSHM.Compiler        (CompileConfig (CompileConfig),
                                       compileDeclaration)
 import           TSHM.Reconciler     (reconcile)
 import           Test.Hspec
-import           Test.Hspec.Hedgehog (PropertyT, (===))
 import           Text.Megaparsec     (ParseErrorBundle)
 
 unlines' :: [Text] -> Text
@@ -19,8 +18,8 @@ ppWith x y = fmap (compileDeclaration . (\ast -> CompileConfig ast x y) . reconc
 pp :: Text -> Either (ParseErrorBundle Text Void) Text
 pp = ppWith (Just "forall") True
 
-(=*=) :: (Eq a, Eq e, Show a, Show e) => Either e a -> a -> PropertyT IO ()
-a =*= b = a === Right b
+(=*=) :: (Eq a, Eq e, Show a, Show e) => Either e a -> a -> IO ()
+a =*= b = a `shouldBe` Right b
 
 spec :: Spec
 spec = describe "TSHM.Compiler" $ do
