@@ -223,7 +223,7 @@ toUnscoped (ScopedStatementExportDec _)     = empty
 toUnscoped (ScopedStatementMisc Exported x) = pure $ UnscopedStatementMisc x
 toUnscoped (ScopedStatementMisc Local _)    = empty
 
-type ParsedAST = NonEmpty ScopedStatement
+type ParsedAST = [ScopedStatement]
 
 type ReconciledAST = [UnscopedStatement]
 

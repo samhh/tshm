@@ -20,7 +20,7 @@ reconcile = reconcileExports . reconcileOverloadedFunctions
 -- Note that duplicate exports for the same identifier are invalid in
 -- TypeScript, so this function is dumb in that respect.
 reconcileExports :: ParsedAST -> ReconciledAST
-reconcileExports xs = unrollStmts `concatMap` xs
+reconcileExports xs = unrollStmts =<< xs
   where unrollStmts :: ScopedStatement -> [UnscopedStatement]
         unrollStmts (ScopedStatementExportDec (ExportDef n))        = maybeToList $ toUnscoped =<< identsToStmt n "default"
         unrollStmts (ScopedStatementExportDec (ExportNamedRefs ys)) = (toUnscoped <=< namedExportToStmt) `mapMaybe` ys
@@ -43,7 +43,7 @@ reconcileExports xs = unrollStmts `concatMap` xs
 -- doesn't need verifying as TypeScript disallows differing scopes for
 -- overloaded functions.
 reconcileOverloadedFunctions :: ParsedAST -> ParsedAST
-reconcileOverloadedFunctions = fromList . (overloadMerge `concatWhereBy` overloadMatch) . arrangeBy overloadMatch . toList
+reconcileOverloadedFunctions = (overloadMerge `concatWhereBy` overloadMatch) . arrangeBy overloadMatch
   where overloadMatch
           (ScopedStatementMisc _ (n1, StatementFunctionDec _))
           (ScopedStatementMisc _ (n2, StatementFunctionDec _)) = n1 == n2

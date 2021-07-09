@@ -23,6 +23,9 @@ a =*= b = a `shouldBe` Right b
 
 spec :: Spec
 spec = describe "TSHM.Compiler" $ do
+  it "compiles empty input to empty output" $ do
+    pp "" =*= ""
+
   it "compiles specified universal quantification" $ do
     ppWith Nothing True "export declare const f: <A>() => A" =*= "f :: () -> a"
     ppWith (Just "forall") True "export declare const f: <A>() => A" =*= "f :: forall a. () -> a"
