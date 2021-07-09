@@ -9,26 +9,26 @@ spec :: Spec
 spec = describe "TSHM.Reconciler" $ do
   describe "reconciliation of overloaded functions" $ do
     it "reconciles" $ do
-      let misc1 = ScopedStatementMisc Exported ("a", StatementAlias $ Alias Nothing TAny)
-          misc2 = ScopedStatementMisc Exported ("b", StatementAlias $ Alias Nothing TUnknown)
-          asDec n xs = ScopedStatementMisc Exported (n, StatementFunctionDec $ fromList xs)
+      let misc1 = ("a", StatementAlias $ Alias Nothing TAny)
+          misc2 = ("b", StatementAlias $ Alias Nothing TUnknown)
+          asDec n xs = (n, StatementFunctionDec $ fromList xs)
           fn1 = [FunctionDec $ Lambda Nothing [] $ TString "1"]
           fn2 = [FunctionDec $ Lambda Nothing [] $ TString "2"]
           fn3 = [FunctionDec $ Lambda Nothing [] $ TString "3"]
           fn4 = [FunctionDec $ Lambda Nothing [] $ TString "4"]
           before' = fromList
-            [ misc1
-            , asDec "f" fn1
-            , asDec "f" fn4
-            , misc2
-            , asDec "g" fn3
-            , asDec "f" fn2
+            [ ScopedStatementMisc Exported misc1
+            , ScopedStatementMisc Exported $ asDec "f" fn1
+            , ScopedStatementMisc Exported $ asDec "f" fn4
+            , ScopedStatementMisc Exported misc2
+            , ScopedStatementMisc Exported $ asDec "g" fn3
+            , ScopedStatementMisc Exported $ asDec "f" fn2
             ]
           after' = fromList
-            [ misc1
-            , asDec "f" $ fn1 <> fn4 <> fn2
-            , misc2
-            , asDec "g" fn3
+            [ UnscopedStatementMisc misc1
+            , UnscopedStatementMisc $ asDec "f" $ fn1 <> fn4 <> fn2
+            , UnscopedStatementMisc misc2
+            , UnscopedStatementMisc $ asDec "g" fn3
             ]
       reconcile before' `shouldBe` after'
 
@@ -40,8 +40,8 @@ spec = describe "TSHM.Reconciler" $ do
             , ScopedStatementExportDec . ExportNamedRefs . pure $ ExportNamedRefRenamed "a" "b"
             ]
           after' = fromList
-            [ ScopedStatementMisc Exported ("a", StatementAlias $ Alias Nothing TAny)
-            , ScopedStatementMisc Exported ("default", StatementAlias $ Alias Nothing TAny)
-            , ScopedStatementMisc Exported ("b", StatementAlias $ Alias Nothing TAny)
+            [ UnscopedStatementMisc ("a", StatementAlias $ Alias Nothing TAny)
+            , UnscopedStatementMisc ("default", StatementAlias $ Alias Nothing TAny)
+            , UnscopedStatementMisc ("b", StatementAlias $ Alias Nothing TAny)
             ]
       reconcile before' `shouldBe` after'

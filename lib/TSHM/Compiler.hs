@@ -35,8 +35,6 @@ data CompileState = CompileState
   , implicitTypeArgs     :: [TypeArg]
   , mappedTypeKeys       :: [Text]
   , inferredTypes        :: [Text]
-  -- | The keys are original identifiers / names.
-  , unexportedDecs       :: Map Text Statement
   }
 
 instance Semigroup CompileState where
@@ -48,10 +46,9 @@ instance Semigroup CompileState where
     (implicitTypeArgs a <> implicitTypeArgs b)
     (mappedTypeKeys a <> mappedTypeKeys b)
     (inferredTypes a <> inferredTypes b)
-    (unexportedDecs a <> unexportedDecs b)
 
 instance Monoid CompileState where
-  mempty = CompileState False False mempty mempty mempty mempty mempty mempty
+  mempty = CompileState False False mempty mempty mempty mempty mempty
 
 compileDeclaration :: CompileConfig -> Text
 compileDeclaration x = fst $ evalRWS declaration x mempty
@@ -85,14 +82,11 @@ renderCompileState = do
         matchSubtype (TSubtype y z, _) = Just (y, z)
         matchSubtype _                 = Nothing
 
-scopedStatement :: ScopedStatement -> Compiler (Maybe (NonEmpty Text))
-scopedStatement (ScopedStatementImportDec x)     = pure . pure <$> importDec x
-scopedStatement (ScopedStatementExportDec x)     = exportDec x
-scopedStatement (ScopedStatementMisc Exported y) = pure . pure <$> statement y
-scopedStatement (ScopedStatementMisc Local x)    =
-  empty <$ modify (\s -> s { unexportedDecs = insert (getStmtName x) x (unexportedDecs s) })
+unscopedStatement :: UnscopedStatement -> Compiler'
+unscopedStatement (UnscopedStatementImportDec x) = importDec x
+unscopedStatement (UnscopedStatementMisc y)      = statement y
 
-statement :: Statement -> Compiler Text
+statement :: Statement -> Compiler'
 statement (n, StatementAlias x)        = alias n x
 statement (n, StatementInterface x)    = interface n x
 statement (n, StatementEnum x)         = enum n x
@@ -105,7 +99,7 @@ statement (n, StatementFunctionDec xs) = T.intercalate "\n" <$> mapM (clean (lam
 
 -- | Compile an entire "declaration", which is zero or more statements.
 declaration :: Compiler'
-declaration = fmap (T.intercalate "\n\n" . (toList =<<)) . mapMaybeM scopedStatement . signatures =<< ask
+declaration = fmap (T.intercalate "\n\n") . mapM unscopedStatement . signatures =<< ask
 
 expr :: TExpr -> Compiler'
 expr t = do
@@ -318,17 +312,6 @@ importDec x = pure $ "import \"" <> importDecFrom x <> "\" " <> imp (importDecCo
 
         allp :: Text -> Text
         allp = ("as " <>)
-
-exportDec :: ExportDec -> Compiler (Maybe (NonEmpty Text))
--- This will have been reconciled out.
-exportDec (ExportDef _)        = pure Nothing
-exportDec (ExportNamedRefs xs) = nonEmpty <$> mapMaybeM exportNamedRef xs
-  where exportNamedRef :: ExportNamedRef -> Compiler (Maybe Text)
-        exportNamedRef (ExportNamedRefUnchanged x) = id `from` x
-        exportNamedRef (ExportNamedRefRenamed x y) = setStmtName y `from` x
-
-        from :: (Statement -> Statement) -> Text -> Compiler (Maybe Text)
-        from f k = traverse statement . fmap f . lookup k . unexportedDecs =<< get
 
 constDec :: Text -> ConstDec -> Compiler'
 constDec n (ConstDec t) = f <$> expr t <*> renderCompileState

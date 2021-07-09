@@ -21,10 +21,10 @@ reconcile = reconcileExports . reconcileOverloadedFunctions
 -- TypeScript, so this function is dumb in that respect.
 reconcileExports :: ParsedAST -> ReconciledAST
 reconcileExports xs = unrollStmts `concatMap` xs
-  where unrollStmts :: ScopedStatement -> [ScopedStatement]
-        unrollStmts (ScopedStatementExportDec (ExportDef n))        = maybeToList $ identsToStmt n "default"
-        unrollStmts (ScopedStatementExportDec (ExportNamedRefs ys)) = namedExportToStmt `mapMaybe` ys
-        unrollStmts x                                               = pure x
+  where unrollStmts :: ScopedStatement -> [UnscopedStatement]
+        unrollStmts (ScopedStatementExportDec (ExportDef n))        = maybeToList $ toUnscoped =<< identsToStmt n "default"
+        unrollStmts (ScopedStatementExportDec (ExportNamedRefs ys)) = (toUnscoped <=< namedExportToStmt) `mapMaybe` ys
+        unrollStmts x                                               = maybeToList . toUnscoped $ x
 
         namedExportToStmt :: ExportNamedRef -> Maybe ScopedStatement
         namedExportToStmt (ExportNamedRefUnchanged n)  = identsToStmt n n
