@@ -3,8 +3,7 @@
 A parser and formatter for TypeScript declarations that outputs HM-style type signatures.
 
 ```
-Usage: tshm (filepath | (-e|--eval code)) [-f|--forall string]
-            [-r|--readonly]
+Usage: tshm (filepath | (-e|--eval code)) [-f|--forall string] [-r|--readonly]
   A parser and formatter for TypeScript declarations that outputs HM-style type
   signatures.
 
@@ -12,7 +11,9 @@ Available options:
   -h,--help                Show this help text
   -v,--version             Output version
   filepath                 Read and evaluate the file at the provided path
-  -e,--eval code           Evaluate input code directly
+  -e,--eval code           Evaluate input code directly. Alternatively the code
+                           can be supplied directly via stdin without this
+                           option
   -f,--forall string       Specify a string to be used to express universal
                            quantification, for example "forall" or "∀". If set
                            to "none" or omitted, no universal quantification
@@ -23,18 +24,18 @@ Available options:
 Example:
 
 ```
-$ tshm -e "export type Option<A> = None | Some<A>"
+$ echo "export type Option<A> = None | Some<A>" | tshm
 type Option a = None | Some a
 
-$ tshm -e "export type Milliseconds = Newtype<{ readonly Milliseconds: unique symbol }, number>"
+$ echo "export type Milliseconds = Newtype<{ readonly Milliseconds: unique symbol }, number>" | tshm
 newtype Milliseconds = number
 
-$ tshm -e "export declare const invertAll: <A>(f: (x: A) => string) => (x: Record<string, A>) => Record<string, string[]>"
+$ echo "export declare const invertAll: <A>(f: (x: A) => string) => (x: Record<string, A>) => Record<string, string[]>" | tshm
 invertAll :: (a -> string) -> Record string a -> Record string (Array string)
 
-$ tshm --forall ∀ -e "export declare const withIndex: <A, B, C>(
+$ echo "export declare const withIndex: <A, B, C>(
     f: (g: (x: A) => B) => (ys: A[]) => C[]
-  ) => (g: (i: number) => (x: A) => B) => (ys: A[]) => C[]"
+  ) => (g: (i: number) => (x: A) => B) => (ys: A[]) => C[]" | tshm --forall ∀
 withIndex :: ∀ a b c. ((a -> b) -> Array a -> Array c) -> (number -> a -> b) -> Array a -> Array c
 ```
 

@@ -32,7 +32,7 @@ executable tshm
   main-is:                 Main.hs
   build-depends:
       tshm
-    , optparse-applicative ^>=0.16.1
+    , optparse-applicative  ==0.16.1.0
   other-modules:
     Paths_tshm
     CLI
