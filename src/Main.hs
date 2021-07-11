@@ -23,11 +23,8 @@ main = do
     Right ast -> putTextLn . compileDeclaration $ CompileConfig (reconcile ast) (forall opts) (readonly opts)
 
 tryGetStdin :: IO (Maybe Text)
-tryGetStdin = do
-  data' <- newIORef ""
-  ready <- hReady stdin
-  when ready (writeIORef data' . T.pack =<< getContents)
-  guarded (not . T.null) <$> readIORef data'
+tryGetStdin = bool (pure Nothing) getContents' =<< hReady stdin
+  where getContents' = fmap T.pack . guarded (not . null) <$> getContents
 
 getOptsCode :: Opts -> IO Text
 getOptsCode opts = case input opts of
