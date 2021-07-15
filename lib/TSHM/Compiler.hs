@@ -17,9 +17,9 @@ surround l r x = l <> x <> r
 surrounding :: Semigroup a => a -> a -> a -> a
 surrounding x l r = l <> x <> r
 
-doIf :: (a -> a) -> Bool -> a -> a
-doIf f True  = f
-doIf _ False = id
+applyWhen :: Bool -> (a -> a) -> a -> a
+applyWhen True  f = f
+applyWhen False _ = id
 
 data CompileConfig = CompileConfig
   { signatures :: ReconciledAST
@@ -183,7 +183,7 @@ lambda x = do
   let tas = foldMap toList (lambdaTypeArgs x)
   modify $ \s -> s { implicitTypeArgs = implicitTypeArgs s <> tas }
 
-  (doIf (surround "(" ")") nested .) . surrounding " -> " <$> params (lambdaParams x) <*> expr (lambdaReturn x)
+  (applyWhen nested (surround "(" ")") .) . surrounding " -> " <$> params (lambdaParams x) <*> expr (lambdaReturn x)
 
 fnewtype :: Text -> TExpr -> Compiler'
 fnewtype x y = (("newtype " <> x <> " = ") <>) <$> expr y
@@ -237,7 +237,7 @@ infer :: Text -> Compiler'
 infer x = do
   modify (\s -> s { inferredTypes = x : inferredTypes s })
   nested <- ambiguouslyNested <$> get
-  doIf (surround "(" ")") nested . ("infer " <>) <$> misc x
+  applyWhen nested (surround "(" ")") . ("infer " <>) <$> misc x
 
 unOp :: UnOp -> TExpr -> Compiler'
 unOp o t = do
@@ -250,12 +250,12 @@ unOp o t = do
       args <- namedFunctionArgs <$> get
       pure $ fromMaybe ("typeof " <> raw) (lookup raw args)
   nested <- ambiguouslyNested <$> get
-  pure $ doIf (surround "(" ")") nested out
+  pure $ applyWhen nested (surround "(" ")") out
 
 binOp :: BinOp -> TExpr -> TExpr -> Compiler'
 binOp o l r = do
   nested <- ambiguouslyNested <$> get
-  (doIf (surround "(" ")") nested .) . surrounding (" " <> op o <> " ")
+  (applyWhen nested (surround "(" ")") .) . surrounding (" " <> op o <> " ")
     <$> expr l <*> expr r
 
   where op :: BinOp -> Text
