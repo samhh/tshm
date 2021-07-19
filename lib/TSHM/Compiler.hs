@@ -37,21 +37,11 @@ data CompileState = CompileState
   , inferredTypes        :: [Text]
   }
 
-instance Semigroup CompileState where
-  a <> b = CompileState
-    (ambiguouslyNested a || ambiguouslyNested b)
-    (immediateFunctionArg a || immediateFunctionArg b)
-    (namedFunctionArgs a <> namedFunctionArgs b)
-    (explicitTypeArgs a <> explicitTypeArgs b)
-    (implicitTypeArgs a <> implicitTypeArgs b)
-    (mappedTypeKeys a <> mappedTypeKeys b)
-    (inferredTypes a <> inferredTypes b)
-
-instance Monoid CompileState where
-  mempty = CompileState False False mempty mempty mempty mempty mempty
+initialState :: CompileState
+initialState = CompileState False False mempty mempty mempty mempty mempty
 
 compileDeclaration :: CompileConfig -> Text
-compileDeclaration x = fst $ evalRWS declaration x mempty
+compileDeclaration x = fst $ evalRWS declaration x initialState
 
 data RenderedCompileState = RenderedCompileState
   { renderedTypeArgs :: Text
