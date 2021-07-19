@@ -169,7 +169,7 @@ subtype x y = surrounding " extends " <$> misc x <*> ambiguouslyNestedExpr y
 
 lambda :: Lambda -> Compiler'
 lambda x = do
-  nested <- uncurry (||) . (immediateFunctionArg &&& ambiguouslyNested) <$> get
+  nested <- immediateFunctionArg ||^ ambiguouslyNested <$> get
   let tas = foldMap toList (lambdaTypeArgs x)
   modify $ \s -> s { implicitTypeArgs = implicitTypeArgs s <> tas }
 
