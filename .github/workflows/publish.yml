@@ -1,0 +1,37 @@
+name: Publish
+
+on:
+  create:
+    tags: ["[0-9].[0-9].[0-9]"]
+
+jobs:
+  publish:
+    name: Publish for ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        ghc: ['8.10.4']
+        include:
+          - os: ubuntu-latest
+            asset_name: tshm-linux-amd64
+
+    steps:
+      - uses: actions/checkout@v2
+      - uses: haskell/actions/setup@v1
+        id: setup-haskell
+        with:
+          ghc-version: ${{ matrix.ghc }}
+      - uses: actions/cache@v2
+        with:
+          path: ${{ steps.setup-haskell.outputs.cabal-store }}
+          key: ${{ runner.os }}-${{ matrix.ghc }}-${{ hashFiles('cabal.project.freeze') }}
+          restore-keys: ${{ runner.os }}-${{ matrix.ghc }}-
+      - name: Build
+        run: cabal install --install-method=copy --installdir=dist
+      - name: Publish
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: dist/tshm
+          asset_name: ${{ matrix.asset_name }}
+          tag: ${{ github.ref }}
