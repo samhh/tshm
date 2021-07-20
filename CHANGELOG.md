@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.4.0 -- 2021-07-20
+
+This release is the first to include a prebuilt binary via CI, on Linux only for now. It also adds support for the `-v`/`--version` switch.
+
+Continuing along the CLI front, support has been added for the `-a`/`--all` flag, which overrides the scope semantics of declarations to publicise everything. This is designed with quick CLI evaluation in mind, removing the need to prefix everything with "export".
+
+Code can now be evaluated via stdin as well as via the preexisting `-e`/`--eval` flag.
+
+The parser continues to receive upgrades, most notably:
+
+- Support import statements - default, named, and asterisk
+- Support default exports and export lists
+- Support overloaded functions that aren't direct siblings
+- Print the underlying type as referenced by "typeof" where possible
+
+Nota bene that empty inputs are now supported and will no longer return a failure exit code. This is deemed semantically appropriate insofar as an empty file or string is technically a valid TypeScript declaration.
+
 ## 0.3.0 -- 2021-01-09
 
 This release includes a couple of breaking changes to the CLI interface.
