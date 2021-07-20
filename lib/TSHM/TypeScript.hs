@@ -217,11 +217,16 @@ data UnscopedStatement
   | UnscopedStatementMisc Statement
   deriving (Eq, Show)
 
-toUnscoped :: ScopedStatement -> Maybe UnscopedStatement
-toUnscoped (ScopedStatementImportDec x)     = pure $ UnscopedStatementImportDec x
-toUnscoped (ScopedStatementExportDec _)     = empty
-toUnscoped (ScopedStatementMisc Exported x) = pure $ UnscopedStatementMisc x
-toUnscoped (ScopedStatementMisc Local _)    = empty
+data ScopeRule
+  = KeepExported
+  | KeepAll
+
+toUnscoped :: ScopeRule -> ScopedStatement -> Maybe UnscopedStatement
+toUnscoped _ (ScopedStatementImportDec x)             = pure $ UnscopedStatementImportDec x
+toUnscoped _ (ScopedStatementExportDec _)             = empty
+toUnscoped _ (ScopedStatementMisc Exported x)         = pure $ UnscopedStatementMisc x
+toUnscoped KeepExported (ScopedStatementMisc Local _) = empty
+toUnscoped KeepAll      (ScopedStatementMisc Local x) = pure $ UnscopedStatementMisc x
 
 type ParsedAST = [ScopedStatement]
 

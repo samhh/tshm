@@ -4,6 +4,7 @@ A parser and formatter for TypeScript declarations that outputs HM-style type si
 
 ```
 Usage: tshm (filepath | (-e|--eval code)) [-f|--forall string] [-r|--readonly]
+            [-a|--all]
   A parser and formatter for TypeScript declarations that outputs HM-style type
   signatures.
 
@@ -19,23 +20,25 @@ Available options:
                            to "none" or omitted, no universal quantification
                            will be displayed
   -r,--readonly            Display readonly modifiers
+  -a,--all                 Output all declarations regardless of whether or not
+                           they're exported. Useful in tandem with --eval
 ```
 
 Example:
 
 ```
-$ echo "export type Option<A> = None | Some<A>" | tshm
+$ echo "type Option<A> = None | Some<A>" | tshm -a
 type Option a = None | Some a
 
-$ echo "export type Milliseconds = Newtype<{ readonly Milliseconds: unique symbol }, number>" | tshm
+$ echo "type Milliseconds = Newtype<{ readonly Milliseconds: unique symbol }, number>" | tshm -a
 newtype Milliseconds = number
 
-$ echo "export declare const invertAll: <A>(f: (x: A) => string) => (x: Record<string, A>) => Record<string, string[]>" | tshm
+$ echo "declare const invertAll: <A>(f: (x: A) => string) => (x: Record<string, A>) => Record<string, string[]>" | tshm -a
 invertAll :: (a -> string) -> Record string a -> Record string (Array string)
 
-$ echo "export declare const withIndex: <A, B, C>(
+$ echo "declare const withIndex: <A, B, C>(
     f: (g: (x: A) => B) => (ys: A[]) => C[]
-  ) => (g: (i: number) => (x: A) => B) => (ys: A[]) => C[]" | tshm --forall ∀
+  ) => (g: (i: number) => (x: A) => B) => (ys: A[]) => C[]" | tshm -a --forall ∀
 withIndex :: ∀ a b c. ((a -> b) -> Array a -> Array c) -> (number -> a -> b) -> Array a -> Array c
 ```
 

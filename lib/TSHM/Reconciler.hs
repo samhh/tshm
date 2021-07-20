@@ -8,8 +8,8 @@ import           Utils           (arrangeBy, concatWhereBy)
 -- | The parser cannot parse everything to be "correct by construction". Where
 -- this is the case, the reconciler steps in to take the naive AST and return
 -- a fixed one. This operation is infallible.
-reconcile :: ParsedAST -> ReconciledAST
-reconcile = reconcileExports . reconcileOverloadedFunctions
+reconcile :: ScopeRule -> ParsedAST -> ReconciledAST
+reconcile scope = reconcileExports scope . reconcileOverloadedFunctions
 
 -- | Expose unexported declarations which have been exported with `export`
 -- statements, before or after the declaration in question. This operation
@@ -19,12 +19,12 @@ reconcile = reconcileExports . reconcileOverloadedFunctions
 --
 -- Note that duplicate exports for the same identifier are invalid in
 -- TypeScript, so this function is dumb in that respect.
-reconcileExports :: ParsedAST -> ReconciledAST
-reconcileExports xs = unrollStmts =<< xs
+reconcileExports :: ScopeRule -> ParsedAST -> ReconciledAST
+reconcileExports scope xs = unrollStmts =<< xs
   where unrollStmts :: ScopedStatement -> [UnscopedStatement]
-        unrollStmts (ScopedStatementExportDec (ExportDef n))        = maybeToList $ toUnscoped =<< identsToStmt n "default"
-        unrollStmts (ScopedStatementExportDec (ExportNamedRefs ys)) = (toUnscoped <=< namedExportToStmt) `mapMaybe` ys
-        unrollStmts x                                               = maybeToList . toUnscoped $ x
+        unrollStmts (ScopedStatementExportDec (ExportDef n))        = maybeToList $ toUnscoped' =<< identsToStmt n "default"
+        unrollStmts (ScopedStatementExportDec (ExportNamedRefs ys)) = (toUnscoped' <=< namedExportToStmt) `mapMaybe` ys
+        unrollStmts x                                               = maybeToList . toUnscoped' $ x
 
         namedExportToStmt :: ExportNamedRef -> Maybe ScopedStatement
         namedExportToStmt (ExportNamedRefUnchanged n)  = identsToStmt n n
@@ -32,6 +32,8 @@ reconcileExports xs = unrollStmts =<< xs
 
         identsToStmt :: Text -> Text -> Maybe ScopedStatement
         identsToStmt n n' = ScopedStatementMisc Exported . (n',) <$> M.lookup n stmts
+
+        toUnscoped' = toUnscoped scope
 
         stmts :: Map StatementName StatementType
         stmts = M.fromList . mapMaybe getStmt . toList $ xs
@@ -56,6 +58,4 @@ reconcileOverloadedFunctions = (overloadMerge `concatWhereBy` overloadMatch) . a
         -- This should technically never happen per our predicate in
         -- `concatWhereBy`
         overloadMerge x _                                       = x
-
-
 

@@ -1,19 +1,20 @@
 module TSHM.CompilerSpec (spec) where
 
-import qualified Data.Text           as T
+import qualified Data.Text       as T
 import           Prelude
-import           TSHM.Parser         (parseDeclaration)
-import           TSHM.Compiler        (CompileConfig (CompileConfig),
-                                      compileDeclaration)
-import           TSHM.Reconciler     (reconcile)
+import           TSHM.Compiler   (CompileConfig (CompileConfig),
+                                  compileDeclaration)
+import           TSHM.Parser     (parseDeclaration)
+import           TSHM.Reconciler (reconcile)
+import           TSHM.TypeScript (ScopeRule (..))
 import           Test.Hspec
-import           Text.Megaparsec     (ParseErrorBundle)
+import           Text.Megaparsec (ParseErrorBundle)
 
 unlines' :: [Text] -> Text
 unlines' = T.intercalate "\n"
 
 ppWith :: Maybe Text -> Bool -> Text -> Either (ParseErrorBundle Text Void) Text
-ppWith x y = fmap (compileDeclaration . (\ast -> CompileConfig ast x y) . reconcile) . parseDeclaration
+ppWith x y = fmap (compileDeclaration . (\ast -> CompileConfig ast x y) . reconcile KeepExported) . parseDeclaration
 
 pp :: Text -> Either (ParseErrorBundle Text Void) Text
 pp = ppWith (Just "forall") True

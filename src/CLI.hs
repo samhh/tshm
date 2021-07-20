@@ -24,13 +24,14 @@ data Input
   | Stdin
 
 data Opts = Opts
-  { input    :: Input
-  , forall   :: Maybe Text
-  , readonly :: Bool
+  { input          :: Input
+  , forall         :: Maybe Text
+  , readonly       :: Bool
+  , exportAll      :: Bool
   }
 
 defaultOpts :: Opts
-defaultOpts = Opts Stdin Nothing False
+defaultOpts = Opts Stdin Nothing False False
 
 -- This reimplements a lot of internal optparse-applicative code so that we can
 -- support stdin in the form of `echo abc | tshm`. In the presence of stdin
@@ -90,6 +91,7 @@ getParser p = Opts <$>
   <*> (mfilter (/= "none") <$> A.optional (A.option A.str $ A.short 'f' <> A.long "forall" <> A.metavar "string" <>
         A.help "Specify a string to be used to express universal quantification, for example \"forall\" or \"∀\". If set to \"none\" or omitted, no universal quantification will be displayed"))
   <*> A.switch (A.short 'r' <> A.long "readonly" <> A.help "Display readonly modifiers")
+  <*> A.switch (A.short 'a' <> A.long "all" <> A.help "Output all declarations regardless of whether or not they're exported. Useful in tandem with --eval")
 
 parserWithoutCode :: A.Parser Opts
 parserWithoutCode = getParser (pure Stdin)

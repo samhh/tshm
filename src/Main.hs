@@ -9,6 +9,7 @@ import           TSHM.Compiler   (CompileConfig (CompileConfig),
                                   compileDeclaration)
 import           TSHM.Parser     (parseDeclaration)
 import           TSHM.Reconciler (reconcile)
+import           TSHM.TypeScript (ScopeRule (..))
 
 main :: IO ()
 main = do
@@ -17,13 +18,14 @@ main = do
                  then AllowEmpty
                  else Normal
   opts <- parseOpts strat
+  let scope = if exportAll opts then KeepAll else KeepExported
   code <- stdin' `whenNothing` getOptsCode opts
   case parseDeclaration code of
     Left e  -> print e *> exitFailure
-    Right ast -> putTextLn . compileDeclaration $ CompileConfig (reconcile ast) (forall opts) (readonly opts)
+    Right ast -> putTextLn . compileDeclaration $ CompileConfig (reconcile scope ast) (forall opts) (readonly opts)
 
 tryGetStdin :: IO (Maybe Text)
-tryGetStdin = bool (pure Nothing) getContents' =<< hReady stdin
+tryGetStdin = (`memptyIfFalse` getContents') =<< hReady stdin
   where getContents' = fmap T.pack . guarded (not . null) <$> getContents
 
 getOptsCode :: Opts -> IO Text

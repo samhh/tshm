@@ -30,13 +30,14 @@ spec = describe "TSHM.Reconciler" $ do
             , UnscopedStatementMisc misc2
             , UnscopedStatementMisc $ asDec "g" fn3
             ]
-      reconcile before' `shouldBe` after'
+      reconcile KeepExported before' `shouldBe` after'
 
   describe "reconciliation of exports" $ do
-    it "maintains every export" $ do
+    it "transfers exported statements" $ do
       let before' = fromList
             [ ScopedStatementMisc Exported ("a", StatementAlias $ Alias Nothing TAny)
             , ScopedStatementExportDec $ ExportDef "a"
+            , ScopedStatementMisc Local ("c", StatementAlias $ Alias Nothing TUnknown)
             , ScopedStatementExportDec . ExportNamedRefs . pure $ ExportNamedRefRenamed "a" "b"
             ]
           after' = fromList
@@ -44,4 +45,19 @@ spec = describe "TSHM.Reconciler" $ do
             , UnscopedStatementMisc ("default", StatementAlias $ Alias Nothing TAny)
             , UnscopedStatementMisc ("b", StatementAlias $ Alias Nothing TAny)
             ]
-      reconcile before' `shouldBe` after'
+      reconcile KeepExported before' `shouldBe` after'
+
+    it "transfers everything" $ do
+      let before' = fromList
+            [ ScopedStatementMisc Exported ("a", StatementAlias $ Alias Nothing TAny)
+            , ScopedStatementExportDec $ ExportDef "a"
+            , ScopedStatementMisc Local ("c", StatementAlias $ Alias Nothing TUnknown)
+            , ScopedStatementExportDec . ExportNamedRefs . pure $ ExportNamedRefRenamed "a" "b"
+            ]
+          after' = fromList
+            [ UnscopedStatementMisc ("a", StatementAlias $ Alias Nothing TAny)
+            , UnscopedStatementMisc ("default", StatementAlias $ Alias Nothing TAny)
+            , UnscopedStatementMisc ("c", StatementAlias $ Alias Nothing TUnknown)
+            , UnscopedStatementMisc ("b", StatementAlias $ Alias Nothing TAny)
+            ]
+      reconcile KeepAll before' `shouldBe` after'
