@@ -42,15 +42,13 @@ $ echo "declare const withIndex: <A, B, C>(
 withIndex :: ∀ a b c. ((a -> b) -> Array a -> Array c) -> (number -> a -> b) -> Array a -> Array c
 ```
 
+The parser does not perform any sort of correctness checking beyond its ability to understand the syntax.
+
 Should an invalid input be provided the program will fail with the appropriate exit code, enabling the use of tshm in shell pipelines.
 
 Messages are always printed upon failure. Should the failure be due to a parser error, the raw error is printed to the console to assist in debugging.
 
-## What's supported?
 
-At present, the parser can reliably parse a single input declaration. Within this declaration, subjectively speaking, the most common forms of TypeScript syntax are supported. Long-term, the intention is that all syntax deemed valid by the language proper will be supported.
-
-The parser does not perform any sort of correctness checking beyond its ability to understand the syntax.
 
 ## Contributing
 
