@@ -190,7 +190,7 @@ num = lex $ fmap T.pack . (<>) . foldMap pure <$> optional (char '-') <*> choice
   ]
 
 tuple :: Parser [TExpr]
-tuple = bracks $ sepEndBy expr (sym ",")
+tuple = bracks $ sepEndBy expr (symN ",")
 
 objLitProps :: Parser Object
 objLitProps = ObjectLit <$> sepEndBy prop delim

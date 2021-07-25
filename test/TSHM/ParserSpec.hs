@@ -244,6 +244,9 @@ spec = describe "TSHM.Parser" $ do
     it "parses non-empty nested tuple" $ do
       parse' tuple "[a, ['b', 3]]" `shouldParse` [TMisc "a", TTuple [TString "b", TNumber "3"]]
 
+    it "parses non-empty tuple with newlines" $ do
+      parse' tuple "[\na,\nb,\nc\n]" `shouldParse` [TMisc "a", TMisc "b", TMisc "c"]
+
     it "parses non-empty tuple with trailing comma" $ do
       parse' tuple "[a,]" `shouldParse` [TMisc "a"]
       parse' tuple "[a, ]" `shouldParse` [TMisc "a"]
