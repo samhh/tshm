@@ -7,6 +7,7 @@ import qualified Data.Text           as T
 import           Data.Tuple.Sequence (sequenceT)
 import           Prelude
 import           TSHM.TypeScript
+import           Utils               ((<>^))
 
 type Compiler a = RWS CompileConfig () CompileState a
 type Compiler' = Compiler Text
@@ -179,7 +180,7 @@ fnewtype :: Text -> TExpr -> Compiler'
 fnewtype x y = (("newtype " <> x <> " = ") <>) <$> expr y
 
 isNewtype :: TExpr -> Maybe TExpr
-isNewtype (TGeneric "Newtype" xs) = fmap snd . guarded (isNewtypeObject . fst) =<< isNewtypeTypeArgs xs
+isNewtype (TGeneric (TMisc "Newtype") xs) = fmap snd . guarded (isNewtypeObject . fst) =<< isNewtypeTypeArgs xs
   where isNewtypeTypeArgs :: NonEmpty TypeArg -> Maybe (Object, TExpr)
         isNewtypeTypeArgs ys
           | length ys == 2 = (, fst $ ys !! 1) <$> isObject (head ys)
@@ -194,13 +195,13 @@ isNewtype (TGeneric "Newtype" xs) = fmap snd . guarded (isNewtypeObject . fst) =
         isNewtypeObject _                                              = False
 isNewtype _ = Nothing
 
-generic :: (Text, NonEmpty TypeArg) -> Compiler'
+generic :: (TExpr, NonEmpty TypeArg) -> Compiler'
 generic (x, ys) = do
   nested <- ambiguouslyNested <$> get
   if nested then do
     modify $ \s -> s { ambiguouslyNested = False }
     surround "(" ")" <$> generic (x, ys)
-  else ((x <> " ") <>) . unwords <$> mapM expr' (toList ys)
+  else expr x <>^ pure " " <>^ (unwords <$> mapM expr' (toList ys))
   where expr' :: TypeArg -> Compiler'
         expr' z = do
           modify $ \s -> s { ambiguouslyNested = True }

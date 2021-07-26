@@ -85,8 +85,9 @@ operators :: [[Operator Parser TExpr]]
 operators =
   [ [ Postfix $ multi
       (   try (flip TIndexedAccess <$> bracks expr)
-      <|> TGeneric "Array" . pure . (, Nothing) <$ symN "[" <* sym "]"
+      <|> TGeneric (TMisc "Array") . pure . (, Nothing) <$ symN "[" <* sym "]"
       <|> flip TDotAccess <$> (symN "." *> ident)
+      <|> flip TGeneric <$> typeArgs
       )
     ]
   , [ Prefix $ TUnOp UnOpReflection <$ symN "typeof "
@@ -120,7 +121,6 @@ expr = (`makeExprParser` operators) $ choice
   , TObject <$> object
   , TLambda <$> lambda
   , TInfer <$> (sym "infer" *> ident)
-  , try generic
   , TMisc <$> ident
   ]
 
@@ -154,9 +154,6 @@ ro = bool Mut Immut . isJust <$> optional (sym "readonly ")
 
 roMod :: Parser (Maybe ModMut)
 roMod = optional ((const RemMut <$ sym "-" <|> const AddMut <$ optional (sym "+")) <*> sym "readonly")
-
-generic :: Parser TExpr
-generic = TGeneric <$> ident <*> typeArgs
 
 str :: Parser Text
 str = lex $ strOf '\'' <|> strOf '"'

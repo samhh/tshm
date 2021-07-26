@@ -83,7 +83,7 @@ data TExpr
   | TObject Object
   | TIndexedAccess TExpr TExpr
   | TDotAccess TExpr Text
-  | TGeneric Text (NonEmpty TypeArg)
+  | TGeneric TExpr (NonEmpty TypeArg)
   | TSubtype Text TExpr
   | TLambda Lambda
   | TUnOp UnOp TExpr
