@@ -2,6 +2,8 @@
 
 A parser and formatter for TypeScript declarations that outputs HM-style type signatures.
 
+Available in editors via [typescript-tshm-plugin](https://github.com/samhh/typescript-tshm-plugin).
+
 ```
 Usage: tshm (filepath | (-e|--eval code)) [-f|--forall string] [-r|--readonly]
             [-a|--all]
