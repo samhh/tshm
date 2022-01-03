@@ -3,6 +3,11 @@ module Utils where
 import           Data.List (partition)
 import           Prelude
 
+-- | Conditionally apply an endomorphism.
+applyWhen :: Bool -> (a -> a) -> a -> a
+applyWhen True  f = f
+applyWhen False _ = id
+
 -- | Like `groupBy`, but groups non-sibling items towards the left-most match,
 -- and doesn't nest the result.
 arrangeBy :: (a -> a -> Bool) -> [a] -> [a]

@@ -7,7 +7,7 @@ import qualified Data.Text           as T
 import           Data.Tuple.Sequence (sequenceT)
 import           Prelude
 import           TSHM.TypeScript
-import           Utils               ((<>^))
+import           Utils               (applyWhen, (<>^))
 
 type Compiler a = RWS CompileConfig () CompileState a
 type Compiler' = Compiler Text
@@ -17,10 +17,6 @@ surround l r x = l <> x <> r
 
 surrounding :: Semigroup a => a -> a -> a -> a
 surrounding x l r = l <> x <> r
-
-applyWhen :: Bool -> (a -> a) -> a -> a
-applyWhen True  f = f
-applyWhen False _ = id
 
 needsParens :: TExpr -> Bool
 needsParens TGeneric {} = True
