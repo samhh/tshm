@@ -101,20 +101,17 @@ statement (n, StatementEnum x)         = enum n x
 statement (n, StatementConstDec x)     = constDec n x
 statement (n, StatementFunctionDec xs) = T.intercalate "\n" <$> mapM (clean (lambdaDec n)) (toList xs)
   where clean :: (a -> Compiler') -> a -> Compiler'
-        clean p x = do
-          modify $ \s -> s { implicitTypeArgs = [] }
-          p x
+        clean p x = modify reset *> p x
+          where reset s = s { implicitTypeArgs = [] }
 
 -- | Compile an entire "declaration", which is zero or more statements.
 declaration :: Compiler'
 declaration = fmap (T.intercalate "\n\n") . mapM unscopedStatement . signatures =<< ask
 
 expr :: TExpr -> Compiler'
-expr t = do
-  res <- f t
-  modify $ \s -> s { immediateFunctionArg = False }
-  pure res
-  where f TAny                   = pure "any"
+expr t = modify upd *> f t
+  where upd s = s { immediateFunctionArg = False }
+        f TAny                   = pure "any"
         f TUnknown               = pure "unknown"
         f TNever                 = pure "never"
         f TVoid                  = pure "void"
@@ -148,17 +145,18 @@ param (Param n xs) = case n of
   ParamDestructured -> f xs
   ParamNamed n'     -> do
     compiled <- f xs
-    modify $ \s -> s { namedFunctionArgs = insert n' compiled (namedFunctionArgs s) }
+    modify (ins n' compiled)
     pure compiled
   where f (Required, Normal, x) = annotatedExpr x
         f (Required, Rest, x)   = pure "..." <>^ annotatedExpr x
         f (Optional, Normal, x) = annotatedExpr x <>^ pure "?"
         f (Optional, Rest, x)   = pure "..." <>^ annotatedExpr x <>^ pure "?"
 
+        ins n' c s = s { namedFunctionArgs = insert n' c (namedFunctionArgs s) }
+
         annotatedExpr :: TExpr -> Compiler'
-        annotatedExpr x = do
-          modify $ \s -> s { immediateFunctionArg = True }
-          expr x
+        annotatedExpr x = modify upd *> expr x
+          where upd s = s { immediateFunctionArg = True }
 
 params :: [Param] -> Compiler'
 params []  = pure "()"
@@ -186,11 +184,8 @@ subtype :: Text -> TExpr -> Compiler'
 subtype x y = misc x <>^ pure " extends " <>^ (withParensStd y <$> expr y)
 
 lambda :: Lambda -> Compiler'
-lambda x = do
-  let tas = foldMap toList (lambdaTypeArgs x)
-  modify $ \s -> s { implicitTypeArgs = implicitTypeArgs s <> tas }
-
-  params (lambdaParams x) <>^ pure " -> " <>^ expr (lambdaReturn x)
+lambda x = modify ins *> params (lambdaParams x) <>^ pure " -> " <>^ expr (lambdaReturn x)
+  where ins s = s { implicitTypeArgs = implicitTypeArgs s <> foldMap toList (lambdaTypeArgs x) }
 
 fnewtype :: Text -> TExpr -> Compiler'
 fnewtype x y = pure ("newtype " <> x <> " = ") <>^ expr y
@@ -233,8 +228,8 @@ objectPair (ObjectPair m p (kt, vt)) = do
 
 infer :: Text -> Compiler'
 infer x = do
-  modify $ \s -> s { inferredTypes = x : inferredTypes s }
-  pure "infer " <>^ misc x
+  modify ins *> pure "infer " <>^ misc x
+    where ins s = s { inferredTypes = x : inferredTypes s }
 
 unOp :: UnOp -> TExpr -> Compiler'
 unOp o t = do
@@ -275,7 +270,8 @@ object (ObjectLit []) = pure "{}"
 object (ObjectLit xs) = pure "{ " <>^ items <>^ pure " }"
   where items = T.intercalate ", " <$> mapM objectPair xs
 object (ObjectMapped m p (kt, xt, asm) vt) = do
-  modify $ \s -> s { mappedTypeKeys = kt : mappedTypeKeys s }
+  modify ins
+
   cfgRO <- readonly <$> ask
   let ro = foldMap ((<> " ") . modMut) . mfilter (const cfgRO) $ m
   let sep = maybe ":" modOpt p
@@ -285,6 +281,7 @@ object (ObjectMapped m p (kt, xt, asm) vt) = do
   x <- expr xt
   v <- expr vt
   pure $ "{ " <> ro <> "[" <> k <> " in " <> x <> as <> "]" <> sep <> " " <> v <> " }"
+    where ins s = s { mappedTypeKeys = kt : mappedTypeKeys s }
 
 importDec :: ImportDec -> Compiler'
 importDec x = pure $ "import " <> dblqts (importDecFrom x) <> " " <> imp (importDecContents x)
@@ -316,16 +313,20 @@ alias :: Text -> Alias -> Compiler'
 alias n x = case isNewtype (aliasType x) of
   Just y -> fnewtype n y
   Nothing -> do
-    let explicitTargs = foldMap toList (aliasTypeArgs x)
-    modify $ \s -> s { explicitTypeArgs = explicitTypeArgs s <> explicitTargs }
+    modify ins
+
     explicitTargsP <- unwords <$> mapMaybeM tryCompileTypeArg explicitTargs
     ttype <- expr (aliasType x)
     ps <- renderCompileState
+
     pure $ "type " <> n <> (if T.null explicitTargsP then "" else " ") <> explicitTargsP <> " = " <> renderedTypeArgs ps <> renderedSubtypes ps <> ttype
       where tryCompileTypeArg :: TypeArg -> Compiler (Maybe Text)
             tryCompileTypeArg (TMisc y, _)      = Just <$> misc y
             tryCompileTypeArg (TSubtype y z, _) = Just . parens <$> subtype y z
             tryCompileTypeArg _                   = pure Nothing
+
+            explicitTargs = foldMap toList (aliasTypeArgs x)
+            ins s = s { explicitTypeArgs = explicitTypeArgs s <> explicitTargs }
 
 interface :: Text -> Interface -> Compiler'
 interface n x = case isNewtype =<< interfaceExtends x of
