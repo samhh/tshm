@@ -21,20 +21,19 @@ parens = surround "(" ")"
 surrounding :: Semigroup a => a -> a -> a -> a
 surrounding x l r = l <> x <> r
 
-needsParens :: TExpr -> Bool
-needsParens TGeneric {} = True
-needsParens TUnOp {}    = True
-needsParens TBinOp {}   = True
-needsParens TCond {}    = True
-needsParens TLambda {}  = True
-needsParens TInfer {}   = True
-needsParens _           = False
-
 withParensWhen :: Bool -> Text -> Text
 withParensWhen = flip applyWhen parens
 
 withParensStd :: TExpr -> Text -> Text
 withParensStd = withParensWhen . needsParens
+  where needsParens :: TExpr -> Bool
+        needsParens TGeneric {} = True
+        needsParens TUnOp {}    = True
+        needsParens TBinOp {}   = True
+        needsParens TCond {}    = True
+        needsParens TLambda {}  = True
+        needsParens TInfer {}   = True
+        needsParens _           = False
 
 data CompileConfig = CompileConfig
   { signatures :: ReconciledAST
@@ -157,10 +156,10 @@ param (Param n xs) = case n of
 
 params :: [Param] -> Compiler'
 params []  = pure "()"
-params [x] = withParensWhen (needsParens' . getParamExpr $ x) <$> param x
-  where needsParens' TLambda {} = True
-        needsParens' TBinOp {}  = True
-        needsParens' _          = False
+params [x] = withParensWhen (needsParens . getParamExpr $ x) <$> param x
+  where needsParens TLambda {} = True
+        needsParens TBinOp {}  = True
+        needsParens _          = False
 params xs  = parens . T.intercalate ", " <$> mapM param xs
 
 misc :: Text -> Compiler'
