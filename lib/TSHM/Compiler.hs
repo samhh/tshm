@@ -15,6 +15,9 @@ type Compiler' = Compiler Text
 surround :: Semigroup a => a -> a -> a -> a
 surround l r x = l <> x <> r
 
+parens :: Text -> Text
+parens = surround "(" ")"
+
 surrounding :: Semigroup a => a -> a -> a -> a
 surrounding x l r = l <> x <> r
 
@@ -28,10 +31,10 @@ needsParens TInfer {}   = True
 needsParens _           = False
 
 withParensWhen :: Bool -> Text -> Text
-withParensWhen x = applyWhen x (surround "(" ")")
+withParensWhen = flip applyWhen parens
 
-withParens :: TExpr -> Text -> Text
-withParens = withParensWhen . needsParens
+withParensStd :: TExpr -> Text -> Text
+withParensStd = withParensWhen . needsParens
 
 data CompileConfig = CompileConfig
   { signatures :: ReconciledAST
@@ -130,10 +133,10 @@ expr t = do
         f (TUnOp x y)            = unOp x y
         f (TBinOp x y z)         = binOp x y z
         f (TCond l r tt ff)      = cond l r tt ff
-        f (TGrouped x)           = surround "(" ")" <$> expr x
+        f (TGrouped x)           = parens <$> expr x
 
 indexed :: TExpr -> TExpr -> Compiler'
-indexed v k = (\v' k' -> v' <> "[" <> k' <> "]") <$> (withParens v <$> expr v) <*> expr k
+indexed v k = (\v' k' -> v' <> "[" <> k' <> "]") <$> (withParensStd v <$> expr v) <*> expr k
 
 param :: Param -> Compiler'
 param (Param n xs) = case n of
@@ -158,7 +161,7 @@ params [x] = withParensWhen (needsParens' . getParamExpr $ x) <$> param x
   where needsParens' TLambda {} = True
         needsParens' TBinOp {}  = True
         needsParens' _          = False
-params xs  = surround "(" ")" . T.intercalate ", " <$> mapM param xs
+params xs  = parens . T.intercalate ", " <$> mapM param xs
 
 misc :: Text -> Compiler'
 -- If the type is a single character, and we know about it from a type argument
@@ -175,7 +178,7 @@ misc (T.uncons -> Just (x', T.uncons -> Nothing)) = do
 misc x   = pure x
 
 subtype :: Text -> TExpr -> Compiler'
-subtype x y = surrounding " extends " <$> misc x <*> (withParens y <$> expr y)
+subtype x y = surrounding " extends " <$> misc x <*> (withParensStd y <$> expr y)
 
 lambda :: Lambda -> Compiler'
 lambda x = do
@@ -206,7 +209,7 @@ isNewtype _ = Nothing
 generic :: (TExpr, NonEmpty TypeArg) -> Compiler'
 generic (x, ys) = expr x <>^ pure " " <>^ (unwords <$> mapM expr' (toList ys))
   where expr' :: TypeArg -> Compiler'
-        expr' (z, _) = withParens z <$> expr z
+        expr' (z, _) = withParensStd z <$> expr z
 
 objectKey :: ObjectKey -> Compiler'
 objectKey (OKeyIdent x)    = pure x
@@ -251,7 +254,7 @@ template (TemplateExpr x) = surround "${" "}" <$> expr x
 
 cond :: TExpr -> TExpr -> TExpr -> TExpr -> Compiler'
 cond lt rt tt ft = (\l r t f -> l <> " extends " <> r <> " ? " <> t <> " : " <> f) <$>
-  (withParens lt <$> expr lt) <*> (withParens rt <$> expr rt) <*> expr tt <*> expr ft
+  (withParensStd lt <$> expr lt) <*> (withParensStd rt <$> expr rt) <*> expr tt <*> expr ft
 
 modMut :: ModMut -> Text
 modMut AddMut = "readonly"
@@ -291,7 +294,7 @@ importDec x = pure $ "import \"" <> importDecFrom x <> "\" " <> imp (importDecCo
         defToNamed = pure . ("default as " <>)
 
         named :: NonEmpty Text -> Text
-        named = surround "(" ")" . T.intercalate ", " . toList
+        named = parens . T.intercalate ", " . toList
 
         allp :: Text -> Text
         allp = ("as " <>)
@@ -317,7 +320,7 @@ alias n x = case isNewtype (aliasType x) of
     pure $ "type " <> n <> (if T.null explicitTargsP then "" else " ") <> explicitTargsP <> " = " <> renderedTypeArgs ps <> renderedSubtypes ps <> ttype
       where tryCompileTypeArg :: TypeArg -> Compiler (Maybe Text)
             tryCompileTypeArg (TMisc y, _)      = Just <$> misc y
-            tryCompileTypeArg (TSubtype y z, _) = Just . surround "(" ")" <$> subtype y z
+            tryCompileTypeArg (TSubtype y z, _) = Just . parens <$> subtype y z
             tryCompileTypeArg _                   = pure Nothing
 
 interface :: Text -> Interface -> Compiler'
