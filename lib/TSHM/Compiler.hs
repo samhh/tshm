@@ -18,9 +18,6 @@ surround l r x = l <> x <> r
 parens :: Text -> Text
 parens = surround "(" ")"
 
-surrounding :: Semigroup a => a -> a -> a -> a
-surrounding x l r = l <> x <> r
-
 withParensWhen :: Bool -> Text -> Text
 withParensWhen = flip applyWhen parens
 
@@ -126,7 +123,7 @@ expr t = do
         f (TSubtype x y)         = subtype x y
         f (TObject xs)           = object xs
         f (TIndexedAccess x y)   = indexed x y
-        f (TDotAccess x y)       = (<> "." <> y) <$> expr x
+        f (TDotAccess x y)       = expr x <>^ pure ("." <> y)
         f (TLambda x)            = lambda x
         f (TInfer x)             = infer x
         f (TUnOp x y)            = unOp x y
@@ -135,7 +132,7 @@ expr t = do
         f (TGrouped x)           = parens <$> expr x
 
 indexed :: TExpr -> TExpr -> Compiler'
-indexed v k = (\v' k' -> v' <> "[" <> k' <> "]") <$> (withParensStd v <$> expr v) <*> expr k
+indexed v k = (withParensStd v <$> expr v) <>^ (bracks <$> expr k)
 
 param :: Param -> Compiler'
 param (Param n xs) = case n of
@@ -145,9 +142,9 @@ param (Param n xs) = case n of
     modify $ \s -> s { namedFunctionArgs = insert n' compiled (namedFunctionArgs s) }
     pure compiled
   where f (Required, Normal, x) = annotatedExpr x
-        f (Required, Rest, x)   = ("..." <>) <$> annotatedExpr x
-        f (Optional, Normal, x) = (<> "?") <$> annotatedExpr x
-        f (Optional, Rest, x)   = ("..." <>) . (<> "?") <$> annotatedExpr x
+        f (Required, Rest, x)   = pure "..." <>^ annotatedExpr x
+        f (Optional, Normal, x) = annotatedExpr x <>^ pure "?"
+        f (Optional, Rest, x)   = pure "..." <>^ annotatedExpr x <>^ pure "?"
 
         annotatedExpr :: TExpr -> Compiler'
         annotatedExpr x = do
@@ -177,17 +174,17 @@ misc (T.uncons -> Just (x', T.uncons -> Nothing)) = do
 misc x   = pure x
 
 subtype :: Text -> TExpr -> Compiler'
-subtype x y = surrounding " extends " <$> misc x <*> (withParensStd y <$> expr y)
+subtype x y = misc x <>^ pure " extends " <>^ (withParensStd y <$> expr y)
 
 lambda :: Lambda -> Compiler'
 lambda x = do
   let tas = foldMap toList (lambdaTypeArgs x)
   modify $ \s -> s { implicitTypeArgs = implicitTypeArgs s <> tas }
 
-  surrounding " -> " <$> params (lambdaParams x) <*> expr (lambdaReturn x)
+  params (lambdaParams x) <>^ pure " -> " <>^ expr (lambdaReturn x)
 
 fnewtype :: Text -> TExpr -> Compiler'
-fnewtype x y = (("newtype " <> x <> " = ") <>) <$> expr y
+fnewtype x y = pure ("newtype " <> x <> " = ") <>^ expr y
 
 isNewtype :: TExpr -> Maybe TExpr
 isNewtype (TGeneric (TMisc "Newtype") xs) = fmap snd . guarded (isNewtypeObject . fst) =<< isNewtypeTypeArgs xs
@@ -214,8 +211,8 @@ objectKey :: ObjectKey -> Compiler'
 objectKey (OKeyIdent x)    = pure x
 objectKey (OKeyStr x)      = pure $ "\"" <> x <> "\""
 objectKey (OKeyNum x)      = pure x
-objectKey (OKeyIndex x)    = surround "[index: " "]" <$> expr x
-objectKey (OKeyComputed x) = surround "[" "]" <$> expr x
+objectKey (OKeyIndex x)    = pure "[index: " <>^ expr x <>^ pure "]"
+objectKey (OKeyComputed x) = pure "[" <>^ expr x <>^ pure "]"
 
 objectPair :: ObjectPair -> Compiler'
 objectPair (ObjectPair m p (kt, vt)) = do
@@ -223,37 +220,38 @@ objectPair (ObjectPair m p (kt, vt)) = do
   let ro = if cfgRO && m == Immut then "readonly " else ""
   let delim = if p == Required then ": " else "?: "
 
-  (\k v -> ro <> k <> delim <> v) <$> objectKey kt <*> expr vt
+  pure ro <>^ objectKey kt <>^ pure delim <>^ expr vt
 
 infer :: Text -> Compiler'
 infer x = do
   modify (\s -> s { inferredTypes = x : inferredTypes s })
-  ("infer " <>) <$> misc x
+  pure "infer " <>^ misc x
 
 unOp :: UnOp -> TExpr -> Compiler'
 unOp o t = do
   cfgRO <- readonly <$> ask
   raw <- expr t
   case o of
-    UnOpReadonly   -> pure $ if cfgRO then "readonly " <> raw else raw
+    UnOpReadonly   -> pure $ applyWhen cfgRO ("readonly " <>) raw
     UnOpKeys       -> pure $ "keyof " <> raw
     UnOpReflection -> do
       args <- namedFunctionArgs <$> get
       pure $ fromMaybe ("typeof " <> raw) (lookup raw args)
 
 binOp :: BinOp -> TExpr -> TExpr -> Compiler'
-binOp o l r = surrounding (" " <> op o <> " ") <$> expr l <*> expr r
+binOp o l r = expr l <>^ pure (" " <> op o <> " ") <>^ expr r
   where op :: BinOp -> Text
         op BinOpIntersection = "&"
         op BinOpUnion        = "|"
 
 template :: TemplateToken -> Compiler'
 template (TemplateStr x)  = pure x
-template (TemplateExpr x) = surround "${" "}" <$> expr x
+template (TemplateExpr x) = pure "${" <>^ expr x <>^ pure "}"
 
 cond :: TExpr -> TExpr -> TExpr -> TExpr -> Compiler'
-cond lt rt tt ft = (\l r t f -> l <> " extends " <> r <> " ? " <> t <> " : " <> f) <$>
-  (withParensStd lt <$> expr lt) <*> (withParensStd rt <$> expr rt) <*> expr tt <*> expr ft
+cond l r t f = l' <>^ pure " extends " <>^ r' <>^ pure " ? " <>^ expr t <>^ pure " : " <>^ expr f
+    where l' = withParensStd l <$> expr l
+          r' = withParensStd r <$> expr r
 
 modMut :: ModMut -> Text
 modMut AddMut = "readonly"
@@ -265,7 +263,8 @@ modOpt RemOpt = "-?:"
 
 object :: Object -> Compiler'
 object (ObjectLit []) = pure "{}"
-object (ObjectLit xs) = surround "{ " " }" . T.intercalate ", " <$> mapM objectPair xs
+object (ObjectLit xs) = pure "{ " <>^ items <>^ pure " }"
+  where items = T.intercalate ", " <$> mapM objectPair xs
 object (ObjectMapped m p (kt, xt, asm) vt) = do
   modify $ \s -> s { mappedTypeKeys = kt : mappedTypeKeys s }
   cfgRO <- readonly <$> ask
@@ -273,7 +272,7 @@ object (ObjectMapped m p (kt, xt, asm) vt) = do
   let sep = maybe ":" modOpt p
   as <- case asm of
     Nothing -> pure mempty
-    Just x  -> (" as " <>) <$> expr x
+    Just x  -> pure " as " <>^ expr x
 
   k <- misc kt
   x <- expr xt
@@ -332,7 +331,7 @@ enum n (SEnum xs) = (\ys -> "enum " <> n <> " {" <> (if null ys then "" else " "
   mapM enumMember xs
   where enumMember :: EnumMember -> Compiler'
         enumMember (EnumMember k Nothing)  = pure $ enumKey k
-        enumMember (EnumMember k (Just v)) = ((enumKey k <> " = ") <>) <$> expr v
+        enumMember (EnumMember k (Just v)) = pure (enumKey k <> " = ") <>^ expr v
 
         enumKey :: EnumKey -> Text
         enumKey (EKeyIdent k) = k
