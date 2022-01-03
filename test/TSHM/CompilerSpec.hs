@@ -71,7 +71,7 @@ spec = describe "TSHM.Compiler" $ do
       [ "export type Evt<A> = {"
       , "  on(evt: `${string & keyof A}Changed`, cb: () => void): void"
       , "}"
-      ]) =*= "type Evt a = { on: (`${string & keyof a}Changed`, (() -> void)) -> void }"
+      ]) =*= "type Evt a = { on: (`${string & keyof a}Changed`, () -> void) -> void }"
 
   it "compiles dot access" $ do
     pp "export type X = { k: MyEnum.Member }" =*= "type X = { k: MyEnum.Member }"
@@ -188,7 +188,8 @@ spec = describe "TSHM.Compiler" $ do
 
   it "correctly wraps generics, expressions, object references, and function arguments in parentheses" $ do
     pp "export type X = <E, A>(x: Either<E, Option<A | E>>) => <B>(f: (x: A) => B) => (x: A | B) => (x: A['k'], y: F<A>['k']) => Option<B>" =*=
-      "type X = forall e a b. Either e (Option (a | e)) -> (a -> b) -> a | b -> (a[\"k\"], (F a)[\"k\"]) -> Option b"
+      "type X = forall e a b. Either e (Option (a | e)) -> (a -> b) -> (a | b) -> (a[\"k\"], (F a)[\"k\"]) -> Option b"
+    pp "export type X = (x: (() => a) | b) => c" =*= "type X = ((() -> a) | b) -> c"
 
   it "compiles stylised newtype-ts newtypes" $ do
     pp "export type X = Newtype<{ readonly Y: unique symbol }, Z>" =*=
@@ -251,11 +252,11 @@ spec = describe "TSHM.Compiler" $ do
         , "): F"
         ]) =*= unlines'
         [ "pipe :: forall a. a -> a"
-        , "pipe :: forall a b. (a, (a -> b)) -> b"
-        , "pipe :: forall a b c. (a, (a -> b), (b -> c)) -> c"
-        , "pipe :: forall a b c d. (a, (a -> b), (b -> c), (c -> d)) -> d"
-        , "pipe :: forall a b c d e. (a, (a -> b), (b -> c), (c -> d), (d -> e)) -> e"
-        , "pipe :: forall a b c d e f. (a, (a -> b), (b -> c), (c -> d), (d -> e), (e -> f)) -> f"
+        , "pipe :: forall a b. (a, a -> b) -> b"
+        , "pipe :: forall a b c. (a, a -> b, b -> c) -> c"
+        , "pipe :: forall a b c d. (a, a -> b, b -> c, c -> d) -> d"
+        , "pipe :: forall a b c d e. (a, a -> b, b -> c, c -> d, d -> e) -> e"
+        , "pipe :: forall a b c d e f. (a, a -> b, b -> c, c -> d, d -> e, e -> f) -> f"
         ]
 
     it "fp-ts/Option" $ do
@@ -330,7 +331,7 @@ spec = describe "TSHM.Compiler" $ do
         "isDate :: Refinement unknown Date"
 
       pp "export declare const parseDate: (ts: string | number) => Option<Date>" =*=
-        "parseDate :: string | number -> Option Date"
+        "parseDate :: (string | number) -> Option Date"
 
     it "fp-ts-std/Function" $ do
       pp "export declare const applyTo: <A>(x: A) => <B>(f: (x: A) => B) => B" =*=
@@ -383,7 +384,7 @@ spec = describe "TSHM.Compiler" $ do
         "parse :: forall e. (SyntaxError -> e) -> string -> Either e unknown"
 
       pp "export declare const stringifyPrimitive: (x: string | number | boolean) => JSONString" =*=
-        "stringifyPrimitive :: string | number | boolean -> JSONString"
+        "stringifyPrimitive :: (string | number | boolean) -> JSONString"
 
     it "fp-ts-std/Record" $ do
       pp "export declare const invertAll: <A>(f: (x: A) => string) => (x: Record<string, A>) => Record<string, string[]>" =*=

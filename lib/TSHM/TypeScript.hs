@@ -112,6 +112,9 @@ data Param = Param
   , paramValue :: (Partial, ParamScope, TExpr)
   } deriving (Eq, Show)
 
+getParamExpr :: Param -> TExpr
+getParamExpr = (\(_, _, x) -> x) . paramValue
+
 data Lambda = Lambda
   { lambdaTypeArgs :: Maybe (NonEmpty TypeArg)
   , lambdaParams   :: [Param]

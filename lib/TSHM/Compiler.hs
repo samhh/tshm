@@ -31,8 +31,11 @@ needsParens TLambda {}  = True
 needsParens TInfer {}   = True
 needsParens _           = False
 
+withParensWhen :: Bool -> Text -> Text
+withParensWhen x = applyWhen x (surround "(" ")")
+
 withParens :: TExpr -> Text -> Text
-withParens x = applyWhen (needsParens x) (surround "(" ")")
+withParens = withParensWhen . needsParens
 
 data CompileConfig = CompileConfig
   { signatures :: ReconciledAST
@@ -155,7 +158,10 @@ param (Param n xs) = case n of
 
 params :: [Param] -> Compiler'
 params []  = pure "()"
-params [x] = param x
+params [x] = withParensWhen (needsParens' . getParamExpr $ x) <$> param x
+  where needsParens' TLambda {} = True
+        needsParens' TBinOp {}  = True
+        needsParens' _          = False
 params xs  = surround "(" ")" . T.intercalate ", " <$> mapM param xs
 
 misc :: Text -> Compiler'
@@ -177,11 +183,10 @@ subtype x y = surrounding " extends " <$> misc x <*> (withParens y <$> expr y)
 
 lambda :: Lambda -> Compiler'
 lambda x = do
-  nested <- immediateFunctionArg <$> get
   let tas = foldMap toList (lambdaTypeArgs x)
   modify $ \s -> s { implicitTypeArgs = implicitTypeArgs s <> tas }
 
-  (applyWhen nested (surround "(" ")") .) . surrounding " -> " <$> params (lambdaParams x) <*> expr (lambdaReturn x)
+  surrounding " -> " <$> params (lambdaParams x) <*> expr (lambdaReturn x)
 
 fnewtype :: Text -> TExpr -> Compiler'
 fnewtype x y = (("newtype " <> x <> " = ") <>) <$> expr y
@@ -199,7 +204,7 @@ isNewtype (TGeneric (TMisc "Newtype") xs) = fmap snd . guarded (isNewtypeObject 
 
         isNewtypeObject :: Object -> Bool
         isNewtypeObject (ObjectLit [ObjectPair Immut Required (_, TUniqueSymbol)]) = True
-        isNewtypeObject _                                              = False
+        isNewtypeObject _                                                          = False
 isNewtype _ = Nothing
 
 generic :: (TExpr, NonEmpty TypeArg) -> Compiler'
