@@ -291,7 +291,7 @@ spec = describe "TSHM.Compiler" $ do
         , "  ...ords: T"
         , "): Ord<{ [K in keyof T]: T[K] extends Ord<infer A> ? A : never }>"
         ]) =*=
-        "getTupleOrd :: forall t. t extends (ReadonlyArray (Ord any)) => ...t -> Ord { [k in (keyof t)]: t[k] extends (Ord (infer a)) ? a : never }"
+        "getTupleOrd :: forall t. t extends (ReadonlyArray (Ord any)) => ...t -> Ord { [k in keyof t]: t[k] extends (Ord (infer a)) ? a : never }"
 
     it "fp-ts/TaskEither" $ do
       pp (unlines'
@@ -365,7 +365,7 @@ spec = describe "TSHM.Compiler" $ do
         , "  branches: [Predicate<A>, (x: A) => B][]"
         , ") => (fallback: (x: A) => B) => (input: A) => B"
         ]) =*=
-        "guard :: forall a b. Array [(Predicate a), a -> b] -> (a -> b) -> a -> b"
+        "guard :: forall a b. Array [Predicate a, a -> b] -> (a -> b) -> a -> b"
 
       pp (unlines'
         [ "export declare const withIndex: <A, B, C>("

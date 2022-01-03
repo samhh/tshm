@@ -22,6 +22,18 @@ applyWhen :: Bool -> (a -> a) -> a -> a
 applyWhen True  f = f
 applyWhen False _ = id
 
+needsParens :: TExpr -> Bool
+needsParens TGeneric {} = True
+needsParens TUnOp {}    = True
+needsParens TBinOp {}   = True
+needsParens TCond {}    = True
+needsParens TLambda {}  = True
+needsParens TInfer {}   = True
+needsParens _           = False
+
+withParens :: TExpr -> Text -> Text
+withParens x = applyWhen (needsParens x) (surround "(" ")")
+
 data CompileConfig = CompileConfig
   { signatures :: ReconciledAST
   , forall     :: Maybe Text
@@ -29,8 +41,7 @@ data CompileConfig = CompileConfig
   }
 
 data CompileState = CompileState
-  { ambiguouslyNested    :: Bool
-  , immediateFunctionArg :: Bool
+  { immediateFunctionArg :: Bool
   , namedFunctionArgs    :: Map Text Text
   , explicitTypeArgs     :: [TypeArg]
   , implicitTypeArgs     :: [TypeArg]
@@ -39,7 +50,7 @@ data CompileState = CompileState
   }
 
 initialState :: CompileState
-initialState = CompileState False False mempty mempty mempty mempty mempty
+initialState = CompileState False mempty mempty mempty mempty mempty
 
 compileDeclaration :: CompileConfig -> Text
 compileDeclaration x = fst $ evalRWS declaration x initialState
@@ -113,21 +124,17 @@ expr t = do
         f (TGeneric x ys)        = generic (x, ys)
         f (TSubtype x y)         = subtype x y
         f (TObject xs)           = object xs
-        f (TIndexedAccess tv tk) = (\v k -> v <> "[" <> k <> "]") <$> ambiguouslyNestedExpr tv <*> expr tk
+        f (TIndexedAccess x y)   = indexed x y
         f (TDotAccess x y)       = (<> "." <> y) <$> expr x
         f (TLambda x)            = lambda x
         f (TInfer x)             = infer x
         f (TUnOp x y)            = unOp x y
         f (TBinOp x y z)         = binOp x y z
         f (TCond l r tt ff)      = cond l r tt ff
-        f (TGrouped x)           = do
-          modify $ \s -> s { ambiguouslyNested = False }
-          surround "(" ")" <$> expr x
+        f (TGrouped x)           = surround "(" ")" <$> expr x
 
-ambiguouslyNestedExpr :: TExpr -> Compiler'
-ambiguouslyNestedExpr t = do
-  modify $ \s -> s { ambiguouslyNested = True }
-  expr t
+indexed :: TExpr -> TExpr -> Compiler'
+indexed v k = (\v' k' -> v' <> "[" <> k' <> "]") <$> (withParens v <$> expr v) <*> expr k
 
 param :: Param -> Compiler'
 param (Param n xs) = case n of
@@ -166,11 +173,11 @@ misc (T.uncons -> Just (x', T.uncons -> Nothing)) = do
 misc x   = pure x
 
 subtype :: Text -> TExpr -> Compiler'
-subtype x y = surrounding " extends " <$> misc x <*> ambiguouslyNestedExpr y
+subtype x y = surrounding " extends " <$> misc x <*> (withParens y <$> expr y)
 
 lambda :: Lambda -> Compiler'
 lambda x = do
-  nested <- immediateFunctionArg ||^ ambiguouslyNested <$> get
+  nested <- immediateFunctionArg <$> get
   let tas = foldMap toList (lambdaTypeArgs x)
   modify $ \s -> s { implicitTypeArgs = implicitTypeArgs s <> tas }
 
@@ -196,18 +203,9 @@ isNewtype (TGeneric (TMisc "Newtype") xs) = fmap snd . guarded (isNewtypeObject 
 isNewtype _ = Nothing
 
 generic :: (TExpr, NonEmpty TypeArg) -> Compiler'
-generic (x, ys) = do
-  nested <- ambiguouslyNested <$> get
-  if nested then do
-    modify $ \s -> s { ambiguouslyNested = False }
-    surround "(" ")" <$> generic (x, ys)
-  else expr x <>^ pure " " <>^ (unwords <$> mapM expr' (toList ys))
+generic (x, ys) = expr x <>^ pure " " <>^ (unwords <$> mapM expr' (toList ys))
   where expr' :: TypeArg -> Compiler'
-        expr' z = do
-          modify $ \s -> s { ambiguouslyNested = True }
-          res <- expr $ fst z
-          modify $ \s -> s { ambiguouslyNested = False }
-          pure res
+        expr' (z, _) = withParens z <$> expr z
 
 objectKey :: ObjectKey -> Compiler'
 objectKey (OKeyIdent x)    = pure x
@@ -227,28 +225,21 @@ objectPair (ObjectPair m p (kt, vt)) = do
 infer :: Text -> Compiler'
 infer x = do
   modify (\s -> s { inferredTypes = x : inferredTypes s })
-  nested <- ambiguouslyNested <$> get
-  applyWhen nested (surround "(" ")") . ("infer " <>) <$> misc x
+  ("infer " <>) <$> misc x
 
 unOp :: UnOp -> TExpr -> Compiler'
 unOp o t = do
   cfgRO <- readonly <$> ask
   raw <- expr t
-  out <- case o of
+  case o of
     UnOpReadonly   -> pure $ if cfgRO then "readonly " <> raw else raw
     UnOpKeys       -> pure $ "keyof " <> raw
     UnOpReflection -> do
       args <- namedFunctionArgs <$> get
       pure $ fromMaybe ("typeof " <> raw) (lookup raw args)
-  nested <- ambiguouslyNested <$> get
-  pure $ applyWhen nested (surround "(" ")") out
 
 binOp :: BinOp -> TExpr -> TExpr -> Compiler'
-binOp o l r = do
-  nested <- ambiguouslyNested <$> get
-  (applyWhen nested (surround "(" ")") .) . surrounding (" " <> op o <> " ")
-    <$> expr l <*> expr r
-
+binOp o l r = surrounding (" " <> op o <> " ") <$> expr l <*> expr r
   where op :: BinOp -> Text
         op BinOpIntersection = "&"
         op BinOpUnion        = "|"
@@ -259,7 +250,7 @@ template (TemplateExpr x) = surround "${" "}" <$> expr x
 
 cond :: TExpr -> TExpr -> TExpr -> TExpr -> Compiler'
 cond lt rt tt ft = (\l r t f -> l <> " extends " <> r <> " ? " <> t <> " : " <> f) <$>
-  expr lt <*> expr rt <*> expr tt <*> expr ft
+  (withParens lt <$> expr lt) <*> (withParens rt <$> expr rt) <*> expr tt <*> expr ft
 
 modMut :: ModMut -> Text
 modMut AddMut = "readonly"
