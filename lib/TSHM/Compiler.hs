@@ -73,9 +73,8 @@ renderCompileState = do
   fam <- forall <$> ask
 
   targsm :: Maybe [Text] <- fmap (guarded (not . null)) . mapMaybeM tryCompileTypeArg $ tas
-  let targsSig = case sequenceT (fam, targsm) of
-        Just (fa, ts) -> fa <> " " <> unwords ts <> ". "
-        Nothing       -> ""
+  let targsSig = foldMap (uncurry f) (sequenceT (fam, targsm))
+        where f fa targs = fa <> " " <> unwords targs <> ". "
 
   sts :: Maybe [Text] <- fmap (guarded (not . null)) . mapM (uncurry subtype) . mapMaybe matchSubtype $ tas
   let stsSig = foldMap ((<> " => ") . T.intercalate ", ") sts
@@ -122,7 +121,8 @@ expr t = do
         f TUndefined             = pure "undefined"
         f TNull                  = pure "null"
         f TUniqueSymbol          = pure "unique symbol"
-        f (TBoolean x)           = pure $ if x then "true" else "false"
+        f (TBoolean True)        = pure "true"
+        f (TBoolean False)       = pure "false"
         f (TMisc x)              = misc x
         f (TString x)            = pure . dblqts $ x
         f (TTemplate xs)         = backticks . T.concat <$> mapM template xs
@@ -173,9 +173,9 @@ misc :: Text -> Compiler'
 -- or mapped type, then lowercase it
 misc (T.uncons -> Just (x', T.uncons -> Nothing)) = do
   let x = T.singleton x'
-  tas <- ((<>) <$> implicitTypeArgs <*> explicitTypeArgs) <$> get
-  ys <- (fmap T.concat . (<>) <$> mappedTypeKeys <*> inferredTypes) <$> get
-  pure $ if x `T.isInfixOf` ys || any (isViable . fst) tas then T.toLower x else x
+  tas <- (implicitTypeArgs <>^ explicitTypeArgs) <$> get
+  ys <- T.concat . (mappedTypeKeys <>^ inferredTypes) <$> get
+  pure $ applyWhen (x `T.isInfixOf` ys || any (isViable . fst) tas) T.toLower x
   where isViable :: TExpr -> Bool
         isViable (TMisc (T.uncons -> Just (y, T.uncons -> Nothing)))      = y == x'
         isViable (TSubtype (T.uncons -> Just (y, T.uncons -> Nothing)) _) = y == x'
@@ -226,14 +226,14 @@ objectKey (OKeyComputed x) = pure "[" <>^ expr x <>^ pure "]"
 objectPair :: ObjectPair -> Compiler'
 objectPair (ObjectPair m p (kt, vt)) = do
   cfgRO <- readonly <$> ask
-  let ro = if cfgRO && m == Immut then "readonly " else ""
-  let delim = if p == Required then ": " else "?: "
+  let ro = memptyIfFalse (cfgRO && m == Immut) "readonly "
+  let delim = applyWhen (p == Optional) ("?" <>) ": "
 
   pure ro <>^ objectKey kt <>^ pure delim <>^ expr vt
 
 infer :: Text -> Compiler'
 infer x = do
-  modify (\s -> s { inferredTypes = x : inferredTypes s })
+  modify $ \s -> s { inferredTypes = x : inferredTypes s }
   pure "infer " <>^ misc x
 
 unOp :: UnOp -> TExpr -> Compiler'
@@ -279,9 +279,7 @@ object (ObjectMapped m p (kt, xt, asm) vt) = do
   cfgRO <- readonly <$> ask
   let ro = foldMap ((<> " ") . modMut) . mfilter (const cfgRO) $ m
   let sep = maybe ":" modOpt p
-  as <- case asm of
-    Nothing -> pure mempty
-    Just x  -> pure " as " <>^ expr x
+  as <- foldMapM (fmap (" as " <>) . expr) asm
 
   k <- misc kt
   x <- expr xt
@@ -311,9 +309,8 @@ constDec n (ConstDec t) = f <$> expr t <*> renderCompileState
   where f t' ps = n <> " :: " <> renderedTypeArgs ps <> renderedSubtypes ps <> t'
 
 lambdaDec :: Text -> FunctionDec -> Compiler'
-lambdaDec n (FunctionDec t)  =
-  (\t' ps -> n <> " :: " <> renderedTypeArgs ps <> renderedSubtypes ps <> t')
-  <$> lambda t <*> renderCompileState
+lambdaDec n (FunctionDec t) = f <$> lambda t <*> renderCompileState
+  where f t' ps = n <> " :: " <> renderedTypeArgs ps <> renderedSubtypes ps <> t'
 
 alias :: Text -> Alias -> Compiler'
 alias n x = case isNewtype (aliasType x) of
@@ -336,9 +333,10 @@ interface n x = case isNewtype =<< interfaceExtends x of
   Nothing -> alias n (fromInterface x)
 
 enum :: Text -> SEnum -> Compiler'
-enum n (SEnum xs) = (\ys -> "enum " <> n <> " {" <> (if null ys then "" else " ") <> T.intercalate ", " ys <> " }") <$>
-  mapM enumMember xs
-  where enumMember :: EnumMember -> Compiler'
+enum n (SEnum xs) = f <$> mapM enumMember xs
+  where f ys = "enum " <> n <> " {" <> (if null ys then "" else " ") <> T.intercalate ", " ys <> " }"
+
+        enumMember :: EnumMember -> Compiler'
         enumMember (EnumMember k Nothing)  = pure $ enumKey k
         enumMember (EnumMember k (Just v)) = pure (enumKey k <> " = ") <>^ expr v
 
