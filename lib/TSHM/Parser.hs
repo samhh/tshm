@@ -202,8 +202,8 @@ objLitProps = ObjectLit <$> sepEndBy prop delim
 
         delim :: Parser ()
         delim =
-              () <$ symN ","
-          <|> () <$ symN ";"
+              void (symN ",")
+          <|> void (symN ";")
           -- Consume any leading whitespace, then ensure there's at least one
           -- newline, then consume all trailing whitespace including any
           -- further newlines, then finally check the next character is the
