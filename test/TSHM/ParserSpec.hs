@@ -134,6 +134,11 @@ spec = describe "TSHM.Parser" $ do
     it "parses curried function" $ do
       parse' lambda "() => () => void" `shouldParse` Lambda Nothing [] (TLambda (Lambda Nothing [] TVoid))
 
+    it "parses parentheses in params" $ do
+      parse' lambda "(x: (A & B) | C) => D" `shouldParse` Lambda Nothing
+        [ Param (ParamNamed "x") (Required, Normal, TBinOp BinOpUnion (TGrouped $ TBinOp BinOpIntersection (TMisc "A") (TMisc "B")) (TMisc "C"))
+        ] (TMisc "D")
+
     it "supports extends clause in function generics" $ do
       parse' lambda "<B, A extends Array<B>>(f: <C extends number, D>(x: 'ciao') => string) => void" `shouldParse`
         Lambda
