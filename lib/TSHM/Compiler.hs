@@ -18,6 +18,15 @@ surround l r x = l <> x <> r
 parens :: Text -> Text
 parens = surround "(" ")"
 
+bracks :: Text -> Text
+bracks = surround "[" "]"
+
+dblqts :: Text -> Text
+dblqts = surround "\"" "\""
+
+backticks :: Text -> Text
+backticks = surround "`" "`"
+
 withParensWhen :: Bool -> Text -> Text
 withParensWhen = flip applyWhen parens
 
@@ -115,10 +124,10 @@ expr t = do
         f TUniqueSymbol          = pure "unique symbol"
         f (TBoolean x)           = pure $ if x then "true" else "false"
         f (TMisc x)              = misc x
-        f (TString x)            = pure $ "\"" <> x <> "\""
-        f (TTemplate xs)         = surround "`" "`" . T.concat <$> mapM template xs
+        f (TString x)            = pure . dblqts $ x
+        f (TTemplate xs)         = backticks . T.concat <$> mapM template xs
         f (TNumber x)            = pure x
-        f (TTuple xs)            = surround "[" "]" . T.intercalate ", " <$> mapM expr xs
+        f (TTuple xs)            = bracks . T.intercalate ", " <$> mapM expr xs
         f (TGeneric x ys)        = generic (x, ys)
         f (TSubtype x y)         = subtype x y
         f (TObject xs)           = object xs
@@ -209,7 +218,7 @@ generic (x, ys) = expr x <>^ pure " " <>^ (unwords <$> mapM expr' (toList ys))
 
 objectKey :: ObjectKey -> Compiler'
 objectKey (OKeyIdent x)    = pure x
-objectKey (OKeyStr x)      = pure $ "\"" <> x <> "\""
+objectKey (OKeyStr x)      = pure . dblqts $ x
 objectKey (OKeyNum x)      = pure x
 objectKey (OKeyIndex x)    = pure "[index: " <>^ expr x <>^ pure "]"
 objectKey (OKeyComputed x) = pure "[" <>^ expr x <>^ pure "]"
@@ -280,7 +289,7 @@ object (ObjectMapped m p (kt, xt, asm) vt) = do
   pure $ "{ " <> ro <> "[" <> k <> " in " <> x <> as <> "]" <> sep <> " " <> v <> " }"
 
 importDec :: ImportDec -> Compiler'
-importDec x = pure $ "import \"" <> importDecFrom x <> "\" " <> imp (importDecContents x)
+importDec x = pure $ "import " <> dblqts (importDecFrom x) <> " " <> imp (importDecContents x)
   where imp :: Import -> Text
         imp (ImportDef d)            = named $ defToNamed d
         imp (ImportNamed ns)         = named ns
@@ -335,4 +344,4 @@ enum n (SEnum xs) = (\ys -> "enum " <> n <> " {" <> (if null ys then "" else " "
 
         enumKey :: EnumKey -> Text
         enumKey (EKeyIdent k) = k
-        enumKey (EKeyStr k)   = "\"" <> k <> "\""
+        enumKey (EKeyStr k)   = dblqts k
