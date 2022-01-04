@@ -70,7 +70,7 @@ data RenderedCompileState = RenderedCompileState
 renderCompileState :: Compiler RenderedCompileState
 renderCompileState = do
   tas <- implicitTypeArgs <$> get
-  fam <- forall <$> ask
+  fam <- asks forall
 
   targsm :: Maybe [Text] <- fmap (guarded (not . null)) . mapMaybeM tryCompileTypeArg $ tas
   let targsSig = foldMap (uncurry f) (sequenceT (fam, targsm))
@@ -106,7 +106,7 @@ statement (n, StatementFunctionDec xs) = T.intercalate "\n" <$> mapM (clean (lam
 
 -- | Compile an entire "declaration", which is zero or more statements.
 declaration :: Compiler'
-declaration = fmap (T.intercalate "\n\n") . mapM unscopedStatement . signatures =<< ask
+declaration = fmap (T.intercalate "\n\n") . mapM unscopedStatement =<< asks signatures
 
 expr :: TExpr -> Compiler'
 expr t = modify upd *> f t
@@ -220,7 +220,7 @@ objectKey (OKeyComputed x) = pure "[" <>^ expr x <>^ pure "]"
 
 objectPair :: ObjectPair -> Compiler'
 objectPair (ObjectPair m p (kt, vt)) = do
-  cfgRO <- readonly <$> ask
+  cfgRO <- asks readonly
   let ro = memptyIfFalse (cfgRO && m == Immut) "readonly "
   let delim = applyWhen (p == Optional) ("?" <>) ": "
 
@@ -233,7 +233,7 @@ infer x = do
 
 unOp :: UnOp -> TExpr -> Compiler'
 unOp o t = do
-  cfgRO <- readonly <$> ask
+  cfgRO <- asks readonly
   raw <- expr t
   case o of
     UnOpReadonly   -> pure $ applyWhen cfgRO ("readonly " <>) raw
@@ -272,7 +272,7 @@ object (ObjectLit xs) = pure "{ " <>^ items <>^ pure " }"
 object (ObjectMapped m p (kt, xt, asm) vt) = do
   modify ins
 
-  cfgRO <- readonly <$> ask
+  cfgRO <- asks readonly
   let ro = foldMap ((<> " ") . modMut) . mfilter (const cfgRO) $ m
   let sep = maybe ":" modOpt p
   as <- foldMapM (fmap (" as " <>) . expr) asm
