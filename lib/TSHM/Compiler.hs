@@ -69,7 +69,7 @@ data RenderedCompileState = RenderedCompileState
 
 renderCompileState :: Compiler RenderedCompileState
 renderCompileState = do
-  tas <- implicitTypeArgs <$> get
+  tas <- gets implicitTypeArgs
   fam <- asks forall
 
   targsm :: Maybe [Text] <- fmap (guarded (not . null)) . mapMaybeM tryCompileTypeArg $ tas
@@ -171,8 +171,8 @@ misc :: Text -> Compiler'
 -- or mapped type, then lowercase it
 misc (T.uncons -> Just (x', T.uncons -> Nothing)) = do
   let x = T.singleton x'
-  tas <- (implicitTypeArgs <>^ explicitTypeArgs) <$> get
-  ys <- T.concat . (mappedTypeKeys <>^ inferredTypes) <$> get
+  tas <- gets (implicitTypeArgs <>^ explicitTypeArgs)
+  ys <- gets $ T.concat . (mappedTypeKeys <>^ inferredTypes)
   pure $ applyWhen (x `T.isInfixOf` ys || any (isViable . fst) tas) T.toLower x
   where isViable :: TExpr -> Bool
         isViable (TMisc (T.uncons -> Just (y, T.uncons -> Nothing)))      = y == x'
@@ -239,7 +239,7 @@ unOp o t = do
     UnOpReadonly   -> pure $ applyWhen cfgRO ("readonly " <>) raw
     UnOpKeys       -> pure $ "keyof " <> raw
     UnOpReflection -> do
-      args <- namedFunctionArgs <$> get
+      args <- gets namedFunctionArgs
       pure $ fromMaybe ("typeof " <> raw) (lookup raw args)
 
 binOp :: BinOp -> TExpr -> TExpr -> Compiler'
