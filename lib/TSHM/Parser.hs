@@ -288,13 +288,14 @@ importDec = flip ImportDec <$> (sym "import" *> optional (sym "type") *> imports
         allp = sym "*" *> sym "as" *> ident
 
 exportDec :: Parser ExportDec
-exportDec =
-      ExportDef <$> (symN "export default" *> ident)
-  <|> try (ReexportNamedRefs <$> named <*> (sym "from" *> str))
-  <|> ExportNamedRefs <$> named
-  where unchanged = ExportNamedRefUnchanged <$> ident
-        renamed = ExportNamedRefRenamed <$> try (ident <* sym "as") <*> ident
-        named = symN "export" *> braces (sepEndBy (renamed <|> unchanged) (symN ","))
+exportDec = symN "export" *> choice
+  [ ExportDef <$> (symN "default" *> ident)
+  , try $ ReexportNamedRefs <$> named <*> (sym "from" *> str)
+  , ExportNamedRefs <$> named
+  ]
+  where named = braces (sepEndBy (renamed <|> unchanged) (symN ","))
+          where unchanged = ExportNamedRefUnchanged <$> ident
+                renamed = ExportNamedRefRenamed <$> try (ident <* sym "as") <*> ident
 
 constDecIdent :: Parser Text
 constDecIdent = sym "declare" *> sym "const" *> ident <* sym ":"
