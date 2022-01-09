@@ -290,8 +290,8 @@ importDec = flip ImportDec <$> (sym "import" *> optional (sym "type") *> imports
 exportDec :: Parser ExportDec
 exportDec = symN "export" *> choice
   [ ExportDef <$> (symN "default" *> ident)
-  , try $ ReexportNamedRefs <$> named <*> (symN "from" *> str)
-  , ExportNamedRefs <$> named
+  , flip (maybe ExportNamedRefs (flip ReexportNamedRefs)) <$>
+      named <*> optional (symN "from" *> str)
   ]
   where named = braces (sepEndBy (renamed <|> unchanged) (symN ","))
           where unchanged = ExportNamedRefUnchanged <$> ident
