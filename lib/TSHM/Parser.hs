@@ -293,7 +293,7 @@ exportDec = symN "export" *> choice
   , flip (maybe ExportNamedRefs (flip ReexportNamedRefs)) <$>
       named <*> optional (symN "from" *> str)
   ]
-  where named = braces (sepEndBy (renamed <|> unchanged) (symN ","))
+  where named = optional (symN "type") *> braces (sepEndBy (renamed <|> unchanged) (symN ","))
           where unchanged = ExportNamedRefUnchanged <$> ident
                 renamed = ExportNamedRefRenamed <$> try (ident <* sym "as") <*> ident
 
