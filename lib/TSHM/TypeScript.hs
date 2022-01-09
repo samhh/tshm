@@ -143,6 +143,7 @@ data ExportDec
   -- | Default exports in declaration files always refer to identifiers.
   = ExportDef Text
   | ExportNamedRefs [ExportNamedRef]
+  | ReexportNamedRefs [ExportNamedRef] Text
   deriving (Eq, Show)
 
 newtype ConstDec = ConstDec TExpr

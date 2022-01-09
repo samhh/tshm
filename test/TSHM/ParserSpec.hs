@@ -351,6 +351,12 @@ spec = describe "TSHM.Parser" $ do
       parse' exportDec "export { x, y as y2, z }" =*=
         ExportNamedRefs [ExportNamedRefUnchanged "x", ExportNamedRefRenamed "y" "y2", ExportNamedRefUnchanged "z"]
 
+    it "parses reexports" $ do
+      parse' exportDec "export {} from 'abc'" =*= ReexportNamedRefs [] "abc"
+      parse' exportDec "export { x } from 'abc'" =*= ReexportNamedRefs [ExportNamedRefUnchanged "x"] "abc"
+      parse' exportDec "export { x, y as y2, z } from 'abc'" =*=
+        ReexportNamedRefs [ExportNamedRefUnchanged "x", ExportNamedRefRenamed "y" "y2", ExportNamedRefUnchanged "z"] "abc"
+
   describe "constDecIdent" $ do
     let ident' = Gen.text (Range.linear 1 99) Gen.alpha
 
