@@ -13,7 +13,9 @@ jobs:
         ghc: ['8.10.4']
         include:
           - os: ubuntu-latest
-            asset_name: tshm-linux-amd64
+            asset_name: tshm-linux
+          - os: macos-latest
+            asset_name: tshm-macos
 
     steps:
       - uses: actions/checkout@v2
