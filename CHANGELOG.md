@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.1 -- 2022-07-27
+
+Publish CI binaries for macOS as well.
+
 ## 0.4.0 -- 2021-07-20
 
 This release is the first to include a prebuilt binary via CI, on Linux only for now. It also adds support for the `-v`/`--version` switch.
