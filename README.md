@@ -50,6 +50,8 @@ Should an invalid input be provided the program will fail with the appropriate e
 
 Messages are always printed upon failure. Should the failure be due to a parser error, the raw error is printed to the console to assist in debugging.
 
+A patcher for [docs-ts](https://github.com/gcanti/docs-ts) output is also provided.
+
 ## Installation
 
 Prebuilt binaries are produced via CI on each release. An official AUR package is available at [tshm-bin](https://aur.archlinux.org/packages/tshm-bin/).
