@@ -10,7 +10,7 @@ import qualified Options.Applicative.Internal       as AI
 import qualified Options.Applicative.Types          as AT
 import           Paths_tshm                         (version)
 import           Prelude
-import           System.Environment                 (getArgs, getProgName)
+import           System.Environment                 (getProgName)
 import           System.Exit                        (ExitCode (ExitSuccess))
 
 data FailureStrategy

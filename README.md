@@ -56,7 +56,7 @@ Prebuilt binaries are produced via CI on each release. An official AUR package i
 
 ## Contributing
 
-tshm is currently developed against GHC 8.10.4.
+tshm is currently developed against GHC 9.2.7.
 
 The codebase is split up into two parts, `lib/` and `src/`, representing the internal library and the CLI interface respectively.
 

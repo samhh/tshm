@@ -10,7 +10,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        ghc: ['8.10.4']
+        ghc: ['9.2.7']
         include:
           - os: ubuntu-latest
             asset_name: tshm-linux
