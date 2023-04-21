@@ -1,7 +1,7 @@
 name: on-push
 on: [push]
 jobs:
-  code-quality:
+  check:
     runs-on: ${{matrix.os }}
 
     strategy:
