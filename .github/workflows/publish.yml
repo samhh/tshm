@@ -32,9 +32,11 @@ jobs:
       - name: Build
         run: |
           cabal install --install-method=copy --installdir=dist
-          mv dist/tshm dist/tshm-${{ github.ref_name }}-${{ matrix.os.name }}-x86_64
+          mv dist/tshm         dist/tshm-${{ github.ref_name }}-${{ matrix.os.name }}-x86_64
+          mv dist/tshm-docs-ts dist/tshm-docs-ts-${{ github.ref_name }}-${{ matrix.os.name }}-x86_64
       - name: Publish
         uses: softprops/action-gh-release@v1
         with:
           files: |
             dist/tshm-${{ github.ref_name }}-${{ matrix.os.name }}-x86_64
+            dist/tshm-docs-ts-${{ github.ref_name }}-${{ matrix.os.name }}-x86_64
