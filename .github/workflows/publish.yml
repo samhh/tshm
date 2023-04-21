@@ -12,8 +12,8 @@ jobs:
       matrix:
         os:
           [
-            { name: "linux", runner: "ubuntu-latest", asset_name: "tshm-linux" },
-            { name: "macos", runner: "macos-latest",  asset_name: "tshm-macos" },
+            { name: "linux", runner: "ubuntu-latest" },
+            { name: "macos", runner: "macos-latest" },
           ]
     runs-on: ${{ matrix.os.runner }}
     steps:
@@ -36,5 +36,5 @@ jobs:
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           file: dist/tshm
-          asset_name: ${{ matrix.asset_name }}
+          asset_name: tshm-${{ github.ref_name }}-${{ matrix.os.name }}-x86_64
           tag: ${{ github.ref }}
