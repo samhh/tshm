@@ -2,32 +2,33 @@ name: Publish
 
 on:
   create:
-    tags: ["[0-9].[0-9].[0-9]"]
+    tags:
+      - "[0-9].[0-9].[0-9]"
 
 jobs:
   publish:
-    name: Publish for ${{ matrix.os }}
-    runs-on: ${{ matrix.os }}
+    name: Publish binaries
     strategy:
       matrix:
-        ghc: ['9.2.7']
-        include:
-          - os: ubuntu-latest
-            asset_name: tshm-linux
-          - os: macos-latest
-            asset_name: tshm-macos
-
+        os:
+          [
+            { name: "linux", runner: "ubuntu-latest", asset_name: "tshm-linux" },
+            { name: "macos", runner: "macos-latest",  asset_name: "tshm-macos" },
+          ]
+    runs-on: ${{ matrix.os.runner }}
     steps:
-      - uses: actions/checkout@v2
-      - uses: haskell/actions/setup@v1
-        id: setup-haskell
+      - uses: actions/checkout@v3
+      # Using Nix causes dynamic linking issues on macOS. It's easier to
+      # workaround on Linux with patchelf at least. (Yes, building statically
+      # would be substantially better.)
+      - uses: haskell/actions/setup@v2
         with:
-          ghc-version: ${{ matrix.ghc }}
-      - uses: actions/cache@v2
+          ghc-version: 9.2.7
+      - run: cabal freeze
+      - uses: actions/cache@v3
         with:
-          path: ${{ steps.setup-haskell.outputs.cabal-store }}
-          key: ${{ runner.os }}-${{ matrix.ghc }}-${{ hashFiles('cabal.project.freeze') }}
-          restore-keys: ${{ runner.os }}-${{ matrix.ghc }}-
+          path: ~/.cabal/store
+          key: cabal-${{ runner.os }}-${{ hashFiles('cabal.project.freeze') }}
       - name: Build
         run: cabal install --install-method=copy --installdir=dist
       - name: Publish
