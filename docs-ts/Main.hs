@@ -1,12 +1,15 @@
 module Main (main) where
 
 import qualified Control.Exception    as E
+import qualified Data.Text            as T
 import           Prelude
-import           System.Environment   (getArgs)
-import           TSHM.Parser          (parseDeclaration)
-import           TSHM.Printer         (PrintConfig (PrintConfig), printSignature)
 import           Text.Megaparsec      hiding (many, some)
 import           Text.Megaparsec.Char
+import           TSHM.Compiler        (CompileConfig (CompileConfig),
+                                       compileDeclaration)
+import           TSHM.Parser          (parseDeclaration)
+import           TSHM.Reconciler      (reconcile)
+import           TSHM.TypeScript      (ScopeRule (KeepExported))
 
 type Parser = Parsec Void String
 
@@ -45,7 +48,7 @@ printResult name Failure = putStrLn $ "[ ] Failed to augment \"" <> name <> "\"!
 
 rewriteFile :: String -> IO Result
 rewriteFile name = tryOr Failure $ do
-  input <- readFile name
+  input <- decodeUtf8 <$> readFileBS name
   let parsed = parse pTsDoc name input
   case parsed of
     Left _    -> pure Failure
@@ -59,7 +62,7 @@ reconstruct = foldMap f
           <> "```ts\n"
           <> x
           <> "\n```"
-          <> (either (const "") (surround "\n\n```hs\n" "\n```" . printSignature . (\y -> PrintConfig y Nothing False)) . parseDeclaration $ x)
+          <> (either (const "") (surround "\n\n```hs\n" "\n```" . T.unpack . compileDeclaration . (\y -> CompileConfig y Nothing False) . reconcile KeepExported) . parseDeclaration . T.pack $ x)
 
 surround :: Semigroup a => a -> a -> a -> a
 surround l r x = l <> x <> r
