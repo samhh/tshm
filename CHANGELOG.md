@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.5.0 -- *Unreleased*
+
+The parser now supports `export from` statements, which are discarded.
+
 ## 0.4.2 -- 2023-04-21
 
 Fix CI binaries and expose a docs-ts patcher as a first-class citizen of the repo.
