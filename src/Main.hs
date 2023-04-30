@@ -31,5 +31,5 @@ tryGetStdin = (`memptyIfFalse` getContents') =<< hReady stdin
 getOptsCode :: Opts -> IO Text
 getOptsCode opts = case input opts of
                      Eval x     -> pure x
-                     FilePath x -> readFileText . T.unpack $ x
+                     FilePath x -> fmap decodeUtf8 . readFileBS . T.unpack $ x
                      Stdin      -> error "Failed to get opts code (matched Stdin)."

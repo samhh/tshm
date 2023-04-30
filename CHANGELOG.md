@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.4.2 -- 2023-04-21
+
+Fix CI binaries and expose a docs-ts patcher as a first-class citizen of the repo.
+
+## 0.4.1 -- 2022-07-27
+
+Publish CI binaries for macOS as well.
+
 ## 0.4.0 -- 2021-07-20
 
 This release is the first to include a prebuilt binary via CI, on Linux only for now. It also adds support for the `-v`/`--version` switch.
