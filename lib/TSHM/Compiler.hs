@@ -111,31 +111,31 @@ declaration = fmap (T.intercalate "\n\n") . mapM unscopedStatement =<< asks sign
 expr :: TExpr -> Compiler'
 expr t = modify upd *> f t
   where upd s = s { immediateFunctionArg = False }
-        f TAny                   = pure "any"
-        f TUnknown               = pure "unknown"
-        f TNever                 = pure "never"
-        f TVoid                  = pure "void"
-        f TUndefined             = pure "undefined"
-        f TNull                  = pure "null"
-        f TUniqueSymbol          = pure "unique symbol"
-        f (TBoolean True)        = pure "true"
-        f (TBoolean False)       = pure "false"
-        f (TMisc x)              = misc x
-        f (TString x)            = pure . dblqts $ x
-        f (TTemplate xs)         = backticks . T.concat <$> mapM template xs
-        f (TNumber x)            = pure x
-        f (TTuple xs)            = bracks . T.intercalate ", " <$> mapM expr xs
-        f (TGeneric x ys)        = generic (x, ys)
-        f (TSubtype x y)         = subtype x y
-        f (TObject xs)           = object xs
-        f (TIndexedAccess x y)   = indexed x y
-        f (TDotAccess x y)       = expr x <>^ pure ("." <> y)
-        f (TLambda x)            = lambda x
-        f (TInfer x)             = infer x
-        f (TUnOp x y)            = unOp x y
-        f (TBinOp x y z)         = binOp x y z
-        f (TCond l r tt ff)      = cond l r tt ff
-        f (TGrouped x)           = parens <$> expr x
+        f TAny                 = pure "any"
+        f TUnknown             = pure "unknown"
+        f TNever               = pure "never"
+        f TVoid                = pure "void"
+        f TUndefined           = pure "undefined"
+        f TNull                = pure "null"
+        f TUniqueSymbol        = pure "unique symbol"
+        f (TBoolean True)      = pure "true"
+        f (TBoolean False)     = pure "false"
+        f (TMisc x)            = misc x
+        f (TString x)          = pure . dblqts $ x
+        f (TTemplate xs)       = backticks . T.concat <$> mapM template xs
+        f (TNumber x)          = pure x
+        f (TTuple xs)          = bracks . T.intercalate ", " <$> mapM expr xs
+        f (TGeneric x ys)      = generic (x, ys)
+        f (TSubtype x y)       = subtype x y
+        f (TObject xs)         = object xs
+        f (TIndexedAccess x y) = indexed x y
+        f (TDotAccess x y)     = expr x <>^ pure ("." <> y)
+        f (TLambda x)          = lambda x
+        f (TInfer x)           = infer x
+        f (TUnOp x y)          = unOp x y
+        f (TBinOp x y z)       = binOp x y z
+        f (TCond l r tt ff)    = cond l r tt ff
+        f (TGrouped x)         = parens <$> expr x
 
 indexed :: TExpr -> TExpr -> Compiler'
 indexed v k = (withParensStd v <$> expr v) <>^ (bracks <$> expr k)
@@ -323,7 +323,7 @@ alias n x = case isNewtype (aliasType x) of
       where tryCompileTypeArg :: TypeArg -> Compiler (Maybe Text)
             tryCompileTypeArg (TMisc y, _)      = Just <$> misc y
             tryCompileTypeArg (TSubtype y z, _) = Just . parens <$> subtype y z
-            tryCompileTypeArg _                   = pure Nothing
+            tryCompileTypeArg _                 = pure Nothing
 
             explicitTargs = foldMap toList (aliasTypeArgs x)
             ins s = s { explicitTypeArgs = explicitTypeArgs s <> explicitTargs }
