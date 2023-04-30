@@ -198,6 +198,9 @@ spec = describe "TSHM.Compiler" $ do
     pp "export interface X extends Newtype<{ readonly Y: unique symbol }, Z> {}" =*=
       "newtype X = Z"
 
+    pp "export type X = Newtype<Anything, Z>" =*=
+      "newtype X = Z"
+
   it "compiles type of known referenced reflection type" $ do
     pp "export declare const f: (x: { y: number; z: [string] }) => [typeof x, x]" =*=
       "f :: { y: number, z: [string] } -> [{ y: number, z: [string] }, x]"

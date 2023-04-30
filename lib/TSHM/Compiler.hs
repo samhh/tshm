@@ -1,7 +1,6 @@
 module TSHM.Compiler (compileDeclaration, CompileConfig (CompileConfig)) where
 
 import           Control.Monad.RWS   (RWS, evalRWS)
-import           Data.List.NonEmpty  ((!!))
 import           Data.Map            (insert, lookup)
 import qualified Data.Text           as T
 import           Data.Tuple.Sequence (sequenceT)
@@ -190,21 +189,11 @@ lambda x = modify ins *> params (lambdaParams x) <>^ pure " -> " <>^ expr (lambd
 fnewtype :: Text -> TExpr -> Compiler'
 fnewtype x y = pure ("newtype " <> x <> " = ") <>^ expr y
 
+-- We'll loosely match any generic type called `Newtype` with two type
+-- arguments.
 isNewtype :: TExpr -> Maybe TExpr
-isNewtype (TGeneric (TMisc "Newtype") xs) = fmap snd . guarded (isNewtypeObject . fst) =<< isNewtypeTypeArgs xs
-  where isNewtypeTypeArgs :: NonEmpty TypeArg -> Maybe (Object, TExpr)
-        isNewtypeTypeArgs ys
-          | length ys == 2 = (, fst $ ys !! 1) <$> isObject (head ys)
-          | otherwise = Nothing
-
-        isObject :: TypeArg -> Maybe Object
-        isObject (TObject x, Nothing) = Just x
-        isObject _                    = Nothing
-
-        isNewtypeObject :: Object -> Bool
-        isNewtypeObject (ObjectLit [ObjectPair Immut Required (_, TUniqueSymbol)]) = True
-        isNewtypeObject _                                                          = False
-isNewtype _ = Nothing
+isNewtype (TGeneric (TMisc "Newtype") (_ :| [x])) = Just (fst x)
+isNewtype _                                       = Nothing
 
 generic :: (TExpr, NonEmpty TypeArg) -> Compiler'
 generic (x, ys) = expr x <>^ pure " " <>^ (unwords <$> mapM expr' (toList ys))
